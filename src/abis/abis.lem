@@ -38,6 +38,10 @@ open import Abi_mips64
 open import Abi_mips64_elf_header
 open import Abi_mips64_relocation
 
+open import Abi_cheri_mips64
+open import Abi_cheri_mips64_elf_header
+open import Abi_cheri_mips64_relocation
+
 open import Gnu_ext_abi
 
 open import Abi_classes
@@ -319,6 +323,7 @@ let tls_extend a =
     ; generate_support    = a.generate_support
     ; concretise_support  = a.concretise_support
     ; get_reloc_symaddr   = a.get_reloc_symaddr
+    ; parse_reloc_info    = a.parse_reloc_info
     |>
 
 (* We use these snappily-named functions in relocation calculations. *)
@@ -387,6 +392,7 @@ let (null_abi : abi any_abi_feature) = <|
     ; generate_support = (* fun _ -> *) fun _ -> get_empty_memory_image ()
     ; concretise_support = fun img -> img
     ; get_reloc_symaddr = default_get_reloc_symaddr
+    ; parse_reloc_info = parse_elf64_relocation_info
     |>
 
 val got_entry_ordering : (string * maybe symbol_definition) -> (string * maybe symbol_definition) -> Basic_classes.ordering
@@ -399,7 +405,8 @@ match maybe_def with
 end
 
 let amd64_reloc_needs_got_slot =  fun symref -> fun rr -> fun maybe_def ->
-    if (get_elf64_relocation_a_type rr.ref_relent IN {
+    let (rel_type, _) = parse_elf64_relocation_info rr.ref_relent.elf64_ra_info in
+    if (rel_type IN {
         r_x86_64_got32; r_x86_64_gotpcrel; r_x86_64_gottpoff; r_x86_64_gotoff64; r_x86_64_gotpc32 (* ; r_x86_64_gotpc32_tlsdesc *)
     }) then
        true
@@ -423,7 +430,8 @@ let amd64_reloc_needs_got_slot =  fun symref -> fun rr -> fun maybe_def ->
 
 
 let amd64_reloc_needs_plt_slot (symref : symbol_reference_and_reloc_site) rr maybe_def ref_is_statically_linked =
-    if (get_elf64_relocation_a_type rr.ref_relent IN {
+    let (rel_type, _) = parse_elf64_relocation_info rr.ref_relent.elf64_ra_info in
+    if (rel_type IN {
         r_x86_64_plt32      (* NOTE: when generating shared libs, it starts to matter
                              * where the definition is -- anything that is locally interposable
                              * or undefined will need a slot. See amd64_get_reloc_symaddr. *)
@@ -1227,6 +1235,20 @@ let amd64_plt_slot_addr img rr raw_addr =
             end
     end
 
+(** [amd64_base_addr rr site_addr] computes back the base address at which a
+  * shared object has been loaded into memory during execution. It's kind of
+  * lame to have this function because the linker will do the opposite operation
+  * when relocating, but I don't want to add a new argument to the reloc
+  * function. *)
+val amd64_base_addr : symbol_reference_and_reloc_site -> natural -> natural
+let amd64_base_addr rr site_addr =
+    let reloc_site = match rr.maybe_reloc with
+    | Nothing -> failwith "amd64_base_addr: no reloc site during relocation"
+    | Just rs -> rs
+    end in
+    let offset = natural_of_elf64_addr reloc_site.ref_relent.elf64_ra_offset in
+    site_addr - offset
+
 (** [amd64_reloc r] yields a function that applies relocations of type [r]. *)
 val amd64_reloc : reloc_fn any_abi_feature
 let amd64_reloc r =
@@ -1238,9 +1260,9 @@ let amd64_reloc r =
     | "R_X86_64_GOT32" ->           (false, fun img -> (fun site_addr -> (fun rr -> (4, fun s -> fun a -> fun e -> i2n_signed 32 ((n2i (amd64_got_slot_idx img rr)) + a)))))
     | "R_X86_64_PLT32" ->           (false, fun img -> (fun site_addr -> (fun rr -> (4, fun s -> fun a -> fun e -> i2n_signed 32 ((n2i (amd64_plt_slot_addr img rr s)) + a - (n2i site_addr)) ))) )
     | "R_X86_64_COPY" ->            (false, fun img -> (fun site_addr -> (fun rr -> (size_of_copy_reloc img rr, fun s -> fun a -> fun e -> failwith "amd64_reloc: unimplemented R_X86_64_COPY" (* FIXME *)))))
-    | "R_X86_64_GLOB_DAT" ->        (false, fun img -> (fun site_addr -> (fun rr -> (8, fun s -> fun a -> fun e -> failwith "amd64_reloc: unimplemented R_X86_64_GLOB_DAT" (* FIXME *)))))
-    | "R_X86_64_JUMP_SLOT" ->       (false, fun img -> (fun site_addr -> (fun rr -> (8, fun s -> fun a -> fun e -> failwith "amd64_reloc: unimplemented R_X86_64_JUMP_SLOT" (* FIXME *)))))
-    | "R_X86_64_RELATIVE" ->        (true,  fun img -> (fun site_addr -> (fun rr -> (8, fun s -> fun a -> fun e -> failwith "amd64_reloc: unimplemented R_X86_64_RELATIVE" (* FIXME *)))))
+    | "R_X86_64_GLOB_DAT" ->        (false, fun img -> (fun site_addr -> (fun rr -> (8, fun s -> fun a -> fun e -> s))))
+    | "R_X86_64_JUMP_SLOT" ->       (false, fun img -> (fun site_addr -> (fun rr -> (8, fun s -> fun a -> fun e -> s))))
+    | "R_X86_64_RELATIVE" ->        (true,  fun img -> (fun site_addr -> (fun rr -> (8, fun s -> fun a -> fun e -> i2n (n2i (amd64_base_addr rr site_addr) + a)))))
     | "R_X86_64_GOTPCREL" ->        (false, fun img -> (fun site_addr -> (fun rr -> (4, fun s -> fun a -> fun e -> i2n_signed 32 ((n2i (amd64_got_slot_addr img rr)) + a - (n2i site_addr)) ))) )
     | "R_X86_64_32" ->              (true,  fun img -> (fun site_addr -> (fun rr -> (4, fun s -> fun a -> fun e -> i2n (n2i s + a)))))
     | "R_X86_64_32S" ->             (true,  fun img -> (fun site_addr -> (fun rr -> (4, fun s -> fun a -> fun e -> i2n_signed 32 ((n2i s) + a)))))
@@ -1288,6 +1310,7 @@ let sysv_amd64_std_abi =
     ; generate_support = amd64_generate_support
     ; concretise_support = amd64_concretise_support
     ; get_reloc_symaddr = amd64_get_reloc_symaddr
+    ; parse_reloc_info = parse_elf64_relocation_info
     |>
 
 val sysv_aarch64_le_std_abi : abi any_abi_feature
@@ -1309,12 +1332,13 @@ let sysv_aarch64_le_std_abi =
     ; generate_support = (* fun _ -> *) fun _ -> get_empty_memory_image ()
     ; concretise_support = fun img -> img
     ; get_reloc_symaddr = default_get_reloc_symaddr
+    ; parse_reloc_info = parse_elf64_relocation_info
     |>
 
 val sysv_mips64_std_abi : abi any_abi_feature
 let sysv_mips64_std_abi = <|
       is_valid_elf_header = header_is_mips64
-    ; make_elf_header = make_elf64_header elf_data_2lsb elf_osabi_none 0 elf_ma_mips
+    ; make_elf_header = make_elf64_header abi_mips64_data_encoding elf_osabi_none 0 elf_ma_mips
     ; reloc = mips64_reloc
     ; section_is_special = elf_section_is_special
     ; section_is_large = (fun s -> (fun f -> false))
@@ -1324,13 +1348,42 @@ let sysv_mips64_std_abi = <|
     ; symbol_is_generated_by_linker = (fun symname -> symname = "_GLOBAL_OFFSET_TABLE_")
     ; make_phdrs = make_default_phdrs
     ; max_phnum = 2
-    ; guess_entry_point = find_start_symbol_address
+    ; guess_entry_point = find_start_symbol_address (* TODO: on MIPS it's __start, not _start *)
     ; pad_data = pad_zeroes
     ; pad_code = pad_zeroes
     ; generate_support = (* fun _ -> *) fun _ -> get_empty_memory_image ()
     ; concretise_support = fun img -> img
     ; get_reloc_symaddr = default_get_reloc_symaddr
+    ; parse_reloc_info = abi_mips_parse_elf64_relocation_info
+    |>
+
+val sysv_cheri_mips64_std_abi : abi any_abi_feature
+let sysv_cheri_mips64_std_abi = <|
+      is_valid_elf_header = header_is_cheri_mips64
+    ; make_elf_header = make_elf64_header abi_cheri_mips64_data_encoding elf_osabi_none 0 elf_ma_mips
+    ; reloc = cheri_mips64_reloc
+    ; section_is_special = elf_section_is_special
+    ; section_is_large = (fun s -> (fun f -> false))
+    ; maxpagesize = abi_cheri_mips64_page_size_max
+    ; minpagesize = abi_cheri_mips64_page_size_min
+    ; commonpagesize = 4096
+    ; symbol_is_generated_by_linker = (fun symname -> symname = "_GLOBAL_OFFSET_TABLE_")
+    ; make_phdrs = make_default_phdrs
+    ; max_phnum = 2
+    ; guess_entry_point = find_start_symbol_address (* TODO: on MIPS it's __start, not _start *)
+    ; pad_data = pad_zeroes
+    ; pad_code = pad_zeroes
+    ; generate_support = (* fun _ -> *) fun _ -> get_empty_memory_image ()
+    ; concretise_support = fun img -> img
+    ; get_reloc_symaddr = default_get_reloc_symaddr
+    ; parse_reloc_info = parse_elf64_relocation_info
     |>
 
 val all_abis : list (abi any_abi_feature)
-let all_abis = [sysv_amd64_std_abi; sysv_aarch64_le_std_abi; sysv_mips64_std_abi; null_abi]
+let all_abis = [
+  sysv_amd64_std_abi;
+  sysv_aarch64_le_std_abi;
+  sysv_mips64_std_abi;
+  sysv_cheri_mips64_std_abi;
+  null_abi
+]

@@ -428,6 +428,13 @@ declare hol      target_rep function find_substring = `ARB`
 declare isabelle target_rep function find_substring = `undefined`
 declare coq      target_rep function find_substring = `find_substring`
 
+val string_contains : string -> string -> bool
+let string_contains s substr =
+  find_substring substr s <> Nothing
+
+val string_replace : string -> string -> string -> string
+declare ocaml target_rep function string_replace = `Ml_bindings.string_replace`
+
 (** [string_of_nat m] produces a string representation of natural number [m]. *)
 val string_of_nat : nat -> string
 declare ocaml target_rep function string_of_nat = `string_of_int`
@@ -710,4 +717,10 @@ let natural_of_hex s =
       | [] -> Assert_extra.failwith ("natural_of_hex argument \"" ^ s ^ "\" has no digits")
       end
   | _ -> Assert_extra.failwith ("natural_of_hex argument \"" ^ s ^ "\" does not begin 0x")
+  end
+
+let assert_unwrap_maybe maybe =
+  match maybe with
+    | Just v -> v
+    | Nothing -> failwith "assert_unwrap_maybe: nothing"
   end

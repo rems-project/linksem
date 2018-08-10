@@ -122,7 +122,7 @@ let string_index_of (c: char) (s : string) = try Some(Nat_big_num.of_int (String
     with Not_found -> None
 ;;
 
-let find_substring (sub: string) (s : string) = 
+let find_substring (sub: string) (s : string) =
     try Some(Nat_big_num.of_int (Str.search_forward (Str.regexp_string sub) s 0))
     with Not_found -> None
 ;;
@@ -142,7 +142,7 @@ let argv_list = Array.to_list Sys.argv
 
 let nat_big_num_of_uint64 x = x
 (*
-    (* Nat_big_num can only be made from signed integers at present. 
+    (* Nat_big_num can only be made from signed integers at present.
      * Workaround: make an int64, and if negative, add the high bit
      * in the big-num domain. *)
     let via_int64 = Uint64.to_int64 x
@@ -151,8 +151,16 @@ let nat_big_num_of_uint64 x = x
     else
         let two_to_63 = Uint64.shift_left (Uint64.of_int 1) 63 in
         let lower_by_2_to_63 = Uint64.sub x two_to_63 in
-        (Nat_big_num.add 
+        (Nat_big_num.add
             (Nat_big_num.of_int64 (Uint64.to_int64 lower_by_2_to_63))
             (Nat_big_num.shift_left (Nat_big_num.of_int 1) 63)
         )
 *)
+
+let split_string_on_char s c = String.split_on_char c s
+
+let string_replace s substr repl =
+  (* Why the hell do we need to use the whole regexp machinery for simple string
+     replacements? *)
+  let r = Str.regexp_string substr in
+  Str.global_replace r repl s

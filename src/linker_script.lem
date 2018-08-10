@@ -11,6 +11,7 @@ open import Assert_extra
 open import Set
 import Map
 
+open import Byte_pattern
 open import Byte_sequence
 open import Default_printing
 open import Error
@@ -26,7 +27,7 @@ open import Command_line
 open import Input_list
 open import Linkable_list
 open import Memory_image
-open import Elf_memory_image (* HMM -- ideally we'd be ELF-agnostic in this file. 
+open import Elf_memory_image (* HMM -- ideally we'd be ELF-agnostic in this file.
      But Abstract_abi is now merged into Elf_memory_image, so never mind. *)
 open import Elf_memory_image_of_elf64_file
 open import Elf_relocation
@@ -35,22 +36,22 @@ open import Elf_section_header_table
 open import Elf_types_native_uint
 open import Memory_image_orderings
 
-(* We model two kinds of linker script: "implicit scripts", which are supplied 
+(* We model two kinds of linker script: "implicit scripts", which are supplied
  * on the command line as input objects, and "control scripts" of which there
  * is exactly one per link job. The abstract syntax of each script comes from the
- * same grammar. 
- * 
+ * same grammar.
+ *
  * We define the control script as a bunch of functions, to allow for
- * link jobs where we don't have an AST and the script behaviour is hard-coded. 
+ * link jobs where we don't have an AST and the script behaviour is hard-coded.
  *)
 
-(* Input sections come from individual (relocatable) ELF files. 
- * The name of this file is important! 
- * 
- * Each input "section" is always an identified section or common symbol 
+(* Input sections come from individual (relocatable) ELF files.
+ * The name of this file is important!
+ *
+ * Each input "section" is always an identified section or common symbol
  * *within* some ELF memory image. *)
 
-type input_section_rec = <| 
+type input_section_rec = <|
     idx   : natural    (* linkable idx *)
 ;   fname : string
 ;   img   : elf_memory_image
@@ -71,36 +72,36 @@ type input_spec
  *)
 
 (* We will have to deal with merging etc. at some point, somewhere
- * (maybe here, maybe not); for now we just produce an ordered list 
- * of sections. 
+ * (maybe here, maybe not); for now we just produce an ordered list
+ * of sections.
  *)
- 
+
 (* We can't model linker scripts as plain Lem functions without writing
  * them to a very different structure than that of scripts. The reason is that
  * certain features of the script language necessitate multiple passes
  * over the script structure. For example, to figure out how big an
- * output section is, hence where to begin the next section, you need to 
- * know which of the input sections are marked for KEEP. For that, you need 
- * a def-use graph over input sections. But for that, you also need to account 
- * for *all* symbol definitions, and the script itself is allowed to add new 
+ * output section is, hence where to begin the next section, you need to
+ * know which of the input sections are marked for KEEP. For that, you need
+ * a def-use graph over input sections. But for that, you also need to account
+ * for *all* symbol definitions, and the script itself is allowed to add new
  * ones (right in among its input sections). So we have to do one pass to
  * enumerate the symbol additions, and another pass to eliminate sections
  * that we don't want to KEEP.
  *
  * Other gotchas include:
- * 
- * - symbol provision and address advancement can occur in among the input 
- * section queries, but also outside any output section. 
- * 
+ *
+ * - symbol provision and address advancement can occur in among the input
+ * section queries, but also outside any output section.
+ *
  * - semantics of DATA_SEGMENT_ALIGN depend on future script contents
- * 
+ *
  * - ONLY_IF_RO and ONLY_IF_RW are tricky: need to evaluate the input section
  * queries
- * 
+ *
  * - semantics of empty sections are subtle (". = ." will force an empty section
  * to be emitted, but ". = . + 0" will not do so).
- * 
- * Our approach is to define an interpreter for (at present) most of the script 
+ *
+ * Our approach is to define an interpreter for (at present) most of the script
  * language.
  *)
 
@@ -114,7 +115,7 @@ type address_expr = Memory_image.expr
 type output_guard = AlwaysOutput
                   | OnlyIfRo
                   | OnlyIfRw
-                  
+
 type symbol_spec = (natural * unsigned_char * unsigned_char) (* size, info, other *)
 
 type retain_policy
@@ -158,38 +159,38 @@ type script_element =
 | MarkDataSegmentEnd
 | MarkDataSegmentRelroEnd (*of (allocated_sections_map -> (natural * (natural -> natural))) DPM: commented out because of positivity constrains in Isabelle *)
 | OutputSection of (output_guard * (maybe (* address_expr *) address_expr_fn) * string * list script_element)
-| DiscardInput of input_selector 
-  (* Input queries can only occur within an output section. 
-     Output sections may not nest within other output sections. 
+| DiscardInput of input_selector
+  (* Input queries can only occur within an output section.
+     Output sections may not nest within other output sections.
      (Ideally we would use something like polymorphic variants to encode this.)
    *)
 | InputQuery of (retain_policy * sort_policy * input_selector)
 
-(* A linker control script is a function from inputs to output elements. 
- * We can define them in syntax (using an interpreter) 
+(* A linker control script is a function from inputs to output elements.
+ * We can define them in syntax (using an interpreter)
  * or in Lem directly (as functions). *)
 type linker_control_script = list script_element
 type labelled_linker_control_script = list (script_element * natural)
 
 val all_suffixes : list char -> list (list char)
 let rec all_suffixes chars =
-    match chars with 
+    match chars with
         [] -> [[]]
         | c :: morecs -> chars :: (all_suffixes morecs)
     end
 
 val glob_match : list char -> list char -> bool
-let rec glob_match pat str = 
+let rec glob_match pat str =
     match (pat, str) with
         ([], []) -> true
         | (#'?':: morepat, _ :: morestr) -> glob_match morepat morestr
         | (#'*':: morepat, _) ->
             (* if any suffix of the remaining string matches
-             * the remaining pattern, we've matched the pattern 
+             * the remaining pattern, we've matched the pattern
              * from '*' onwards. *)
             let or_suffix_match = fun matched -> (fun newlist ->
                 matched || glob_match morepat newlist)
-            in 
+            in
             List.foldl (or_suffix_match) false (all_suffixes str)
         | (patc :: morepat, c :: morestr) -> patc = c && glob_match morepat morestr
         | ([], _) -> (* ran out of pattern *) false
@@ -203,9 +204,9 @@ let hidden_symbol_spec = (0, unsigned_char_of_natural 0, unsigned_char_of_natura
 
 (* These Lem functions replicate linker script functions or builtin behaviours. *)
 
-val only_sections : input_selector 
+val only_sections : input_selector
 let only_sections inputs = List.mapMaybe
-    (fun i -> match i with 
+    (fun i -> match i with
       | InputSection(_) -> Just(i)
       | _ -> Nothing
     end) inputs
@@ -216,7 +217,7 @@ let filter_and_concat p inputs = List.filter p inputs
 val name_matches : string -> input_spec -> bool
 let name_matches pat input =
     match input with
-        InputSection(inp) -> 
+        InputSection(inp) ->
             (*let _ = errln ("Does section name `" ^ inp.secname ^ "' match glob pattern `" ^ pat ^ "'? ") in
             let result = *)glob_match (toCharList pat) (toCharList inp.secname) (*in
             let _ = errln (if result then "yes" else "no")
@@ -225,27 +226,27 @@ let name_matches pat input =
     end
 
 val file_matches : string -> input_spec -> bool
-let file_matches pat input = 
+let file_matches pat input =
     match input with
         InputSection(inp) -> glob_match (toCharList pat) (toCharList inp.fname)
         | _ -> false
     end
 
-let compareInputSpecByNameThenAlignment i1 i2 = 
+let compareInputSpecByNameThenAlignment i1 i2 =
     let toPair = fun is -> (match is with
          Common(idx, fname, img, def) -> ("COMMON" (* FIXME: is this right? *), natural_of_elf64_addr def.def_syment.elf64_st_value)
          | InputSection(isrec) -> (isrec.isec.elf64_section_name_as_string, isrec.isec.elf64_section_align)
     end)
     in compare (toPair i1) (toPair i2)
 
-let compareInputSpecByAlignment i1 i2 = 
+let compareInputSpecByAlignment i1 i2 =
     let toNatural = fun is -> (match is with
          Common(idx, fname, img, def) -> natural_of_elf64_addr def.def_syment.elf64_st_value
          | InputSection(isrec) -> isrec.isec.elf64_section_align
     end)
     in compare (toNatural i1) (toNatural i2)
 
-let compareInputSpecByName i1 i2 = 
+let compareInputSpecByName i1 i2 =
     let toString = fun is -> (match is with
          Common(idx, fname, img, def) -> "COMMON"
          | InputSection(isrec) -> isrec.isec.elf64_section_name_as_string
@@ -254,7 +255,7 @@ let compareInputSpecByName i1 i2 =
 
 let compareInputSpecByAlignmentThenName i1 i2 =
     let toPair = fun is -> (match is with
-         Common(idx, fname, img, def) -> (natural_of_elf64_addr def.def_syment.elf64_st_value, 
+         Common(idx, fname, img, def) -> (natural_of_elf64_addr def.def_syment.elf64_st_value,
             "COMMON" (* FIXME: is this right? *))
          | InputSection(isrec) -> (isrec.isec.elf64_section_align, isrec.isec.elf64_section_name_as_string)
     end)
@@ -262,7 +263,7 @@ let compareInputSpecByAlignmentThenName i1 i2 =
 
 let compareInputSpecByInitPriority i1 i2 = EQ (* FIXME *)
 
-(* DATA_SEGMENT_ALIGN is defined by two formulae 
+(* DATA_SEGMENT_ALIGN is defined by two formulae
  * (over pos and commonpagesize/maxpagesize)
  * "... depending on whether the latter uses fewer COMMONPAGESIZE sized
   pages for the data segment (area between the result of this
@@ -272,9 +273,9 @@ let compareInputSpecByInitPriority i1 i2 = EQ (* FIXME *)
   bytes in the on-disk file."
 
   So the amount of padding that gets inserted here depends on the location
-  of something that comes *later*, namely DATA_SEGMENT_END. 
-  So, we can't model it as a function of the current position. 
-  Instead, we add MarkDataSegmentEnd and friends 
+  of something that comes *later*, namely DATA_SEGMENT_END.
+  So, we can't model it as a function of the current position.
+  Instead, we add MarkDataSegmentEnd and friends
   to the script_element ADT.
  *)
 
@@ -283,11 +284,11 @@ let has_writability = fun writable -> (fun input_sec -> (
         Common(_, _, _, _)
             -> (* all common symbols are potentially writable *) true
         | InputSection(inp)
-            -> let (flags : natural) = match elf_memory_image_section_by_index inp.shndx inp.img with 
+            -> let (flags : natural) = match elf_memory_image_section_by_index inp.shndx inp.img with
                           Just x -> x.elf64_section_flags
                         | Nothing -> failwith ("impossible: no such section" (*(index " ^ (show inp.shndx) ^ ")""*))
                      end
-                in 
+                in
                 flag_is_set shf_write flags
     end
 ))
@@ -297,7 +298,7 @@ let has_writability = fun writable -> (fun input_sec -> (
    and at the time was "only for x86-64". It seems to be analogous
    to ".lbss", i.e. "large bss". libbfd defines SHF_X86_64_LARGE.
    The best comment seems to be in llvm's Support/ELF.h:
-   
+
 0814   // If an object file section does not have this flag set, then it may not hold
 0815   // more than 2GB and can be freely referred to in objects using smaller code
 0816   // models. Otherwise, only objects using larger code models can refer to them.
@@ -305,7 +306,7 @@ let has_writability = fun writable -> (fun input_sec -> (
 0818   // sets this flag besides being able to refer to data in a section that does
 0819   // not set it; likewise, a small code model object can refer only to code in a
 0820   // section that does not set this flag.
-   
+
  *)
 
 val address_zero : natural -> address_expr_fn_map allocated_sections_map ->
@@ -320,19 +321,19 @@ val output_sec_composition_size : list output_section_composition_element -> nat
 let output_sec_composition_size comp = List.foldl (+) 0 (List.map size_of_output_section_composition_element comp)
 *)
 val do_output_section_layout_starting_at_addr : natural -> allocated_sections_map -> list output_section_composition_element -> (natural * list natural)
-let do_output_section_layout_starting_at_addr start_addr (AllocatedSectionsMap secs) comps = 
+let do_output_section_layout_starting_at_addr start_addr (AllocatedSectionsMap secs) comps =
     (* map out where we plumb in each section, accounting for their alignment *)
     List.foldl (fun (next_free_addr, addr_list) -> (fun comp_el -> match comp_el with
-          IncludeInputSection(retain_pol, irec (* fname, linkable_idx, shndx, isec, img *)) -> 
+          IncludeInputSection(retain_pol, irec (* fname, linkable_idx, shndx, isec, img *)) ->
                 let aligned_next_free = align_up_to irec.isec.elf64_section_align next_free_addr
                 in
-                (*let _ = errln ("Aligned start address up to 0x" ^ hex_string_of_natural aligned_next_free ^ 
-                    " (align 0x" ^ (hex_string_of_natural irec.isec.elf64_section_align) ^ 
-                    ") for included output section `" ^ 
+                (*let _ = errln ("Aligned start address up to 0x" ^ hex_string_of_natural aligned_next_free ^
+                    " (align 0x" ^ (hex_string_of_natural irec.isec.elf64_section_align) ^
+                    ") for included output section `" ^
                     irec.isec.elf64_section_name_as_string ^ "' from file `" ^ irec.fname ^ "'")
                 in*)
                 (aligned_next_free + irec.isec.elf64_section_size, addr_list ++ [aligned_next_free])
-        | IncludeCommonSymbol(retain_pol, fname, linkable_idx, def, img) -> 
+        | IncludeCommonSymbol(retain_pol, fname, linkable_idx, def, img) ->
                 let aligned_next_free = align_up_to (natural_of_elf64_addr def.def_syment.elf64_st_value) next_free_addr
                 in
                 (aligned_next_free + (natural_of_elf64_xword def.def_syment.elf64_st_size), addr_list ++ [aligned_next_free])
@@ -342,13 +343,13 @@ let do_output_section_layout_starting_at_addr start_addr (AllocatedSectionsMap s
     )) (start_addr, []) comps
 
 val output_sec_composition_size_given_start_addr : natural -> allocated_sections_map -> list output_section_composition_element -> natural
-let output_sec_composition_size_given_start_addr   start_addr secs comp = 
+let output_sec_composition_size_given_start_addr   start_addr secs comp =
     let (end_addr, comp_addrs) = do_output_section_layout_starting_at_addr start_addr secs comp
     in
     end_addr - start_addr
 
 val sizeof : string -> allocated_sections_map -> natural
-let sizeof secname (AllocatedSectionsMap secs) = 
+let sizeof secname (AllocatedSectionsMap secs) =
     match Map.lookup secname secs with
         Just(OutputSectionSpec (_, maybe_addr, _, comp), _) -> match maybe_addr with
             Just addr -> output_sec_composition_size_given_start_addr addr (AllocatedSectionsMap secs) comp
@@ -358,7 +359,7 @@ let sizeof secname (AllocatedSectionsMap secs) =
     end
 
 val alignof_output_section_composition_element : output_section_composition_element -> natural
-let alignof_output_section_composition_element comp = 
+let alignof_output_section_composition_element comp =
     match comp with
         IncludeInputSection(_, irec) -> irec.isec.elf64_section_align
         | IncludeCommonSymbol(_, _, _, def, _) -> natural_of_elf64_addr def.def_syment.elf64_st_value
@@ -366,7 +367,7 @@ let alignof_output_section_composition_element comp =
     end
 
 val alignof_output_section : list output_section_composition_element -> natural
-let alignof_output_section comps = 
+let alignof_output_section comps =
     let aligns = List.map alignof_output_section_composition_element comps
     in
     List.foldl (fun acc_lcm -> fun next -> lcm acc_lcm next) 1 aligns
@@ -374,13 +375,13 @@ let alignof_output_section comps =
 val default_linker_control_script : natural -> address_expr_fn_map allocated_sections_map ->
   abi any_abi_feature -> maybe natural -> maybe natural -> maybe natural ->
   natural -> (natural * address_expr_fn_map allocated_sections_map * linker_control_script)
-let default_linker_control_script fresh alloc_map a user_text_segment_start user_data_segment_start user_rodata_segment_start elf_headers_size = 
-    let segment_start name default = match name with 
-      "ldata-segment" -> match user_data_segment_start with 
+let default_linker_control_script fresh alloc_map a user_text_segment_start user_data_segment_start user_rodata_segment_start elf_headers_size =
+    let segment_start name default = match name with
+      "ldata-segment" -> match user_data_segment_start with
         Nothing -> default
         | Just addr -> (* fun _ -> *) addr
         end
-    | "text-segment" -> match user_text_segment_start with 
+    | "text-segment" -> match user_text_segment_start with
         Nothing -> default
         | Just addr -> (* fun _ -> *) addr
         end
@@ -389,7 +390,7 @@ let default_linker_control_script fresh alloc_map a user_text_segment_start user
     let is_large_common = (fun inp -> (* FIXME: treat large commons separately *) false
     )
     in
-    let is_common = (fun isec -> match isec with 
+    let is_common = (fun isec -> match isec with
         Common(idx, fname, img, def) -> (*let _ = errln ("Common or large-common symbol: " ^ def.def_symname) in *)
              not (is_large_common isec)
          | _ -> false
@@ -399,7 +400,7 @@ let default_linker_control_script fresh alloc_map a user_text_segment_start user
     let alloc_fn1_ref = fresh in
     let alloc_map     = Map.insert alloc_fn1_ref alloc_fn1 alloc_map in
     let fresh         = 1 + fresh in
-    let alloc_fn2     = fun addr -> (fun _ -> 
+    let alloc_fn2     = fun addr -> (fun _ ->
       (* (align_up_to a.maxpagesize addr) - (natural_land (a.maxpagesize - addr) (a.maxpagesize - 1)) *)
       (*
       FIXME: understand the intention of this assignment.
@@ -408,12 +409,12 @@ let default_linker_control_script fresh alloc_map a user_text_segment_start user
       (ALIGN (0x200000) - ((0x200000 - .) & 0x1fffff))
 
       starting from 0x00000000004017dc
-      means 
+      means
       0x600000 - ((0x200000 - 0x4017dc) & 0x1fffff)
-      i.e. 
+      i.e.
       0x600000 - (((-0x2017dc)) & 0x1fffff)
       i.e.
-      0x600000 - (     -0x2017dc   
+      0x600000 - (     -0x2017dc
                       & 0x1fffff )
 
       which really does come to (according to bash) 0x4017dc
@@ -423,8 +424,8 @@ let default_linker_control_script fresh alloc_map a user_text_segment_start user
       What does ANDing a negative number mean?
       It doesn't seem to work for us.
       Well, to take the negation we flip every bit and add one.
-      So if we don't want to do a subtraction that might go negative, 
-      we can instead add the complement.    
+      So if we don't want to do a subtraction that might go negative,
+      we can instead add the complement.
       *)
         (align_up_to a.maxpagesize addr) - (natural_land (a.maxpagesize + compl64 addr) (a.maxpagesize - 1))) in
     let (fresh, alloc_map, (address_zero_fn : address_expr_fn)) = address_zero fresh alloc_map in
@@ -456,9 +457,9 @@ let default_linker_control_script fresh alloc_map a user_text_segment_start user
     let alloc_map     = Map.insert alloc_fn8_ref alloc_fn8 alloc_map in
     let fresh         = 1 + fresh in
     (fresh, alloc_map, [
-        (* For now, we base our script on the GNU bfd linker's scripts. 
+        (* For now, we base our script on the GNU bfd linker's scripts.
            Here's the static -z combreloc one.
-           
+
 /* Script for -z combreloc: combine and sort reloc sections */
 /* Copyright (C) 2014 Free Software Foundation, Inc.
    Copying and distribution of this script, with or without modification,
@@ -687,27 +688,27 @@ SECTIONS
   /DISCARD/ : { *(.note.GNU-stack) *(.gnu_debuglink) *(.gnu.lto_* ) }
 }
          *)
-         
-         (*  function from 
+
+         (*  function from
                   inputs and configuration
              to
-                  output sections-with-address-and-policy, output symbols-with-address-and-attributes, 
+                  output sections-with-address-and-policy, output symbols-with-address-and-attributes,
                       discards, orphans
              BUT
                    1. policy is not a property of output sections, but of *inputs within outputs*
                          i.e. KEEP( *(.init))
-         
+
              what's helpful for writing such functions?
-             
-             e.g. only_if_ro (input_query) (output ): 
-             
+
+             e.g. only_if_ro (input_query) (output ):
+
              i.e.    ++ only_if_ro OutputSection(AlwaysOutput, Nothing, ".eh_frame", [InputQuery(DefaultKeep, DefaultSort, filter_and_concat (name_matches ".eh_frame"))])
 
                  want to take a bunch of outputs
                          and return a bunch of outputs?
-                         
+
                          if so, need to return a "current address"
-             
+
           *)
     (DefineSymbol(ProvideIfUsed, "__executable_start", default_symbol_spec))
   ; AdvanceAddress(AddressExprFn alloc_fn1_ref)
@@ -758,7 +759,7 @@ SECTIONS
       InputQuery(DefaultKeep, DefaultSort, filter_and_concat (
         fun s -> name_matches ".text.unlikely" s || name_matches ".text.*_unlikely" s || name_matches ".text.unlikely.*" s
        ))
-    ; InputQuery(DefaultKeep, DefaultSort, filter_and_concat (  
+    ; InputQuery(DefaultKeep, DefaultSort, filter_and_concat (
         fun s -> name_matches ".text.exit" s || name_matches ".text.exit.*" s))
     ; InputQuery(DefaultKeep, DefaultSort, filter_and_concat (
         fun s -> name_matches ".text.startup" s || name_matches ".text.startup.*" s))
@@ -768,7 +769,7 @@ SECTIONS
         fun s -> name_matches ".text" s || name_matches ".stub" s || name_matches ".text.*" s || name_matches ".gnu.linkonce.t.*" s))
     ; InputQuery(DefaultKeep, DefaultSort, filter_and_concat (
          (* ".gnu.warning sections are handled specially by elf32.em."
-          * GAH. That means that what we specify here is not (completely) what 
+          * GAH. That means that what we specify here is not (completely) what
           * needs to happen with these sections. *)
         fun s -> name_matches ".gnu_warning" s))
     ])
@@ -784,21 +785,21 @@ SECTIONS
     ))])
   ; OutputSection(AlwaysOutput, Nothing, ".eh_frame_hdr", [InputQuery(DefaultKeep, DefaultSort, filter_and_concat (name_matches ".eh_frame_hdr")) ])
   ; OutputSection(OnlyIfRo, Nothing, ".eh_frame", [InputQuery(DefaultKeep, DefaultSort, filter_and_concat (name_matches ".eh_frame"))])
-  ; OutputSection(OnlyIfRo, Nothing, ".gcc_except_table", [InputQuery(DefaultKeep, DefaultSort, 
+  ; OutputSection(OnlyIfRo, Nothing, ".gcc_except_table", [InputQuery(DefaultKeep, DefaultSort,
     filter_and_concat (fun s -> name_matches ".gcc_except_table" s || name_matches ".gcc_except_table.*" s))])
-  ; OutputSection(OnlyIfRo, Nothing, ".exception_ranges", [InputQuery(DefaultKeep, DefaultSort, 
+  ; OutputSection(OnlyIfRo, Nothing, ".exception_ranges", [InputQuery(DefaultKeep, DefaultSort,
     filter_and_concat (fun s -> name_matches ".exception_ranges" s || name_matches ".exception_ranges*" s))])
   ; AdvanceAddress(AddressExprFn alloc_fn2_ref)
   ; MarkAndAlignDataSegment((* a.maxpagesize *) 2 * 1024 * 1024 (* <-- for some reason binutils assumes 2MB max page size,
     even if ABI says smaller *), a.commonpagesize)
   ; OutputSection(OnlyIfRw, Nothing, ".eh_frame", [InputQuery(DefaultKeep, DefaultSort, filter_and_concat (name_matches ".eh_frame"))])
-  ; OutputSection(OnlyIfRw, Nothing, ".gcc_except_table", [InputQuery(DefaultKeep, DefaultSort, 
+  ; OutputSection(OnlyIfRw, Nothing, ".gcc_except_table", [InputQuery(DefaultKeep, DefaultSort,
     filter_and_concat (fun s -> name_matches ".gcc_except_table" s || name_matches ".gcc_except_table.*" s))])
-  ; OutputSection(OnlyIfRw, Nothing, ".exception_ranges", [InputQuery(DefaultKeep, DefaultSort, 
+  ; OutputSection(OnlyIfRw, Nothing, ".exception_ranges", [InputQuery(DefaultKeep, DefaultSort,
     filter_and_concat (fun s -> name_matches ".exception_ranges" s || name_matches ".exception_ranges*" s))])
-  ; OutputSection(AlwaysOutput, Nothing, ".tdata", [InputQuery(DefaultKeep, DefaultSort, filter_and_concat 
+  ; OutputSection(AlwaysOutput, Nothing, ".tdata", [InputQuery(DefaultKeep, DefaultSort, filter_and_concat
         (fun s -> name_matches ".tdata" s || name_matches ".tdata.*" s || name_matches ".gnu.linkonce.td.*" s))])
-  ; OutputSection(AlwaysOutput, Nothing, ".tbss", [InputQuery(DefaultKeep, DefaultSort, filter_and_concat 
+  ; OutputSection(AlwaysOutput, Nothing, ".tbss", [InputQuery(DefaultKeep, DefaultSort, filter_and_concat
         (fun s -> name_matches ".tbss" s || name_matches ".tbss.*" s || name_matches ".gnu.linkonce.tb.*" s))
         ; InputQuery(DefaultKeep, DefaultSort, filter_and_concat (name_matches ".tcommon"))])
   ; OutputSection(AlwaysOutput, Nothing, ".preinit_array", [
@@ -810,7 +811,7 @@ SECTIONS
         DefineSymbol(ProvideIfUsed, "__init_array_start", default_symbol_spec)
       ; InputQuery(KeepEvenWhenGC, ByInitPriority, filter_and_concat (fun s -> name_matches ".init_array.*" s))
       ; InputQuery(KeepEvenWhenGC, ByInitPriority, filter_and_concat (fun s -> name_matches ".ctors.*" s))
-      ; InputQuery(KeepEvenWhenGC, ByInitPriority, filter_and_concat 
+      ; InputQuery(KeepEvenWhenGC, ByInitPriority, filter_and_concat
             (fun s -> name_matches ".init_array" s
             || (name_matches ".ctors" s && not (file_matches "*crtbegin.o" s || file_matches "*crtbegin?.o" s
                  || file_matches "*crtend.o" s || file_matches "*crtend?.o " s)))
@@ -821,7 +822,7 @@ SECTIONS
         DefineSymbol(ProvideIfUsed, "__fini_array_start", default_symbol_spec)
       ; InputQuery(KeepEvenWhenGC, ByInitPriority, filter_and_concat (fun s -> name_matches ".fini_array.*" s))
       ; InputQuery(KeepEvenWhenGC, ByInitPriority, filter_and_concat (fun s -> name_matches ".dtors.*" s))
-      ; InputQuery(KeepEvenWhenGC, ByInitPriority, filter_and_concat 
+      ; InputQuery(KeepEvenWhenGC, ByInitPriority, filter_and_concat
             (fun s -> name_matches ".fini_array" s
             || (name_matches ".dtors" s && not (file_matches "*crtbegin.o" s || file_matches "*crtbegin?.o" s
                  || file_matches "*crtend.o" s || file_matches "*crtend?.o " s)))
@@ -831,12 +832,12 @@ SECTIONS
    ; OutputSection(AlwaysOutput, Nothing, ".ctors", [
         InputQuery(KeepEvenWhenGC, DefaultSort, filter_and_concat (fun s -> file_matches "*crtbegin.o" s && name_matches ".ctors" s))
       ; InputQuery(KeepEvenWhenGC, DefaultSort, filter_and_concat (fun s -> file_matches "*crtbegin?.o" s && name_matches ".ctors" s))
-      ; InputQuery(KeepEvenWhenGC, DefaultSort, filter_and_concat 
+      ; InputQuery(KeepEvenWhenGC, DefaultSort, filter_and_concat
             (fun s -> not (file_matches "*crtend.o" s || file_matches "*crtend?.o" s) && name_matches ".ctors" s))
       ; InputQuery(KeepEvenWhenGC, ByName, filter_and_concat (fun s -> name_matches ".ctors.*" s))
-      ; InputQuery(KeepEvenWhenGC, DefaultSort, filter_and_concat 
+      ; InputQuery(KeepEvenWhenGC, DefaultSort, filter_and_concat
         (fun s -> (file_matches "*crtend.o" s || file_matches "*crtend?.o" s) && name_matches ".ctors" s))
-        (* NOTE: this exclusion is implicit in the usual linker script, 
+        (* NOTE: this exclusion is implicit in the usual linker script,
          * because it won't match an input section more than once. We should
          * just replicate this behaviour, since other parts of the script might rely on it
          * less obviously. *)
@@ -844,10 +845,10 @@ SECTIONS
    ; OutputSection(AlwaysOutput, Nothing, ".dtors", [
         InputQuery(KeepEvenWhenGC, DefaultSort, filter_and_concat (fun s -> file_matches "*crtbegin.o" s && name_matches ".dtors" s))
       ; InputQuery(KeepEvenWhenGC, DefaultSort, filter_and_concat (fun s -> file_matches "*crtbegin?.o" s && name_matches ".dtors" s))
-      ; InputQuery(KeepEvenWhenGC, DefaultSort, filter_and_concat 
+      ; InputQuery(KeepEvenWhenGC, DefaultSort, filter_and_concat
             (fun s -> not (file_matches "*crtend.o" s || file_matches "*crtend?.o" s) && name_matches ".dtors" s))
       ; InputQuery(KeepEvenWhenGC, ByName, filter_and_concat (fun s -> name_matches ".dtors.*" s))
-      ; InputQuery(KeepEvenWhenGC, DefaultSort, filter_and_concat 
+      ; InputQuery(KeepEvenWhenGC, DefaultSort, filter_and_concat
         (fun s -> (file_matches "*crtend.o" s || file_matches "*crtend?.o" s) && name_matches ".dtors" s))
     ])
    ; OutputSection(AlwaysOutput, Nothing, ".jcr", [InputQuery(KeepEvenWhenGC, DefaultSort, filter_and_concat (name_matches ".jcr"))])
@@ -874,15 +875,15 @@ SECTIONS
     ; OutputSection(AlwaysOutput, Nothing, ".data1", [InputQuery(DefaultKeep, DefaultSort, filter_and_concat (name_matches ".data1"))])
     ; DefineSymbol(AlwaysDefine, "_edata", default_symbol_spec)
     ; DefineSymbol(ProvideIfUsed, "edata", default_symbol_spec)
-    ; (* . = .;    <-- does this do anything? YES! It forces an output section to be emitted. 
-         Since it occurs *outside* any output section, 
-         it is assumed to start 
-       *) 
+    ; (* . = .;    <-- does this do anything? YES! It forces an output section to be emitted.
+         Since it occurs *outside* any output section,
+         it is assumed to start
+       *)
       DefineSymbol(AlwaysDefine, "__bss_start", default_symbol_spec)
     ; OutputSection(AlwaysOutput, Nothing, ".bss", [InputQuery(DefaultKeep, DefaultSort, filter_and_concat (name_matches ".dynbss"))
                            ; InputQuery(DefaultKeep, DefaultSort, filter_and_concat (
                                 fun s -> name_matches ".bss" s || name_matches ".bss.*" s || name_matches ".gnu.linkonce.b.*" s))
-                           ; InputQuery(DefaultKeep, DefaultSort, fun inputlist -> 
+                           ; InputQuery(DefaultKeep, DefaultSort, fun inputlist ->
                                 (*let _ = errln "Looking for commons" in *)
                                 let result = filter_and_concat is_common inputlist
                                 in
@@ -892,7 +893,7 @@ SECTIONS
                                         Common _ -> true
                                         | _ -> false
                                     end) inputlist))) ^ " are commons."
-                                ) 
+                                )
                                 in*) result
                             )
       ])
@@ -906,7 +907,7 @@ SECTIONS
       ])
     ; AdvanceAddress(AddressExprFn alloc_fn4_ref)
     ; AdvanceAddress(AddressExprFn alloc_fn5_ref)
-    ; OutputSection(AlwaysOutput, Just (AddressExprFn alloc_fn6_ref), 
+    ; OutputSection(AlwaysOutput, Just (AddressExprFn alloc_fn6_ref),
          ".lrodata",
          [InputQuery(DefaultKeep, DefaultSort, filter_and_concat (
             fun s -> name_matches ".lrodata" s || name_matches ".lrodata.*" s || name_matches ".gnu.linkonce.lr.*" s
@@ -951,10 +952,10 @@ SECTIONS
     ; OutputSection(AlwaysOutput, Just address_zero_fn, ".debug_funcnames", [InputQuery(DefaultKeep, DefaultSort, filter_and_concat (name_matches ".debug_funcnames"))])
     ; OutputSection(AlwaysOutput, Just address_zero_fn, ".debug_typenames", [InputQuery(DefaultKeep, DefaultSort, filter_and_concat (name_matches ".debug_typenames"))])
     ; OutputSection(AlwaysOutput, Just address_zero_fn, ".debug_varnames", [InputQuery(DefaultKeep, DefaultSort, filter_and_concat (name_matches ".debug_varnames"))])
-      (* DWARF 3 *) 
+      (* DWARF 3 *)
     ; OutputSection(AlwaysOutput, Just address_zero_fn, ".debug_pubtypes", [InputQuery(DefaultKeep, DefaultSort, filter_and_concat (name_matches ".debug_pubtypes"))])
     ; OutputSection(AlwaysOutput, Just address_zero_fn, ".debug_ranges", [InputQuery(DefaultKeep, DefaultSort, filter_and_concat (name_matches ".debug_ranges"))])
-      (* DWARF Extension.  *) 
+      (* DWARF Extension.  *)
     ; OutputSection(AlwaysOutput, Just address_zero_fn, ".debug_macro", [InputQuery(DefaultKeep, DefaultSort, filter_and_concat (name_matches ".debug_macro"))])
     ; OutputSection(AlwaysOutput, Just address_zero_fn, ".gnu.attributes", [InputQuery(KeepEvenWhenGC, DefaultSort, filter_and_concat (name_matches ".gnu.attributes"))])
     ; DiscardInput(filter_and_concat (fun s -> name_matches ".note.GNU-stack" s || name_matches ".gnu_debuglink" s || name_matches ".gnu.lto_*" s))
@@ -962,21 +963,21 @@ SECTIONS
        not the script. *)
     ])
 
-let interpret_guard guard comp name = 
+let interpret_guard guard comp name =
      match guard with
         Always -> true
-        | OnlyIfRo -> 
+        | OnlyIfRo ->
             let v = List.all (fun comp_el -> match comp_el with
-                IncludeInputSection(retainpol, (* fname, linkable_idx, shndx, isec, img *) irec) -> 
+                IncludeInputSection(retainpol, (* fname, linkable_idx, shndx, isec, img *) irec) ->
                     (* is this section read-only? if it doesn't have shf_write, yes *)
                     0 = natural_land irec.isec.elf64_section_flags shf_write
                 | _ -> (* holes, common symbols and provided symbols shouldn't prevent ONLY_IF_RO *) true
                end) comp
             in (*let _ = errln ("only_if_ro evaluated " ^ (show v) ^ " for output section " ^ name)
             in*) v
-        | OnlyIfRw -> 
+        | OnlyIfRw ->
             let v = List.all (fun comp_el -> match comp_el with
-                IncludeInputSection(retainpol, (* fname, linkable_idx, shndx, isec, img *) irec) -> 
+                IncludeInputSection(retainpol, (* fname, linkable_idx, shndx, isec, img *) irec) ->
                     (* is this section read-only? if it doesn't have shf_write, yes *)
                     0 <> natural_land irec.isec.elf64_section_flags shf_write
                 | _ -> (* holes etc. shouldn't prevent ONLY_IF_RW *) true
@@ -985,19 +986,19 @@ let interpret_guard guard comp name =
             in *)v
     end
 
-(* Passes over the script: 
- * 
+(* Passes over the script:
+ *
  * 1. assign input sections to output sections (or discard) and define symbols.
- * 
+ *
  * 2. compute def-use and optionally GC, removing unwanted sections and symbols
- * 
- * 3. build image, assigning addresses as we go. 
- * 
+ *
+ * 3. build image, assigning addresses as we go.
+ *
  * Some passes require matching/retrieving what a previous pass on the same node did.
  * So we give each script element a natural "idx" label.
  *)
 val label_script_aux : natural -> linker_control_script -> labelled_linker_control_script
-let label_script_aux start script = 
+let label_script_aux start script =
     mapi (fun i -> fun el -> (el, (start + naturalFromNat i))) script
 
 val label_script : linker_control_script -> labelled_linker_control_script
@@ -1005,7 +1006,7 @@ let label_script script = label_script_aux 0 script
 
 type input_output_assignment = (list input_spec * list (output_section_spec * natural))
 
-val assign_inputs_to_output_sections : 
+val assign_inputs_to_output_sections :
     input_output_assignment ->  (* accumulator: list of discards, list of output compositions (these include symbols)  *)
     set (natural * natural) ->  (* used sections *)
     set (natural * natural * natural) -> (* used commons *)
@@ -1013,13 +1014,13 @@ val assign_inputs_to_output_sections :
     maybe (output_section_spec * natural) ->  (* cur_sec -- the current output section spec and its OutputSection script item idx *)
     maybe input_spec ->           (* last input section to be output -- might not have one *)
     (input_spec -> input_spec -> Basic_classes.ordering) (* "seen ordering" *) ->
-    labelled_linker_control_script -> 
+    labelled_linker_control_script ->
     input_output_assignment     (* accumulated result *)
-let rec assign_inputs_to_output_sections acc used_sections used_commons inputs (cur_output_sec : maybe (output_section_spec * natural)) last_input_sec seen_ordering script = 
-    let (rev_discards, rev_outputs) = acc in 
-    let flush_output_sec 
+let rec assign_inputs_to_output_sections acc used_sections used_commons inputs (cur_output_sec : maybe (output_section_spec * natural)) last_input_sec seen_ordering script =
+    let (rev_discards, rev_outputs) = acc in
+    let flush_output_sec
      = fun maybe_output_sec_and_idx -> match (maybe_output_sec_and_idx : maybe (output_section_spec * natural)) with
-        Just (OutputSectionSpec (guard, addr, name, comp), script_idx) -> 
+        Just (OutputSectionSpec (guard, addr, name, comp), script_idx) ->
             (*let _ = errln ("Guardedly flushing output section named " ^ name ^ " with " ^ (
                 match addr with Nothing -> "no address yet" | Just a -> "address 0x" ^ (hex_string_of_natural a) end
             ) ^ " and composed of " ^ (show (length comp)) ^ " constituents.")
@@ -1036,12 +1037,12 @@ let rec assign_inputs_to_output_sections acc used_sections used_commons inputs (
     match script with
         [] ->  flush_output_sec cur_output_sec
         | (element, idx) :: more_elements_and_idx ->
-            let do_nothing = (acc, used_sections, used_commons, cur_output_sec, last_input_sec) 
+            let do_nothing = (acc, used_sections, used_commons, cur_output_sec, last_input_sec)
             in
             let (new_acc, new_used_sections, new_used_commons, (new_cur_output_sec : maybe (output_section_spec * natural)), new_last_input_sec)
              = (match element with
                 DefineSymbol(symdefpol, name, (symsize, syminfo, symother)) ->
-                    (* Label the current section in the image 
+                    (* Label the current section in the image
                      * with a new symbol definition. If there isn't
                      * a current section, use the ABS section (what is that labelling?). *)
                     (acc,
@@ -1051,13 +1052,13 @@ let rec assign_inputs_to_output_sections acc used_sections used_commons inputs (
                         Nothing -> (*let _ = errln ("FIXME: for defining `" ^ name ^ "': ABS symbol defs not yet supported") in*) Nothing
                         | Just ((OutputSectionSpec (guard, maybe_addr, secname, comp)), output_script_idx) ->
                             (*let _ = errln ("Including a symbol named `" ^ name ^ " in composition of output section `" ^ secname ^ "'") in*)
-                            Just ((OutputSectionSpec (guard, maybe_addr, secname, 
+                            Just ((OutputSectionSpec (guard, maybe_addr, secname,
                                 comp ++ [ProvideSymbol(symdefpol, name, (symsize, syminfo, symother))]))
                              , output_script_idx)
                     end,
                     last_input_sec)
                 | AdvanceAddress(AddressExprFn advance_fn) ->
-                     (* If we're inside a section, insert a hole, 
+                     (* If we're inside a section, insert a hole,
                       * else just update the logical address *)
                      (*let _ = errln ("Advancing location counter") in*)
                      match cur_output_sec with
@@ -1066,18 +1067,18 @@ let rec assign_inputs_to_output_sections acc used_sections used_commons inputs (
                             (* (acc,  *)
                         | Just (sec, idx) -> do_nothing
                      end
-                | MarkAndAlignDataSegment(maxpagesize, commonpagesize) -> 
-                     (* The "data segment end" is a distinguished label, 
+                | MarkAndAlignDataSegment(maxpagesize, commonpagesize) ->
+                     (* The "data segment end" is a distinguished label,
                       * so we can encode the whole thing into a conditional. *)
                      (*let _ = errln ("Mark/aligning data segment") in*)
                      do_nothing
-                | MarkDataSegmentEnd -> 
+                | MarkDataSegmentEnd ->
                      (*let _ = errln ("Marking data segment end") in*)
                      do_nothing
                 | MarkDataSegmentRelroEnd(*(fun_from_secs_to_something)*) ->
                      (*let _ = errln ("Marking data segment relro end") in*)
                      do_nothing
-                | OutputSection(outputguard, maybe_expr, name, sub_elements) -> 
+                | OutputSection(outputguard, maybe_expr, name, sub_elements) ->
                     (* If we have a current output section, finish it and add it to the image.
                      * Q. Where do guards ("ONLY_IF_RO" etc) get evaluated?
                      * A. Inside flush_output_sec. *)
@@ -1087,16 +1088,16 @@ let rec assign_inputs_to_output_sections acc used_sections used_commons inputs (
                     let new_cur_output_sec = Just((OutputSectionSpec(outputguard, (* maybe_expr pos secs *) Nothing, name, [])), idx)
                     in
                     (* Recurse down the list of input queries, assigning them to this output sec
-                     * Note that output sections may not nest within other output sections. 
-                     * At the end of the list of sub_elements, we will flush the section we built up. 
+                     * Note that output sections may not nest within other output sections.
+                     * At the end of the list of sub_elements, we will flush the section we built up.
                      *)
                     let final_acc
                     = assign_inputs_to_output_sections acc used_sections used_commons inputs new_cur_output_sec last_input_sec seen_ordering (label_script sub_elements)
                     in
                     (* NOTE that this sub-accumulation will never add a new output section
                      * because output sections can't nest. *)
-                    (final_acc, used_sections, used_commons, (* cur_output_sec *) Nothing, last_input_sec) 
-                | DiscardInput(selector) -> 
+                    (final_acc, used_sections, used_commons, (* cur_output_sec *) Nothing, last_input_sec)
+                | DiscardInput(selector) ->
                     let selected = selector inputs
                     in
                     let (rev_discards, rev_outputs) = acc in
@@ -1104,7 +1105,7 @@ let rec assign_inputs_to_output_sections acc used_sections used_commons inputs (
                         ^ " inputs.")
                     in*)
                     (((List.reverse [i | forall (i MEM selected) | true]) ++ rev_discards, rev_outputs), used_sections, used_commons, cur_output_sec, last_input_sec)
-                | InputQuery(retainpol, sortpol, selector) -> 
+                | InputQuery(retainpol, sortpol, selector) ->
                     (* Input queries can only occur within an output section. *)
                     match cur_output_sec with
                         Nothing -> failwith "linker script error: input query without output section"
@@ -1114,7 +1115,7 @@ let rec assign_inputs_to_output_sections acc used_sections used_commons inputs (
                              * "the linker will place files and sections matched by wildcards in the order
                              * in which they are seen during the link". For .o files on the command line,
                              * this means the command line order. But for members of archives, it means
-                             * the order in which they were "pulled in" during input enumeration. We 
+                             * the order in which they were "pulled in" during input enumeration. We
                              * actually don't compute this here; it is passed in from our caller in link.lem. *)
                             let sortfun = match sortpol with
                                 DefaultSort -> Sorting.sortByOrd seen_ordering (* FIXME: pay attention to command line *)
@@ -1133,24 +1134,24 @@ let rec assign_inputs_to_output_sections acc used_sections used_commons inputs (
                                 | Common(idx, fname, img, def) -> not ((idx, def.def_sym_scn, def.def_sym_idx) IN used_commons)
                             end) selected
                             in
-                            (*let _ = errln ("Evaluated an input query, yielding " ^ 
+                            (*let _ = errln ("Evaluated an input query, yielding " ^
                                 (show (length selected)) ^ " undeduplicated and " ^
-                                (show (length selected_deduplicated)) ^ 
+                                (show (length selected_deduplicated)) ^
                                 " deduplicated results, to be added to composition currently of " ^
                                  (show (length output_composition)) ^ " items.") in*)
                             (* Search input memory images for matching sections. *)
                             let sorted_selected_inputs = sortfun selected_deduplicated
                             in
-                            let (sectionMatchList : list input_section_rec) = List.mapMaybe (fun inp -> 
+                            let (sectionMatchList : list input_section_rec) = List.mapMaybe (fun inp ->
                                 match inp with
-                                    InputSection(x) -> 
-                                        (*let _ = errln ("Matched an input section named " ^ x.isec.elf64_section_name_as_string ^ 
-                                            " in a file " ^ x.fname ^ " with first 20 bytes " ^ (show (take 20 
-                                                (let maybe_elname = elf_memory_image_element_coextensive_with_section x.shndx x.img 
+                                    InputSection(x) ->
+                                        (*let _ = errln ("Matched an input section named " ^ x.isec.elf64_section_name_as_string ^
+                                            " in a file " ^ x.fname ^ " with first 20 bytes " ^ (show (take 20
+                                                (let maybe_elname = elf_memory_image_element_coextensive_with_section x.shndx x.img
                                                  in
                                                  match maybe_elname with
                                                     Nothing -> failwith ("impossible: no such element (matching shndx " ^ (show x.shndx) ^ ")")
-                                                    | Just idstr -> 
+                                                    | Just idstr ->
                                                         match Map.lookup idstr x.img.elements with
                                                             Just el -> el.contents
                                                             | Nothing -> failwith "no such element"
@@ -1162,37 +1163,37 @@ let rec assign_inputs_to_output_sections acc used_sections used_commons inputs (
                                    | _ -> Nothing
                                 end) sorted_selected_inputs
                             in
-                            let commonMatchList = List.mapMaybe (fun inp -> 
+                            let commonMatchList = List.mapMaybe (fun inp ->
                                 match inp with
                                    | Common(idx, fname, img, def) -> Just(idx, fname, img, def)
                                    | _ -> Nothing
                                 end) sorted_selected_inputs
                             in
-                            
-                            (acc, 
+
+                            (acc,
                              used_sections union { (irec.idx, irec.shndx) | forall (irec MEM sectionMatchList) | true },
                              used_commons  union { (idx, def.def_sym_scn, def.def_sym_idx) | forall ((idx, fname, img, def) MEM commonMatchList) | true },
                              (* new_cur_output_spec *) Just (
-                                (OutputSectionSpec(output_guard, output_sec_addr, output_sec_name, 
-                                    output_composition ++ 
+                                (OutputSectionSpec(output_guard, output_sec_addr, output_sec_name,
+                                    output_composition ++
                                      [IncludeInputSection(retainpol, (* input_sec.fname, input_sec.idx, input_sec.shndx, input_sec.isec, input_sec.img *) input_sec)
-                                     | forall (input_sec MEM sectionMatchList) 
+                                     | forall (input_sec MEM sectionMatchList)
                                      | true
-                                     ] ++ 
-                                     [IncludeCommonSymbol(DefaultKeep, fname, idx, def, img) 
+                                     ] ++
+                                     [IncludeCommonSymbol(DefaultKeep, fname, idx, def, img)
                                      | forall ((idx, fname, img, def) MEM commonMatchList) | true]
-                                )), output_script_idx), 
+                                )), output_script_idx),
                              last_input_sec
                             )
                     end
             end)
             in
             (*let _ = match new_cur_output_sec with
-                Just (OutputSectionSpec (guard, addr, name, comp), script_idx) -> 
+                Just (OutputSectionSpec (guard, addr, name, comp), script_idx) ->
                     errln ("Now output section `" ^ name ^ "' is composed of " ^ (show (length comp)) ^ " elements.")
                 | Nothing -> ()
             end in*)
-            assign_inputs_to_output_sections new_acc new_used_sections new_used_commons 
+            assign_inputs_to_output_sections new_acc new_used_sections new_used_commons
                 (inputs : list input_spec)
                 (new_cur_output_sec)
                 (new_last_input_sec : maybe input_spec)
@@ -1200,16 +1201,16 @@ let rec assign_inputs_to_output_sections acc used_sections used_commons inputs (
                 (more_elements_and_idx : labelled_linker_control_script)
     end
 
-(* NOTE: this is also responsible for deleting any PROVIDEd symbols that 
- * were not actually referenced. BUT HOW, if we haven't built the image and 
- * hence haven't added the symbols yet? Symbols affect reachability, so 
+(* NOTE: this is also responsible for deleting any PROVIDEd symbols that
+ * were not actually referenced. BUT HOW, if we haven't built the image and
+ * hence haven't added the symbols yet? Symbols affect reachability, so
  * we're going to have to figure this out. Really we want a memory image that
- * does not yet have addresses assigned, but does have the symbols inserted. 
+ * does not yet have addresses assigned, but does have the symbols inserted.
  * BUT even that is not right, because we want to be able to remove some
- * sections (GC them). So the section composition is not yet fixed. So we have 
+ * sections (GC them). So the section composition is not yet fixed. So we have
  * a problem.
  *
- * Note that the only symbols we have to remove are ones that were PROVIDEd 
+ * Note that the only symbols we have to remove are ones that were PROVIDEd
  * in our output composition. So doing the GC on output compositions seems
  * sane. We can get the graph's edge list by inspecting the constituent memory
  * images from which each output section composition element is drawn.
@@ -1217,17 +1218,17 @@ let rec assign_inputs_to_output_sections acc used_sections used_commons inputs (
  * can never be placed mid-section (I don't think?? they can use arbitrary
  * expressions, but not that depend on whether an input section is included
  * or not) so removing a section should never imply the removal of a symbol.
- * 
+ *
  * So that implies we need not yet build a memory image.
  *)
 val compute_def_use_and_gc : allocated_sections_map -> allocated_sections_map
 let compute_def_use_and_gc outputs_by_name = outputs_by_name (* FIXME: implement GC *)
 
-let output_section_type comp = 
+let output_section_type comp =
    (* are we composed entirely of nobits sections and common symbols? *)
-        let all_nobits = List.all (fun comp_el -> 
-            match comp_el with 
-                IncludeInputSection(retain_pol,(*  fname, linkable_idx, shndx, isec, img *) irec) -> 
+        let all_nobits = List.all (fun comp_el ->
+            match comp_el with
+                IncludeInputSection(retain_pol,(*  fname, linkable_idx, shndx, isec, img *) irec) ->
                     irec.isec.elf64_section_type = sht_nobits
                 | IncludeCommonSymbol(retain_pol, fname, linkable_idx, def, img) -> true
                 | _ -> (* padding and symdefs can be nobits *) true
@@ -1235,43 +1236,43 @@ let output_section_type comp =
         in
         if all_nobits then sht_nobits else sht_progbits
 
-let output_section_flags comp = 
-    let writable = List.any (fun comp_el -> 
-        match comp_el with 
-            IncludeInputSection(retain_pol, (* fname, linkable_idx, shndx, isec, img *) irec) -> 
+let output_section_flags comp =
+    let writable = List.any (fun comp_el ->
+        match comp_el with
+            IncludeInputSection(retain_pol, (* fname, linkable_idx, shndx, isec, img *) irec) ->
                 flag_is_set shf_write irec.isec.elf64_section_flags
-            | IncludeCommonSymbol(retain_pol, fname, linkable_idx, def, img) -> 
+            | IncludeCommonSymbol(retain_pol, fname, linkable_idx, def, img) ->
                 (* assume common symbols are writable *) true
             | _ -> (* padding and symdefs do not make a section writable *) false
         end) comp
     in
-    let executable = List.any (fun comp_el -> 
-        match comp_el with 
-            IncludeInputSection(retain_pol,(* fname, linkable_idx, shndx, isec, img *) irec) -> 
+    let executable = List.any (fun comp_el ->
+        match comp_el with
+            IncludeInputSection(retain_pol,(* fname, linkable_idx, shndx, isec, img *) irec) ->
                 flag_is_set shf_execinstr irec.isec.elf64_section_flags
-            | IncludeCommonSymbol(retain_pol, fname, linkable_idx, def, img) -> 
+            | IncludeCommonSymbol(retain_pol, fname, linkable_idx, def, img) ->
                 (* assume common symbols are not executable, since they're zeroed *) false
             | _ -> (* padding and symdefs do not make a section executable -- HMM *) false
         end) comp
     in
-    let alloc = List.any (fun comp_el -> 
-        match comp_el with 
-            IncludeInputSection(retain_pol, (* fname, linkable_idx, shndx, isec, img *) irec) -> 
+    let alloc = List.any (fun comp_el ->
+        match comp_el with
+            IncludeInputSection(retain_pol, (* fname, linkable_idx, shndx, isec, img *) irec) ->
                 flag_is_set shf_alloc irec.isec.elf64_section_flags
-            | IncludeCommonSymbol(retain_pol, fname, linkable_idx, def, img) -> 
+            | IncludeCommonSymbol(retain_pol, fname, linkable_idx, def, img) ->
                 (* common symbols are allocatable *) true
-            | ProvideSymbol(pol, name, spec) -> 
+            | ProvideSymbol(pol, name, spec) ->
                 (* symbols make a section allocatable? HMM *) true
             | _ -> (* padding does not make a section allocatable *) false
         end) comp
     in
-    let is_thread_local_yesnomaybe = (fun comp_el -> 
-        match comp_el with 
-            IncludeInputSection(retain_pol, (* fname, linkable_idx, shndx, isec, img *) irec) -> 
+    let is_thread_local_yesnomaybe = (fun comp_el ->
+        match comp_el with
+            IncludeInputSection(retain_pol, (* fname, linkable_idx, shndx, isec, img *) irec) ->
                 Just(flag_is_set shf_tls irec.isec.elf64_section_flags)
-            | IncludeCommonSymbol(retain_pol, fname, linkable_idx, def, img) -> 
+            | IncludeCommonSymbol(retain_pol, fname, linkable_idx, def, img) ->
                 (* FIXME: support tcommon *) Just(false)
-            | ProvideSymbol(pol, name, spec) -> 
+            | ProvideSymbol(pol, name, spec) ->
                 (* linker script symbols shouldn't be defined here, unless they can be declared thread-local (FIXME: can they?) *)
                 Just false
             | _ -> (* padding does not make a section thread-local, or non-. *) Nothing
@@ -1280,7 +1281,7 @@ let output_section_flags comp =
     in
     let thread_local = (
         (* Is any element positively thread-local? *)
-        let v = List.foldl (fun acc_ynm -> fun comp_el -> 
+        let v = List.foldl (fun acc_ynm -> fun comp_el ->
             let new_ynm = is_thread_local_yesnomaybe comp_el
             in
             match (acc_ynm, new_ynm) with
@@ -1294,7 +1295,7 @@ let output_section_flags comp =
             end) Nothing comp
         in
         if v = Just(true) && not (Just(true) = (* are *all* either don't-care or positively thread-local? *)
-            (List.foldl (fun acc_ynm -> fun comp_el -> 
+            (List.foldl (fun acc_ynm -> fun comp_el ->
             let new_ynm = is_thread_local_yesnomaybe comp_el
             in
             match (acc_ynm, new_ynm) with
@@ -1316,13 +1317,13 @@ let output_section_flags comp =
         (if thread_local then shf_tls else 0)
         (natural_lor
             (if executable then shf_execinstr else 0)
-            (natural_lor 
+            (natural_lor
                 (if writable then shf_write else 0)
                 (if alloc then    shf_alloc else 0)
             )
         )
 
-let symbol_def_for_provide_symbol name size info other control_script_linkable_idx = 
+let symbol_def_for_provide_symbol name size info other control_script_linkable_idx =
     <|
         def_symname = (*let _ = errln ("Linker script is defining symbol called `" ^ name ^ "'") in*) name
         ; def_syment = <|
@@ -1346,22 +1347,23 @@ let assign_dot_to_itself fresh alloc_map =
     (fresh', alloc_map', AddressExprFn fresh)
 
 val build_image :
+    abi any_abi_feature ->
     address_expr_fn_map allocated_sections_map -> (* global dictionary of address_expr_fn_ref -> address_expr_fn *)
     elf_memory_image ->          (* accumulator *)
     natural ->                   (* location counter *)
     allocated_sections_map ->  (* outputs constructed earlier *)
     (Map.map string (list (natural * binding))) -> (* bindings_by_name *)
-    labelled_linker_control_script -> 
+    labelled_linker_control_script ->
     natural -> (* control_script_linkable_idx *)
     (Map.map string (list symbol_definition)) -> (* linker_defs_by_name *)
     (elf_memory_image * allocated_sections_map)            (* accumulated result *)
-let rec build_image alloc_map acc pos (AllocatedSectionsMap outputs_by_name) bindings_by_name script control_script_linkable_idx linker_defs_by_name = 
+let rec build_image a alloc_map acc pos (AllocatedSectionsMap outputs_by_name) bindings_by_name script control_script_linkable_idx linker_defs_by_name =
      let (add_output_section : (natural * elf_memory_image) -> output_section_spec -> (natural * elf_memory_image * natural * output_section_spec))
      = fun ((*scn_idx, *)pos, acc_img) ->
-        (fun (OutputSectionSpec (guard, addr, secname, comp)) -> 
+        (fun (OutputSectionSpec (guard, addr, secname, comp)) ->
             (*let _ = errln ("Computing composition of output section `" ^ secname ^ "' from " ^ (show (length comp)) ^ " elements")
             in*)
-            let unaligned_start_addr = match addr with 
+            let unaligned_start_addr = match addr with
                 Just a -> failwith ("internal error: section " ^ secname ^ ": did not expect address to be assigned yet")
                 | Nothing -> pos
             end
@@ -1388,29 +1390,29 @@ let rec build_image alloc_map acc pos (AllocatedSectionsMap outputs_by_name) bin
                 (*let _ = errln ("Adding an element to composition of output section `" ^ secname ^ "', current address 0x" ^ (hex_string_of_natural accum_current_addr))
                 in*)
                 let make_line = fun namestr -> (fun addrstr -> (fun szstr -> (fun rhs -> (
-                    (space_padded_and_maybe_newline 16 (" " ^ namestr)) ^ 
-                    ("0x" ^ (left_zero_padded_to 16 addrstr)) ^ " " ^ 
+                    (space_padded_and_maybe_newline 16 (" " ^ namestr)) ^
+                    ("0x" ^ (left_zero_padded_to 16 addrstr)) ^ " " ^
                     (left_space_padded_to 10 ("0x" ^ szstr)) ^ " " ^ rhs
                 ))))
                 in
                 let (sz, comp_el_pat, this_el_meta) = match comp_el with
-                    | IncludeInputSection(retainpolicy, (* fname, linkable_idx, shndx, isec, img *) irec) -> 
+                    | IncludeInputSection(retainpolicy, (* fname, linkable_idx, shndx, isec, img *) irec) ->
                         (* We want to get the input section as a byte pattern *)
                         (*let _ = errln ("Processing inclusion of input section `" ^ irec.isec.elf64_section_name_as_string
                             ^ "' from file `" ^ irec.fname
                             ^ "' into output section `" ^ secname
                             ^ "'")
                         in*)
-                        let maybe_secname = elf_memory_image_element_coextensive_with_section irec.shndx irec.img 
+                        let maybe_secname = elf_memory_image_element_coextensive_with_section irec.shndx irec.img
                         in
                         match maybe_secname with
                             Nothing -> failwith ("impossible: no such section" (*(matching irec.shndx " ^ (show irec.shndx) ^ ")""*))
-                            | Just idstr -> 
-                                (*let _ = errln ("Found element named " ^ idstr ^ " coextensive with section named " ^ 
+                            | Just idstr ->
+                                (*let _ = errln ("Found element named " ^ idstr ^ " coextensive with section named " ^
                                     irec.isec.elf64_section_name_as_string ^ " in file " ^ irec.fname)
                                 in*)
                                 match Map.lookup idstr irec.img.elements with
-                                Just el -> 
+                                Just el ->
                                     (*let _ = Missing_pervasives.outln (make_line irec.isec.elf64_section_name_as_string
                                         (hex_string_of_natural comp_addr) (hex_string_of_natural irec.isec.elf64_section_size)
                                         irec.fname)
@@ -1419,47 +1421,47 @@ let rec build_image alloc_map acc pos (AllocatedSectionsMap outputs_by_name) bin
                                     in
                                     (*let _ = errln ("Copying metadata for output section `" ^ section_el_name ^ "'") in*)
                                     let range_or_sym_is_in_this_sec = (fun maybe_range -> (fun tag ->
-                                        (* is it within the section we're outputting? 
+                                        (* is it within the section we're outputting?
                                          * first we needs its element name. *)
                                         (* filter out ones that don't overlap *)
-                                        match maybe_range with 
-                                            Just(el_name, (start, len)) -> 
-                                                (* img and shndx came as a unit, so they're definitely 
+                                        match maybe_range with
+                                            Just(el_name, (start, len)) ->
+                                                (* img and shndx came as a unit, so they're definitely
                                                  * talking about the same file *)
                                                 (* shndx = sym_shndx *)
                                                 section_el_name = el_name
-                                            | Nothing -> 
+                                            | Nothing ->
                                                 (* ABS symbols have this property *)
                                                 match tag with
-                                                    SymbolDef(def) -> 
+                                                    SymbolDef(def) ->
                                                         (* don't match section symbols, or we'll be inundated *)
                                                         let sym_shndx = natural_of_elf64_half def.def_syment.elf64_st_shndx
                                                         in
                                                         if sym_shndx <> shn_abs || (get_elf64_symbol_type def.def_syment <> stt_section) then false
                                                         else (
                                                             let abs_address = natural_of_elf64_addr def.def_syment.elf64_st_value
-                                                            in 
+                                                            in
                                                             (* check it against our section *)
                                                             let section_end_addr = accum_current_addr + irec.isec.elf64_section_size
-                                                            in  
+                                                            in
                                                             (abs_address >= accum_current_addr
                                                                 && abs_address < section_end_addr)
                                                                 (* FIXME: argument that this should be <=, i.e. can mark end addr *)
                                                                 (* PROBLEM: this is all very well, but there's no reason why
                                                                  * ABS symbols need to point at an address within some output
                                                                  * section. They can just be arbitrary values. This is a bit of an
-                                                                 * abuse if we do it within the C language (to get the value, you 
-                                                                 * have to do "(int) &sym", i.e. create a meaningless pointer 
+                                                                 * abuse if we do it within the C language (to get the value, you
+                                                                 * have to do "(int) &sym", i.e. create a meaningless pointer
                                                                  * intermediate) but arguably is okay in an impl-def way.
-                                                                 * 
+                                                                 *
                                                                  * WHAT to do? well, just always output the ABS symbols, for now.
-                                                                 * 
-                                                                 * The example that provoked this is in glibc's 
+                                                                 *
+                                                                 * The example that provoked this is in glibc's
                                                                  * locale/lc-address.c, which compiles down to create
                                                                  * the following ABS symbol:
-                                                                 * 
+                                                                 *
                                                                  * 0000000000000001 g       *ABS*	0000000000000000 _nl_current_LC_ADDRESS_used
-                                                                 * 
+                                                                 *
                                                                  * ... i.e. the _nl_current_LC_ADDRESS_used appears to be just a flag.
                                                                  *
                                                                  * Where can we handle this? We don't see ABS symbols since they
@@ -1477,7 +1479,7 @@ let rec build_image alloc_map acc pos (AllocatedSectionsMap outputs_by_name) bin
                                     ))
                                     in
                                     let ranges_and_tags = [
-                                        (maybe_range, tag) | 
+                                        (maybe_range, tag) |
                                         forall ((maybe_range, tag) MEM (Set_extra.toList irec.img.by_range)) |
                                         range_or_sym_is_in_this_sec maybe_range tag
                                     ]
@@ -1489,7 +1491,7 @@ let rec build_image alloc_map acc pos (AllocatedSectionsMap outputs_by_name) bin
                                     ]
                                     in
                                     let included_global_defs = [
-                                        def | forall (def MEM included_defs) | 
+                                        def | forall (def MEM included_defs) |
                                             (* filter out locals *)
                                             get_elf64_symbol_binding def.def_syment <> stb_local
                                     ]
@@ -1505,21 +1507,21 @@ let rec build_image alloc_map acc pos (AllocatedSectionsMap outputs_by_name) bin
                                     ))
                                     in*)
                                     let (new_ranges_and_tags : set ((maybe element_range) * (range_tag any_abi_feature)))
-                                     = Set.mapMaybe (fun (maybe_range, tag) -> 
+                                     = Set.mapMaybe (fun (maybe_range, tag) ->
                                         (* How do we update existing metadata? In general,
                                          * we get a new range. *)
                                         let new_range = match maybe_range with
                                             Nothing -> Nothing
-                                            | Just(el_name, (start, len)) -> 
-                                                Just(secname, (* FIXME: pass this through a section-to-element gensym. 
+                                            | Just(el_name, (start, len)) ->
+                                                Just(secname, (* FIXME: pass this through a section-to-element gensym.
                                                                 We can just (for now) define output element names
                                                                 to equal the section names, since we have no unnamed
                                                                 output sections and no output common symbols. *)
                                                         let new_start_off = start + (comp_addr - output_section_start_addr)
                                                         in
-                                                        (*let _ = errln ("Calculated element offset 0x" ^ (hex_string_of_natural new_start_off) ^ 
-                                                            " in element " ^ secname ^ " for tag at address 0x" ^ (hex_string_of_natural accum_current_addr) ^ 
-                                                            " , start offset 0x" ^ (hex_string_of_natural start) ^ ", output section start addr 0x" ^ 
+                                                        (*let _ = errln ("Calculated element offset 0x" ^ (hex_string_of_natural new_start_off) ^
+                                                            " in element " ^ secname ^ " for tag at address 0x" ^ (hex_string_of_natural accum_current_addr) ^
+                                                            " , start offset 0x" ^ (hex_string_of_natural start) ^ ", output section start addr 0x" ^
                                                             (hex_string_of_natural output_section_start_addr) ^ ", comp_addr 0x" ^ (hex_string_of_natural comp_addr))
                                                         in*)
                                                         (new_start_off,
@@ -1534,13 +1536,13 @@ let rec build_image alloc_map acc pos (AllocatedSectionsMap outputs_by_name) bin
                                              * We record its linkable idx, so we can
                                              * match it later with the bindings we formed
                                              * earlier.
-                                             * FIXME: this is a bit nasty. Perhaps we 
+                                             * FIXME: this is a bit nasty. Perhaps we
                                              * should replace syment with a minimal structure
                                              * that avoids duplication. Same for isecs. *)
-                                            | SymbolDef(def) -> 
+                                            | SymbolDef(def) ->
                                                 (* if get_elf64_symbol_type def.def_syment = stt_section
                                                 then Nothing FIXME: also re-create the section symbol when we create the ElfSection
-                                                else *) (* This doesn't work -- some refs might be bound to this symbol. 
+                                                else *) (* This doesn't work -- some refs might be bound to this symbol.
                                                            Instead, strip the symbol when we generate the output symtab (FIXME). *)
                                                 (*let _ = errln ("Copying symbol named `" ^ def.def_symname ^ "'")
                                                 in*)
@@ -1553,12 +1555,12 @@ let rec build_image alloc_map acc pos (AllocatedSectionsMap outputs_by_name) bin
                                                 |>))
                                             | AbiFeature(x) -> Just(new_range, AbiFeature(x))
                                             (* If it's a symbol ref with no reloc site, we discard it? *)
-                                            | SymbolRef(r) -> 
-                                                (*let _ = if r.ref.ref_symname = "_start" then errln ("Saw ref to _start, " 
+                                            | SymbolRef(r) ->
+                                                (*let _ = if r.ref.ref_symname = "_start" then errln ("Saw ref to _start, "
                                                     ^ "in section " ^ irec.isec.elf64_section_name_as_string ^ " of linkable " ^ (show irec.idx))
                                                 else ()
                                                 in*)
-                                                let get_binding_for_ref = (fun symref -> (fun linkable_idx -> (fun fname -> 
+                                                let get_binding_for_ref = (fun symref -> (fun linkable_idx -> (fun fname ->
                                                     let name_matches = match Map.lookup symref.ref_symname bindings_by_name with Just x -> x | Nothing -> [] end
                                                     in
                                                     match List.filter (fun (bi, ((r_idx, r, r_item), m_d)) -> r_idx = linkable_idx && r = symref) name_matches with
@@ -1568,56 +1570,58 @@ let rec build_image alloc_map acc pos (AllocatedSectionsMap outputs_by_name) bin
                                                     end
                                                 )))
                                                 in
-                                                let (bi, b) = get_binding_for_ref r.ref irec.idx irec.fname 
+                                                let (bi, b) = get_binding_for_ref r.ref irec.idx irec.fname
                                                 in
                                                 let ((ref_idx, ref, ref_linkable), maybe_def) = b
                                                 in
                                                 match r.maybe_reloc with
                                                     Nothing -> Nothing
                                                     (* If it's a reloc site, we need to somehow point it
-                                                     * at the *definition* that it was bound to. YES. 
-                                                     * reloc_sites are 
-                                                     
+                                                     * at the *definition* that it was bound to. YES.
+                                                     * reloc_sites are
+
                                                      type reloc_site = <|
-                                                      ref_relent  : elf64_relocation_a 
+                                                      ref_relent  : elf64_relocation_a
                                                     ; ref_rel_scn : natural  --the relocation section idx
                                                     ; ref_rel_idx : natural  --the index of the relocation rec
                                                     ; ref_src_scn : natural  --the section *from which* the reference logically comes
                                                     |>
-                                                    
+
                                                     type elfNN_relocation_a =
                                                       <| elfNN_ra_offset : elf32_addr  --Address at which to relocate
                                                        ; elfNN_ra_info   : elf32_word  --Symbol table index/type of relocation to apply
                                                        ; elfNN_ra_addend : elf32_sword --Addend used to compute value to be stored
                                                        |>
-                                                    
-                                                     * ... of which ref_src_scn, ref_rel_idx, 
+
+                                                     * ... of which ref_src_scn, ref_rel_idx,
                                                      * ref_rel_scn and elfNN_ra_offset can be ignored.
-                                                     * 
+                                                     *
                                                      * What *is* important is that we somehow point at
                                                      * the symbol definition (or perhaps *un*definition,
                                                      * if we're generating a shared library) that it
-                                                     * refers to. 
+                                                     * refers to.
                                                      *
                                                      * For that, we update ra_info use the 1 + binding_idx,
                                                      * i.e. consider that there is a fresh symbol table
                                                      * and that it has a distinct entry for each binding.
-                                                     * 
-                                                     * FIXME: we also need to account for 
+                                                     *
+                                                     * FIXME: we also need to account for
                                                      * reloc decisions -- MakePIC etc.
                                                      *)
-                                                    | Just(rs) -> Just(new_range, SymbolRef(
+                                                    | Just(rs) ->
+                                                      let (rel_type, _) = a.parse_reloc_info rs.ref_relent.elf64_ra_info in
+                                                      Just(new_range, SymbolRef(
                                                         <| ref =   <|
-                                                        (* This is not the place to be fixing up 
+                                                        (* This is not the place to be fixing up
                                                          * symbol references. We can't yet patch the element content,
                                                          * because we haven't yet decided on the address of everything.
                                                          *
-                                                         * That said, we *do* need to represent the old ref in the new 
+                                                         * That said, we *do* need to represent the old ref in the new
                                                          * linked-image context. That's *all* we should be doing, right now.
-                                                         * 
+                                                         *
                                                          *)
                                                               ref_symname = ref.ref_symname
-                                                            ; ref_syment  = 
+                                                            ; ref_syment  =
                                                                   <| elf64_st_name   = elf64_word_of_natural 0 (* unused *)
                                                                    ; elf64_st_info   = ref.ref_syment.elf64_st_info
                                                                    ; elf64_st_other  = ref.ref_syment.elf64_st_other
@@ -1630,14 +1634,14 @@ let rec build_image alloc_map acc pos (AllocatedSectionsMap outputs_by_name) bin
                                                                 (* match maybe_def with Just _ -> 1+bi | Nothing -> 0 end *)
                                                             |>
                                                          ; maybe_reloc = Just <|
-                                                              ref_relent  = <| 
+                                                              ref_relent  = <|
                                                                  elf64_ra_offset = elf64_addr_of_natural 0 (* ignored *)
-                                                               ; elf64_ra_info   = (elf64_xword_lor 
+                                                               ; elf64_ra_info   = (elf64_xword_lor
                                                                     (* HACK: use bi as the symbol index. *)
-                                                                    (elf64_xword_of_natural (get_elf64_relocation_a_type rs.ref_relent))
+                                                                    (elf64_xword_of_natural rel_type)
                                                                     (elf64_xword_lshift
                                                                         (* ... actually, don't, now we have maybe_def_bound_to *)
-                                                                        (elf64_xword_of_natural (* (1+bi) *) 0) 
+                                                                        (elf64_xword_of_natural (* (1+bi) *) 0)
                                                                         32
                                                                     )
                                                                   )
@@ -1647,18 +1651,18 @@ let rec build_image alloc_map acc pos (AllocatedSectionsMap outputs_by_name) bin
                                                             ; ref_rel_idx = 0
                                                             ; ref_src_scn = 0
                                                             |>
-                                                         ; maybe_def_bound_to = 
+                                                         ; maybe_def_bound_to =
                                                             (* Re-search the bindings list for a match, because we might have
                                                              * re-bound this symbol since we created the image. FIXME: since
                                                              * we do this, is there anything gained from populating this field
                                                              * earlier? Probably best not to. *)
                                                             let (possible_bindings : list (natural * binding))
                                                              = match Map.lookup ref.ref_symname bindings_by_name with
-                                                                Just l -> if ref.ref_symname = "__fini_array_end" then 
+                                                                Just l -> if ref.ref_symname = "__fini_array_end" then
                                                                     (*let _ = errln ("Found " ^ (show (length l)) ^ " bindings for __fini_array_end, of which " ^
-                                                                        (show (length (List.filter (fun (bi, (r, maybe_d)) -> maybe_d <> Nothing) l))) ^ 
+                                                                        (show (length (List.filter (fun (bi, (r, maybe_d)) -> maybe_d <> Nothing) l))) ^
                                                                         " are with definition")
-                                                                        in*) l 
+                                                                        in*) l
                                                                         else l
                                                                 | Nothing -> []
                                                             end
@@ -1666,19 +1670,19 @@ let rec build_image alloc_map acc pos (AllocatedSectionsMap outputs_by_name) bin
                                                             (* what's the actual binding? *)
                                                             match r.maybe_def_bound_to with
                                                                 Nothing -> failwith ("at this stage, all references must have a decision: `" ^ ref.ref_symname ^ "'")
-                                                                | Just(decision, _) -> 
-                                                                    (* Search the list of bindings for a possibly-updated 
+                                                                | Just(decision, _) ->
+                                                                    (* Search the list of bindings for a possibly-updated
                                                                      * binding for this reference. *)
-                                                                    let matching_possibles = List.filter (fun (bi, ((ref_idx, ref, ref_item), maybe_d)) -> 
+                                                                    let matching_possibles = List.filter (fun (bi, ((ref_idx, ref, ref_item), maybe_d)) ->
                                                                         match maybe_d with
                                                                             Nothing -> false
-                                                                            | Just (def_idx, def, def_item) -> 
+                                                                            | Just (def_idx, def, def_item) ->
                                                                                     (* match the *reference*, whose linkable we're processing now *)
                                                                                        irec.idx = ref_idx
                                                                                     && r.ref.ref_sym_scn = ref.ref_sym_scn
                                                                                     && r.ref.ref_sym_idx = ref.ref_sym_idx
-                                                                                    
-                                                                                    (* 
+
+                                                                                    (*
                                                                                      def.def_syment  = sd.def_syment
                                                                                   && def.def_sym_scn = sd.def_sym_scn
                                                                                   && def.def_sym_idx = sd.def_sym_idx
@@ -1686,13 +1690,13 @@ let rec build_image alloc_map acc pos (AllocatedSectionsMap outputs_by_name) bin
                                                                         end
                                                                     ) possible_bindings
                                                                     in
-                                                                    (*let _ = errln ("For a ref to `" ^ ref.ref_symname ^ 
+                                                                    (*let _ = errln ("For a ref to `" ^ ref.ref_symname ^
                                                                             "', possibles list is: " ^ (
-                                                                                List.foldl (fun x -> fun y -> x ^ ", " ^ y) "" (List.map (fun (bi, ((_, _, _), maybe_d)) -> 
+                                                                                List.foldl (fun x -> fun y -> x ^ ", " ^ y) "" (List.map (fun (bi, ((_, _, _), maybe_d)) ->
                                                                                     match maybe_d with
-                                                                                        Just(def_idx, def, def_item) -> 
+                                                                                        Just(def_idx, def, def_item) ->
                                                                                             "`" ^ def.def_symname ^ "' " ^
-                                                                                            "in linkable " ^ (show def_idx) ^ 
+                                                                                            "in linkable " ^ (show def_idx) ^
                                                                                             ", section " ^ (show def.def_sym_scn) ^
                                                                                             ", sym idx " ^ (show def.def_sym_idx)
                                                                                         | _ -> failwith "impossible: just filtered out no-def bindings"
@@ -1702,15 +1706,15 @@ let rec build_image alloc_map acc pos (AllocatedSectionsMap outputs_by_name) bin
                                                                     in*)
                                                                     let new_bound_to = match matching_possibles with
                                                                         [] -> Just(ApplyReloc, Nothing)
-                                                                        | [(bi, ((rl, r, ri), maybe_d))] -> 
-                                                                            Just(decision, 
-                                                                                match maybe_d with 
+                                                                        | [(bi, ((rl, r, ri), maybe_d))] ->
+                                                                            Just(decision,
+                                                                                match maybe_d with
                                                                                     Just (def_idx, def, def_item) -> Just <|
                                                                                             def_symname = def.def_symname
                                                                                           ; def_syment  = def.def_syment
                                                                                           ; def_sym_scn = def.def_sym_scn
                                                                                           ; def_sym_idx = def.def_sym_idx
-                                                                                          ; def_linkable_idx = def_idx 
+                                                                                          ; def_linkable_idx = def_idx
                                                                                           |>
                                                                                     | Nothing -> Nothing
                                                                                 end)
@@ -1718,14 +1722,14 @@ let rec build_image alloc_map acc pos (AllocatedSectionsMap outputs_by_name) bin
                                                                     end
                                                                     in
                                                                     if new_bound_to <> r.maybe_def_bound_to then
-                                                                        (*let _ = errln ("Changed binding for reference to `" ^ ref.ref_symname ^ 
+                                                                        (*let _ = errln ("Changed binding for reference to `" ^ ref.ref_symname ^
                                                                             "' in linkable " ^ (show irec.idx))
                                                                         in*)
                                                                         new_bound_to
                                                                     else if new_bound_to = Nothing then failwith "really need a decision by now"
                                                                         else new_bound_to
                                                             end
-                                                            
+
                                                             (* if irec.fname = "libc.a(__uClibc_main.os)"
                                                                 && irec.isec.elf64_section_name_as_string = ".data.rel.local"
                                                                 then
@@ -1739,15 +1743,15 @@ let rec build_image alloc_map acc pos (AllocatedSectionsMap outputs_by_name) bin
                                                          |>
                                                     ))
                                                 end (* match maybe_reloc *)
-                                            end (* match tag *) 
+                                            end (* match tag *)
                                         ) (Set.fromList ranges_and_tags) (* end mapMaybe fn *)
                                     in
                                     let isec_sz = irec.isec.elf64_section_size in
                                     let maybe_el_sz = el.length in
                                     let contents_sz = length el.contents in
-                                    let (actual_sz, padded_contents) = 
+                                    let (actual_sz, padded_contents) =
                                         match maybe_el_sz with
-                                            Just el_sz -> 
+                                            Just el_sz ->
                                                 let diff = el_sz - contents_sz in
                                                 if diff < 0 then
                                                     (* contents greater than what the el says, so chop the end off *)
@@ -1756,8 +1760,8 @@ let rec build_image alloc_map acc pos (AllocatedSectionsMap outputs_by_name) bin
                                                     in*)
                                                     (el_sz, take el_sz el.contents)
                                                 else (el_sz, el.contents ++ replicate diff Nothing)
-                                            | Nothing -> 
-                                                if length el.contents <> isec_sz 
+                                            | Nothing ->
+                                                if length el.contents <> isec_sz
                                                 then failwith "input section size not equal to its content pattern length"
                                                 else (isec_sz, el.contents)
                                         end
@@ -1769,14 +1773,14 @@ let rec build_image alloc_map acc pos (AllocatedSectionsMap outputs_by_name) bin
                          | _     -> failwith "impossible: no such element"
                        end (* match Map.lookup idstr img.elements *)
                     end (* match maybe_secname *)
-                    | IncludeCommonSymbol(retain_pol, fname, linkable_idx, def, img) -> 
+                    | IncludeCommonSymbol(retain_pol, fname, linkable_idx, def, img) ->
                         (*let _ = errln ("Including common symbol called `" ^ def.def_symname ^ "'")
                         in*)
                         (* We want to get the common symbol as a byte pattern *)
                         let sz = natural_of_elf64_xword def.def_syment.elf64_st_size
                         in
                         let content = Missing_pervasives.replicate sz (Just(byte_of_natural 0))
-                        in 
+                        in
                         (*let _ = Missing_pervasives.outln (make_line "COMMON" (hex_string_of_natural comp_addr)
                              (hex_string_of_natural sz) fname)
                         in*)
@@ -1787,19 +1791,19 @@ let rec build_image alloc_map acc pos (AllocatedSectionsMap outputs_by_name) bin
                             ; def_sym_idx = def.def_sym_idx
                             ; def_linkable_idx = linkable_idx
                         |>))})
-(*                    | Hole(AddressExprFn f) -> 
+(*                    | Hole(AddressExprFn f) ->
                         let next_addr = f addr (AllocatedSectionsMap outputs_by_name)
                         in
                         let n = next_addr - addr
                         in
                         let content = Missing_pervasives.replicate n Nothing
-                        in 
+                        in
                         let _ = Missing_pervasives.outln (make_line "*fill*" (hex_string_of_natural comp_addr)
                              (hex_string_of_natural n)
                              "")
                         in
                         (next_addr - addr, content, {}) *)
-                    | ProvideSymbol(pol, name, (size, info, other)) -> 
+                    | ProvideSymbol(pol, name, (size, info, other)) ->
                         (*let _ = errln ("Creating symbol definition named `" ^ name ^ "' in output section `" ^ secname ^ "'")
                         in*)
                         let symaddr = accum_current_addr (* FIXME: support others *)
@@ -1807,13 +1811,13 @@ let rec build_image alloc_map acc pos (AllocatedSectionsMap outputs_by_name) bin
                         (*let _ = Missing_pervasives.outln (make_line "" (hex_string_of_natural symaddr) "" ("PROVIDE (" ^ name ^ ", .)"))
                         in*)
                         ((* sz *) 0, (* comp_el_pat *) [],  (* this_el_meta *) {(
-                            Just(secname, ((symaddr - output_section_start_addr), 0)), 
+                            Just(secname, ((symaddr - output_section_start_addr), 0)),
                             SymbolDef(symbol_def_for_provide_symbol name size info other control_script_linkable_idx)
                             )}
                         )
                 end (* match comp_el_pat *)
                 in
-                (*let _ = errln ("Appending byte pattern to section " ^ secname ^ ", first 20 bytes: " ^ 
+                (*let _ = errln ("Appending byte pattern to section " ^ secname ^ ", first 20 bytes: " ^
                     (show (take 20 comp_el_pat)))
                 in*)
                 let new_content = append_to_byte_pattern_at_offset (comp_addr - output_section_start_addr) accum_pat comp_el_pat
@@ -1832,12 +1836,12 @@ let rec build_image alloc_map acc pos (AllocatedSectionsMap outputs_by_name) bin
             |>
             in
             (*let _ = Missing_pervasives.outln "" in*)
-            (* Make a new element in the image, also transferring metadata from input elements 
+            (* Make a new element in the image, also transferring metadata from input elements
              * as appropriate. *)
-            let new_by_range_list = 
-            (Just(secname, (0, size)), FileFeature(ElfSection((* We don't yet konw where this'll come in the output file, so ...  *) (* scn_idx *) 0, 
+            let new_by_range_list =
+            (Just(secname, (0, size)), FileFeature(ElfSection((* We don't yet konw where this'll come in the output file, so ...  *) (* scn_idx *) 0,
                       <| elf64_section_name = 0 (* ignored *)
-                       ; elf64_section_type = output_section_type comp 
+                       ; elf64_section_type = output_section_type comp
                        ; elf64_section_flags = output_section_flags comp
                        ; elf64_section_addr = 0 (* ignored -- covered by element *)
                        ; elf64_section_offset = 0 (* ignored -- will be replaced when file offsets are assigned *)
@@ -1853,7 +1857,7 @@ let rec build_image alloc_map acc pos (AllocatedSectionsMap outputs_by_name) bin
             in
             (*let _ = errln ("Metadata for new section " ^ secname ^ " consists of " ^ (show (length new_by_range_list)) ^ " tags.")
             in*)
-            let new_by_range = List.foldl (fun m -> fun (maybe_range, tag) -> 
+            let new_by_range = List.foldl (fun m -> fun (maybe_range, tag) ->
                 let new_s = Set.insert (maybe_range, tag) m
                 in
                 (* let _ = errln ("Inserting an element into by_range; before: " ^ (show (Set.size m)) ^ "; after: " ^ (show (Set.size new_s)))
@@ -1863,9 +1867,9 @@ let rec build_image alloc_map acc pos (AllocatedSectionsMap outputs_by_name) bin
             in
             let new_by_tag = by_tag_from_by_range new_by_range
             in
-            let _ = 
-                let section_tags_bare = List.filter (fun (maybe_range, tag) -> 
-                    match tag with 
+            let _ =
+                let section_tags_bare = List.filter (fun (maybe_range, tag) ->
+                    match tag with
                         | FileFeature(ElfSection(idx, isec)) -> true
                         | _ -> false
                     end) (Set_extra.toList new_by_range)
@@ -1875,11 +1879,11 @@ let rec build_image alloc_map acc pos (AllocatedSectionsMap outputs_by_name) bin
             in
             (* this expression is the return value of add_output_section *)
             (
-                (* new_pos *) output_section_start_addr + size, 
+                (* new_pos *) output_section_start_addr + size,
                 (* new_acc *) <|
                             elements   = Map.insert secname concat_sec_el acc_img.elements
                             (* tag it as a section, and transfer any tags *)
-                         ;  by_range   = (* let _ = errln ("Returning from add_output_section a by_range with " ^ 
+                         ;  by_range   = (* let _ = errln ("Returning from add_output_section a by_range with " ^
                                 (show (Set.size new_by_range))) in *) new_by_range
                          ;  by_tag     = new_by_tag
                          |>,
@@ -1891,13 +1895,13 @@ let rec build_image alloc_map acc pos (AllocatedSectionsMap outputs_by_name) bin
     match script with
         [] -> (acc, (AllocatedSectionsMap outputs_by_name))
         | (element, el_idx) :: more_elements_and_idx ->
-             let do_nothing = (acc, pos, (AllocatedSectionsMap outputs_by_name)) in 
-             let (new_acc, new_pos, new_outputs_by_name) = 
+             let do_nothing = (acc, pos, (AllocatedSectionsMap outputs_by_name)) in
+             let (new_acc, new_pos, new_outputs_by_name) =
              match element with
-                DefineSymbol(symdefpol, name, (symsize, syminfo, symother)) -> 
+                DefineSymbol(symdefpol, name, (symsize, syminfo, symother)) ->
                     (* We've already added this to the output composition. *)
                     do_nothing
-                | AdvanceAddress(AddressExprFn advance_fn_ref) -> 
+                | AdvanceAddress(AddressExprFn advance_fn_ref) ->
                     let advance_fn =
                       match Map.lookup advance_fn_ref alloc_map with
                         | Just m  -> m
@@ -1907,16 +1911,16 @@ let rec build_image alloc_map acc pos (AllocatedSectionsMap outputs_by_name) bin
                     let new_pos = advance_fn pos (AllocatedSectionsMap outputs_by_name)
                     in
                     (acc, new_pos, (AllocatedSectionsMap outputs_by_name))
-                    (* FIXME: the allocated sections map is the subset of the outputs_by_name map 
-                     * that has been allocated -- meaning *both* sized *and* placed. 
-                     * Since we're a multi-pass interpreter, we've sized everything already, but 
+                    (* FIXME: the allocated sections map is the subset of the outputs_by_name map
+                     * that has been allocated -- meaning *both* sized *and* placed.
+                     * Since we're a multi-pass interpreter, we've sized everything already, but
                      * only a subset has been placed. So we need to weed out all elements from
                      * outputs_by_name that don't correspond to a section in the accumulated image.
                      * We should probably include the section's range_tag in the allocated_sections_map,
                      * which would force us to do this, but at the moment neither of these is done. *)
-                | MarkAndAlignDataSegment(maxpagesize, commonpagesize) -> 
+                | MarkAndAlignDataSegment(maxpagesize, commonpagesize) ->
                     (* GNU linker manual says:
-                    
+
                     "DATA_SEGMENT_ALIGN(MAXPAGESIZE, COMMONPAGESIZE)
                             is equivalent to either
                            (ALIGN(MAXPAGESIZE) + (. & (MAXPAGESIZE - 1)))
@@ -1928,54 +1932,54 @@ let rec build_image alloc_map acc pos (AllocatedSectionsMap outputs_by_name) bin
                       latter form is used, it means COMMONPAGESIZE bytes of runtime
                       memory will be saved at the expense of up to COMMONPAGESIZE wasted
                       bytes in the on-disk file."
-                      
+
                         In other words, we're marking the beginning of the data segment
-                        by aligning our position upwards by an amount that 
-                        
+                        by aligning our position upwards by an amount that
+
                         - guarantees we're on a new page...
-                        
+
                         - ... but (option 1) at an address that's congruent, modulo the max page size
                                   (e.g. for 64kB maxpage, 4kB commonpage, we AND with 0xffff)
-                        
+
                         - ... (option 2) at an offset that's at the commonpagesize boundary
                                   immediately preceding the lowest congruent address
                                   (e.g. for 64kB maxpage, 4kB commonpage, we AND with 0xf000,
                                   so if we're at pos 0x1234, we bump up to 0x11000).
-                                  
+
                                   FIXME:
-                                  
+
                                   The GNU linker seems to bump up to 0x12000 here, not 0x11000.
-                                  Specifically, 
-                                  
+                                  Specifically,
+
                                     DATA_SEGMENT_ALIGN (0x200000, 0x1000)
-                                    
+
                                     bumps 0x4017dc up to 0x602000.
-                                    
+
                                   This is indeed better, because it allows the next section
                                   to be output without a big gap in the file.
-                                  
+
                                   LOAD           0x0000000000000000 0x0000000000400000 0x0000000000400000
                                                  0x00000000000017dc 0x00000000000017dc  R E    200000
                                   LOAD           0x0000000000002000 0x0000000000602000 0x0000000000602000
                                                  0x0000000000000120 0x0000000000000ce8  RW     200000
-                                  
+
                                   ... whereas if the second LOAD began at address 0x601000,
                                   the file offset of its first section would have to be 0x11000.
-                                  
+
                                   So what *should* the formula be?
                                   It needs to calculate the next address which
-                                  
+
                                   - is a commonpagesize boundary;
-                                  
+
                                   - is minimally >= the current address, modulo the commonpagesize
-                                  
+
                                   - is minimally >= the current address, modulo the maxpagesize.
-                                  
+
                                   The AND operation gives us something that is minimally *below*
                                   the commonpagesize boundary. I think we need to add COMMONPAGESIZE.
-                                  
+
                                   The code does this (in ldexp.c around line 478 as of binutils 2.25):
-                                  
+
                                         expld.result.value = align_n (expld.dot, maxpage);
                                         /* omit relro phase */
                                         if (expld.dataseg.phase == exp_dataseg_adjust)
@@ -1984,70 +1988,70 @@ let rec build_image alloc_map acc pos (AllocatedSectionsMap outputs_by_name) bin
                                             expld.result.value += ((expld.dot + commonpage - 1)
                                                                    & (maxpage - commonpage));
                                         }
-                                        else 
+                                        else
                                         {
                                           expld.result.value += expld.dot & (maxpage - 1);
-                                        
+
                                   Which amounts to:
-                                       
+
                                        1. first, align up to maxpage. So for our example, we're now 0x10000.
                                           or for our real example, we're now 0x600000
-                                       
-                                          THEN since the first phase (expld_dataseg_none) 
+
+                                          THEN since the first phase (expld_dataseg_none)
                                           hits the final "else" case,
                                           we immediately restore the modulus of the address,
                                           giving 0x60188c.
                                            or 0x6019ac  the second time around (FIXME: why two?)
-                                       
+
                                        2. next, on the relevant phase (pass) of the script interpreter,
                                           i.e. OPTION 2
                                           if commonpage < maxpage,
                                           bump up the *non-maxpage-aligned non-modulo-restored* address
-                                          by 
+                                          by
                                               (. + commonpage - 1)  &  (maxpage - commonpage)
-                                            
+
                                           i.e. for our example earlier
                                               (0x01234 + 0x1000 - 1) &  (0xf000)
-                                              = 
+                                              =
                                                0x02233               &   0xf000
                                               =
                                                0x02000
-                                               
+
                                          i.e. for our real example
                                               (0x4019ac + 0x1000 - 1) &  (0x1ff000)
-                                              = 
+                                              =
                                                0x4019ac + 0x1000 - 1) &   0x1ff000
                                               =
                                                0x002000
-                                               
+
                                         3. OPTION 1 is implemented by the trailing "else {"
                                            -- it restores the modulus.
-                                           
-                                  So the problem with our original logic (below) was that 
+
+                                  So the problem with our original logic (below) was that
                                   it did what the manual says, not what the code does.
                                   Specifically, the code for option 2 does
-                                  
+
                                     (. + commonpagesize - 1) & (maxpagesize - commonpagesize)
-                                    
+
                                     and NOT simply
-                                    
+
                                     . & (maxpagesize - commonpagesize).
-                                    
+
                                   FIXME: report this bug.
-                                  
-                        
+
+
                         Note that intervening commands can do arbitrary things to the location
                         counter, so we can't do any short-cut arithmetic based on section sizes;
-                        we actually have to run the layout procedure til we hit the end of the 
-                        data segment, and then see how we do. 
-                        
+                        we actually have to run the layout procedure til we hit the end of the
+                        data segment, and then see how we do.
+
                         We run this function *forward* with the first option on a subset
                         of the script ending with the end of the data segment.
-                        We then see what comes back. 
-                    
+                        We then see what comes back.
+
                      *)
                     (* let num_pages_used *)
-                    (*let _ = errln ("Option 1 congruence add-in from pos 0x" ^ (hex_string_of_natural pos) ^ ", maxpagesize 0x" ^ 
+                    (*let _ = errln ("Option 1 congruence add-in from pos 0x" ^ (hex_string_of_natural pos) ^ ", maxpagesize 0x" ^
                         (hex_string_of_natural maxpagesize) ^ " is 0x" ^ (hex_string_of_natural (natural_land pos (maxpagesize - 1))))
                     in*)
                     let option1 = align_up_to maxpagesize pos + (natural_land pos (maxpagesize - 1))
@@ -2058,21 +2062,21 @@ let rec build_image alloc_map acc pos (AllocatedSectionsMap outputs_by_name) bin
                     in
                     (*let _ = errln ("Mark/align data segment: option 2 is to bump pos to 0x" ^ (hex_string_of_natural option2))
                     in*)
-                    let data_segment_endpos = (fun startpos -> 
-                        (* run forward from here until MarkDataSegmentEnd, 
+                    let data_segment_endpos = (fun startpos ->
+                        (* run forward from here until MarkDataSegmentEnd,
                          * accumulating the actually-made outputs by name and their sizes *)
-                        let (endpos, _) = List.foldl (fun (curpos, seen_end) -> fun (new_script_item, new_script_item_idx) -> 
+                        let (endpos, _) = List.foldl (fun (curpos, seen_end) -> fun (new_script_item, new_script_item_idx) ->
                             (*let _ = errln ("Folding at pos 0x" ^ (hex_string_of_natural curpos))
                             in*)
-                            if seen_end 
+                            if seen_end
                             then (curpos, true)
-                            else let (newpos, new_seen) = match new_script_item with 
-                                | MarkDataSegmentEnd -> 
+                            else let (newpos, new_seen) = match new_script_item with
+                                | MarkDataSegmentEnd ->
                                     (*let _ = errln "data segment end"
                                     in*)
                                     (* break the loop early here *)
                                     (curpos, true)
-                                | OutputSection(outputguard, maybe_expr, name, sub_elements) -> 
+                                | OutputSection(outputguard, maybe_expr, name, sub_elements) ->
                                     (*let _ = errln ("output section " ^ name)
                                     in*)
                                     let maybe_found = Map.lookup name outputs_by_name
@@ -2082,12 +2086,12 @@ let rec build_image alloc_map acc pos (AllocatedSectionsMap outputs_by_name) bin
                                         | Nothing -> failwith "internal error: output section not found"
                                     end
                                     in
-                                    (* Sometimes a given output section name, say .eh_frame, can come from multiple 
-                                     * script elements with disjoint guard conditions (only_if_ro and only_if_rw, say). 
+                                    (* Sometimes a given output section name, say .eh_frame, can come from multiple
+                                     * script elements with disjoint guard conditions (only_if_ro and only_if_rw, say).
                                      * Only one of them will actually be selected when the guard is being evaluated.
                                      * So when we "replay" the sections' output here, we want to skip the ones whose
                                      * guards were false. The way we implement this is to store the originating script
-                                     * element idx in the allocated_output_sections map. We can test that against our 
+                                     * element idx in the allocated_output_sections map. We can test that against our
                                      * current script element_idx here *)
                                     let replay_output = (seen_script_el_idx = el_idx)
                                     in
@@ -2104,7 +2108,7 @@ let rec build_image alloc_map acc pos (AllocatedSectionsMap outputs_by_name) bin
                                         (end_addr, (* seen_end *) false)
                                     )
                                     else (curpos, (* seen_end *) false)
-                                | AdvanceAddress(AddressExprFn advance_fn_ref) -> 
+                                | AdvanceAddress(AddressExprFn advance_fn_ref) ->
                                     (*let _ = errln "Advance address"
                                     in*)
                                     let advance_fn =
@@ -2133,7 +2137,7 @@ let rec build_image alloc_map acc pos (AllocatedSectionsMap outputs_by_name) bin
                     (*let _ = errln ("Mark/align data segment: option 2 gives an endpos of 0x" ^ (hex_string_of_natural endpos_option2))
                     in*)
                     let npages = (fun startpos -> (fun endpos ->
-                        ((align_up_to  commonpagesize endpos) - 
+                        ((align_up_to  commonpagesize endpos) -
                         (round_down_to commonpagesize startpos)) / commonpagesize
                     ))
                     in
@@ -2145,12 +2149,12 @@ let rec build_image alloc_map acc pos (AllocatedSectionsMap outputs_by_name) bin
                     in*)
                     (*let _ = errln ("Mark/align data segment: option 2 uses " ^ (show npages_option2) ^ " COMMONPAGESIZE-sized pages")
                     in*)
-                    if npages_option1 < npages_option2 
+                    if npages_option1 < npages_option2
                     then (*let _ = errln "Choosing option 1" in*) (acc, option1, (AllocatedSectionsMap outputs_by_name))
                     else (*let _ = errln "Choosing option 2" in*) (acc, option2, (AllocatedSectionsMap outputs_by_name))
                 | MarkDataSegmentEnd -> do_nothing
                 | MarkDataSegmentRelroEnd(*(fun_from_secs_to_something)*) -> do_nothing
-                | OutputSection(outputguard, maybe_expr, name, sub_elements) -> 
+                | OutputSection(outputguard, maybe_expr, name, sub_elements) ->
                     (* Get the composition we computed earlier, and actually put it in
                      * the image, assigning an address to it. *)
                     let maybe_found = Map.lookup name outputs_by_name
@@ -2167,8 +2171,8 @@ let rec build_image alloc_map acc pos (AllocatedSectionsMap outputs_by_name) bin
                     let count_sections_in_image = fun img -> (
                         let (section_tags, section_ranges) = elf_memory_image_section_ranges img
                         in
-                        let section_tags_bare = List.map (fun tag -> 
-                            match tag with 
+                        let section_tags_bare = List.map (fun tag ->
+                            match tag with
                                 | FileFeature(ElfSection(idx, isec)) -> true
                                 | _ -> false
                             end) section_tags
@@ -2176,10 +2180,10 @@ let rec build_image alloc_map acc pos (AllocatedSectionsMap outputs_by_name) bin
                         length section_tags_bare
                     )
                     in
-                    (* Do we actually want to add an output section? Skip empty sections. 
-                     * CARE: we actually want to heed the proper ld semantics for empty sections 
+                    (* Do we actually want to add an output section? Skip empty sections.
+                     * CARE: we actually want to heed the proper ld semantics for empty sections
                      * (e.g. ". = ." will force output). From the GNU ld manual:
-                     
+
                         The linker will not normally create output sections with no contents.
                         This is for convenience when referring to input sections that may or
                         may not be present in any of the input files.  For example:
@@ -2199,16 +2203,16 @@ let rec build_image alloc_map acc pos (AllocatedSectionsMap outputs_by_name) bin
                         defines symbols in the output section.  In that case the linker will
                         obey the address assignments, possibly advancing dot even though the
                         section is discarded.
-                     
+
                      * It follows that we might discard the output section,
                      * but *retain* the symbol definitions within it,
-                     * and keep the dot-advancements that 
+                     * and keep the dot-advancements that
                      * In other words, we care about two things:
-                     * 
-                     * -- whether there are any non-empty input sections, *or* 
+                     *
+                     * -- whether there are any non-empty input sections, *or*
                      *       non-excluded assignments to dot, inside the composition:
                      *       this controls whether the section is output
-                     
+
                      * -- whether the script defines symbols in the section; if so
                      *       then *even if the section is discarded*
                      *       we must honour the address assignments,
@@ -2219,7 +2223,7 @@ let rec build_image alloc_map acc pos (AllocatedSectionsMap outputs_by_name) bin
                      *)
                     let comp_element_allocates_space = fun comp_el -> match comp_el with
                         IncludeInputSection(_, irec) ->
-                            (*let _ = errln ("Saw an input section named `" ^ irec.isec.elf64_section_name_as_string ^ 
+                            (*let _ = errln ("Saw an input section named `" ^ irec.isec.elf64_section_name_as_string ^
                                 "' of size " ^ (show irec.isec.elf64_section_size))
                             in*)
                             irec.isec.elf64_section_size > 0
@@ -2233,13 +2237,13 @@ let rec build_image alloc_map acc pos (AllocatedSectionsMap outputs_by_name) bin
                                 | Nothing -> failwith "alloc_map invariant failed"
                               end
                             in
-                            let assignment_is_excluded = fun f -> 
+                            let assignment_is_excluded = fun f ->
                                 (* really makes you wish you were programming in Lisp *)
-                                let always_gives_0 = 
+                                let always_gives_0 =
                                     (f 0 (AllocatedSectionsMap outputs_by_name) = 0
                                     && f 42 (AllocatedSectionsMap outputs_by_name) = 0)     (* FIXME: this is wrong *)
                                 in
-                                let always_gives_dot = 
+                                let always_gives_dot =
                                     (f 0 (AllocatedSectionsMap outputs_by_name) = 0
                                     && f 42 (AllocatedSectionsMap outputs_by_name) = 42)     (* FIXME: this is wrong *)
                                 in
@@ -2259,7 +2263,7 @@ let rec build_image alloc_map acc pos (AllocatedSectionsMap outputs_by_name) bin
                     in
                     if not do_output then
                         (*let _ = errln ("At pos 0x" ^ (hex_string_of_natural pos) ^ ", skipping output section " ^ name ^
-                            " because " ^ (if not section_contains_non_empty_inputs 
+                            " because " ^ (if not section_contains_non_empty_inputs
                                         then "it contains no non-empty inputs"
                                         else "it was excluded by its output guard"))
                         in*)
@@ -2287,7 +2291,7 @@ let rec build_image alloc_map acc pos (AllocatedSectionsMap outputs_by_name) bin
                             }
                             )) ^ "; count_sections_in_image says " ^ (show (
                                 length (Multimap.lookupBy Memory_image_orderings.tagEquiv (FileFeature(ElfSection(0, null_elf64_interpreted_section))) new_acc.by_tag)
-                                )) 
+                                ))
                             )
                         in *)
                         (* let _ = errln ("After adding output section, we have " ^ (show (count_sections_in_image new_acc))
@@ -2300,40 +2304,40 @@ let rec build_image alloc_map acc pos (AllocatedSectionsMap outputs_by_name) bin
             end
             in
             (* recurse *)
-            build_image alloc_map new_acc new_pos new_outputs_by_name bindings_by_name more_elements_and_idx control_script_linkable_idx linker_defs_by_name
+            build_image a alloc_map new_acc new_pos new_outputs_by_name bindings_by_name more_elements_and_idx control_script_linkable_idx linker_defs_by_name
     end
 
 (*
-let rec consecutive_commons rev_acc l = 
+let rec consecutive_commons rev_acc l =
     match l with
     [] -> reverse rev_acc
-    | IncludeCommonSymbol(pol, fname, def, img) :: rest -> 
+    | IncludeCommonSymbol(pol, fname, def, img) :: rest ->
         consecutive_commons ((pol, fname, def, img) :: rev_acc) rest
     | _ -> reverse rev_acc
 end
 *)
 
 val default_place_orphans : input_output_assignment -> list input_spec -> input_output_assignment
-let default_place_orphans (discards, outputs) inputs = 
+let default_place_orphans (discards, outputs) inputs =
     (* Try to emulate the GNU linker.
      * Its docs say:
-     
+
      "It attempts to place orphan sections after
      non-orphan sections of the same attribute, such as code vs data,
      loadable vs non-loadable, etc.  If there is not enough room to do this
      then it places at the end of the file.
 
 
-     For ELF targets, the attribute of the section includes section type 
+     For ELF targets, the attribute of the section includes section type
      as well as section flag."
- 
-     * It places the .tm_clone_table orphan 
+
+     * It places the .tm_clone_table orphan
 
           [ 9] .tm_clone_table   PROGBITS         0000000000000000  00000160
                0000000000000000  0000000000000000  WA       0     0     8
-     
+
      as
-     
+
              .data          0x0000000000602120        0x0 crtend.o
              .data          0x0000000000602120        0x0 crtn.o
 
@@ -2348,7 +2352,7 @@ let default_place_orphans (discards, outputs) inputs =
              *(.data1)
                             0x0000000000602120                _edata = .
 
-     i.e. between .data and .data1. In the script: 
+     i.e. between .data and .data1. In the script:
 
           .got.plt        : { *(.got.plt)  *(.igot.plt) }
           .data           :
@@ -2360,13 +2364,13 @@ let default_place_orphans (discards, outputs) inputs =
           _edata = .; PROVIDE (edata = .);
           . = .;
           __bss_start = .;
-     
+
      i.e. no clear reason for why between .data and .data1. In the code:
-     
+
          (see elf32em.c line 1787 in binutils 2.25)
-         
+
          ... the key bit of code is as follows.
-         
+
   place = NULL;
   if ((s->flags & (SEC_ALLOC | SEC_DEBUGGING)) == 0)
     place = &hold[orphan_nonalloc];
@@ -2397,7 +2401,7 @@ let default_place_orphans (discards, outputs) inputs =
         .. we replicate it here.
      *)
      let output_irecs = List.foldl (fun acc -> fun outp -> (match outp with
-        (OutputSectionSpec(guard, maybe_addr, name, comp), script_el_idx) -> 
+        (OutputSectionSpec(guard, maybe_addr, name, comp), script_el_idx) ->
             let all_irecs = List.foldl (fun inner_acc -> fun comp_el -> match comp_el with
                 IncludeInputSection(_, irec) -> Set.insert irec inner_acc
                 | _ -> inner_acc
@@ -2407,9 +2411,9 @@ let default_place_orphans (discards, outputs) inputs =
         | _ -> acc
      end)) {} outputs
      in
-     let (orphans : list input_spec) = List.filter (fun inp -> match inp with 
+     let (orphans : list input_spec) = List.filter (fun inp -> match inp with
              InputSection(irec) -> let v = not (irec IN output_irecs)
-                                   in (*let _ = if v then errln ("Saw an orphan input section: " ^ 
+                                   in (*let _ = if v then errln ("Saw an orphan input section: " ^
                                     irec.secname ^ " in " ^ irec.fname) else ()
                                    in*) v
              | _ -> false
@@ -2423,8 +2427,8 @@ let default_place_orphans (discards, outputs) inputs =
          in
          let (discards, outputs) = acc in
          let find_output = fun maybe_name -> fun maybe_type -> fun flags_must_have -> fun flags_must_not_have -> (
-            Missing_pervasives.find_index (fun (OutputSectionSpec (guard, maybe_addr, name, comp), script_el_idx) -> 
-                let flags = output_section_flags comp in 
+            Missing_pervasives.find_index (fun (OutputSectionSpec (guard, maybe_addr, name, comp), script_el_idx) ->
+                let flags = output_section_flags comp in
                     match maybe_name with Just n -> n = name | Nothing -> true end
                  && match maybe_type with Just t -> output_section_type comp = t | Nothing -> true end
                  && Set.all (fun x -> flag_is_set x flags) flags_must_have
@@ -2439,8 +2443,8 @@ let default_place_orphans (discards, outputs) inputs =
          let place_after_rel = find_output (Just(".rela.dyn")) (Just(sht_rela)) {} {} in
          let place_after_data = find_output (Just(".data")) (Just(sht_progbits)) { shf_alloc; shf_write } {} in
          let place_after_text = find_output (Just(".text")) (Just(sht_progbits)) { shf_alloc; shf_execinstr } {} in
-         let (place_after : maybe natural) = match input with 
-            InputSection(irec) -> 
+         let (place_after : maybe natural) = match input with
+            InputSection(irec) ->
                 (* HACK: simulates GNU linker, but this logic ought to go elsewhere *)
                 if irec.isec.elf64_section_name_as_string = ".note.GNU-stack" then Nothing
                 else
@@ -2461,18 +2465,18 @@ let default_place_orphans (discards, outputs) inputs =
                      && not (flag_is_set shf_execinstr irec.isec.elf64_section_flags)
                         then place_after_data
                 else place_after_text
-        end 
+        end
         in
         let (discards, outputs) = acc in
         match place_after with
             Just idx -> (* The section exists and has the flags we expected, and is at output idx *)
-                (discards, mapi (fun i -> fun output -> 
+                (discards, mapi (fun i -> fun output ->
                     (* FIXME: also fix up flags, alignment etc. *)
                     let (OutputSectionSpec (guard, maybe_addr, name, comp), script_el_idx) = output in
                     if naturalFromNat i = idx then (OutputSectionSpec(guard, maybe_addr, name, comp ++ [IncludeInputSection(DefaultKeep, irec)]), script_el_idx) else output
                     ) outputs
                 )
-            | Nothing -> 
+            | Nothing ->
                     (*let _ = errln ("Warning: discarding orphan section `" ^ irec.isec.elf64_section_name_as_string
                         ^ "' from file `" ^ irec.fname ^ "'")
                     in*)
@@ -2480,7 +2484,7 @@ let default_place_orphans (discards, outputs) inputs =
          end
      )
      in
-     List.foldl place_one_orphan (discards, outputs) orphans 
+     List.foldl place_one_orphan (discards, outputs) orphans
 
 val interpret_linker_control_script :
     address_expr_fn_map allocated_sections_map ->
@@ -2496,13 +2500,13 @@ val interpret_linker_control_script :
 let interpret_linker_control_script alloc_map script linkables control_script_linkable_idx a inputs seen_ordering place_orphans initial_bindings_by_name =
     let labelled_script = label_script script
     in
-    (*let _ = List.mapi (fun i -> fun input -> 
+    (*let _ = List.mapi (fun i -> fun input ->
         errln ("Input " ^ (show i) ^ " is " ^
             match input with
-                InputSection(inp) -> 
-                    "input section, name `" ^ inp.secname ^ 
+                InputSection(inp) ->
+                    "input section, name `" ^ inp.secname ^
                     "', from file `" ^ inp.fname ^ "' (linkable idx " ^ (show inp.idx) ^ ")"
-                | Common(idx, symname, img, def) -> 
+                | Common(idx, symname, img, def) ->
                     "common symbol `" ^ symname ^ "'"
             end
         )
@@ -2514,16 +2518,16 @@ let interpret_linker_control_script alloc_map script linkables control_script_li
     (* place orphans *)
     let (discards, outputs) = place_orphans (discards_before_orphans, outputs_before_orphans) inputs
     in
-    (* In assigning inputs to outputs, we may also have defined some symbols. These affect the 
+    (* In assigning inputs to outputs, we may also have defined some symbols. These affect the
      * bindings that are formed. So, we rewrite the bindings here. Note that we have to do so here,
-     * not in the caller, because these extra bindings can affect the reachability calculation 
+     * not in the caller, because these extra bindings can affect the reachability calculation
      * during GC. *)
     let (linker_defs_by_name, (bindings_by_name : (Map.map string (list (natural * binding))))) = (
         let (script_defs_by_name : Map.map string (list (symbol_definition * symbol_def_policy)))
-         = List.foldl (fun acc -> (fun ((OutputSectionSpec (guard, maybe_addr, secname, comp)), script_el_idx) -> 
+         = List.foldl (fun acc -> (fun ((OutputSectionSpec (guard, maybe_addr, secname, comp)), script_el_idx) ->
             List.foldl (fun inner_acc -> fun comp_el -> (
                 match comp_el with
-                    ProvideSymbol(pol, name, (size, info, other)) -> 
+                    ProvideSymbol(pol, name, (size, info, other)) ->
                         (*let _ = errln ("Linker script defining symbol `" ^ name ^ "'")
                         in*)
                         let def = symbol_def_for_provide_symbol name size info other control_script_linkable_idx
@@ -2539,13 +2543,13 @@ let interpret_linker_control_script alloc_map script linkables control_script_li
             )) (acc : Map.map string (list (symbol_definition * symbol_def_policy))) comp
         )) Map.empty outputs
         in
-        (* Now that we've made these definitions, what bindings are affected? 
+        (* Now that we've made these definitions, what bindings are affected?
          * We also use this opportunity to bind references to linker-generated symbols,
          * such as _GLOBAL_OFFSET_TABLE_, since any definitions of these should now be merged
          * into our inputs. *)
         (* bit of a HACK: reconstruct the linkable img and idx from the input items *)
-        let idx_to_img = List.foldl (fun acc_m -> fun item -> 
-                            match item with 
+        let idx_to_img = List.foldl (fun acc_m -> fun item ->
+                            match item with
                                 Common(idx, _, img, symdef) -> Map.insert idx img (Map.delete idx acc_m)
                                 | InputSection(irec) -> Map.insert irec.idx irec.img (Map.delete irec.idx acc_m)
                             end
@@ -2559,21 +2563,21 @@ let interpret_linker_control_script alloc_map script linkables control_script_li
         let first_linkable_item = match linkables with x :: more -> x | _ -> failwith "internal error: no linkables" end
         in
         let (control_script_input_item : input_item) = (
-            "(built-in control script)", 
-            ControlScript, 
+            "(built-in control script)",
+            ControlScript,
             (BuiltinControlScript, [Builtin])
         )
         in
         let (control_script_linkable_item : linkable_item) = (
-            ControlScriptDefs, control_script_input_item, 
+            ControlScriptDefs, control_script_input_item,
                   <| item_fmt = ""
                    ; item_check_sections = false
                    ; item_copy_dt_needed = false
-                   ; item_force_output = true 
+                   ; item_force_output = true
                    |>
         )
         in
-        let updated_bindings_and_new_defs = Map.map (fun b_list_initial -> 
+        let updated_bindings_and_new_defs = Map.map (fun b_list_initial ->
             List.map (fun (b_idx, b_initial) ->
                 let ((iref_idx, iref, iref_item), maybe_idef) = b_initial
                 in
@@ -2584,12 +2588,12 @@ let interpret_linker_control_script alloc_map script linkables control_script_li
                     | Nothing -> []
                 end
                 in
-                let (possible_linker_generated_def : maybe symbol_definition) = 
+                let (possible_linker_generated_def : maybe symbol_definition) =
                     if a.symbol_is_generated_by_linker iref.ref_symname
                         then (* can we find a definition by this name? *)
                             (match Map.lookup lowest_idx idx_to_img with
                                 Nothing -> failwith "no lowest idx found"
-                                | Just img -> 
+                                | Just img ->
                                     match List.filter (fun def -> def.def_symname = iref.ref_symname) (defined_symbols img) with
                                         [] -> Nothing
                                         | [def] -> Just(def)
@@ -2598,12 +2602,12 @@ let interpret_linker_control_script alloc_map script linkables control_script_li
                             end)
                     else Nothing
                 in
-                (* If the binding has no def, we always use the def we have. 
+                (* If the binding has no def, we always use the def we have.
                  * If the binding has a def, we use our def only if the policy is AlwaysDefine. *)
-                (*let _ = errs ("Do we override binding " ^ (show b_idx) ^ ", symbol named `" ^ 
+                (*let _ = errs ("Do we override binding " ^ (show b_idx) ^ ", symbol named `" ^
                     iref.ref_symname ^ "'? ")
                 in*)
-                (* FIXME: check real semantics of defining symbols like '_GLOBAL_OFFSET_TABLE_' in linker script or input objects. 
+                (* FIXME: check real semantics of defining symbols like '_GLOBAL_OFFSET_TABLE_' in linker script or input objects.
                  * This is really just a guess. *)
                 let new_b_and_maybe_new_def = match (maybe_idef, possible_script_defs, possible_linker_generated_def) with
                     | (_, [], Nothing) -> (*let _ = errln "no" in *)
@@ -2639,22 +2643,22 @@ let interpret_linker_control_script alloc_map script linkables control_script_li
         (new_symbol_defs_by_name, updated_bindings)
     )
     in
-    (*let _ = errln ("For __fini_array_end, we have " ^ 
+    (*let _ = errln ("For __fini_array_end, we have " ^
         (let all_bs = match Map.lookup "__fini_array_end" bindings_by_name with
             Just l -> l
             | Nothing -> []
         end
         in
-        ((show (length all_bs)) ^ 
-        " bindings, of which " ^ 
-        (show (length (List.filter (fun (bi, ((ref_idx, ref, ref_item), maybe_def)) -> 
+        ((show (length all_bs)) ^
+        " bindings, of which " ^
+        (show (length (List.filter (fun (bi, ((ref_idx, ref, ref_item), maybe_def)) ->
             match maybe_def with
                 Just _ -> true
                 | _ -> false
             end
         ) all_bs))) ^ " have defs")))
     in*)
-    let outputs_by_name = 
+    let outputs_by_name =
         (let insert_fun = fun m -> (fun (OutputSectionSpec(guard, maybe_addr, name, compos), script_idx) -> Map.insert name ((OutputSectionSpec (guard, maybe_addr, name, compos)), script_idx) m)
         in
         List.foldl insert_fun Map.empty outputs)
@@ -2663,7 +2667,7 @@ let interpret_linker_control_script alloc_map script linkables control_script_li
     (*let _ = Missing_pervasives.outln "\nDiscarded input sections\n"
     in*)
     let discard_line = fun i -> (match i with
-        InputSection(s) -> 
+        InputSection(s) ->
             let lpadded_secname = (" " ^ s.secname)
             in
             lpadded_secname ^ (space_padding_and_maybe_newline 16 lpadded_secname) ^ "0x0000000000000000" (* FIXME *)
@@ -2682,14 +2686,14 @@ let interpret_linker_control_script alloc_map script linkables control_script_li
     in*)
     (* FIXME: print LOAD and START_GROUP trace *)
     let (img, outputs_by_name_with_position)
-     = build_image alloc_map empty_elf_memory_image 0 outputs_by_name_after_gc bindings_by_name labelled_script control_script_linkable_idx linker_defs_by_name
+     = build_image a alloc_map empty_elf_memory_image 0 outputs_by_name_after_gc bindings_by_name labelled_script control_script_linkable_idx linker_defs_by_name
     in
-    (*let _ = errln ("Final image has " ^ (show (Map.size img.elements)) ^ " elements and " 
+    (*let _ = errln ("Final image has " ^ (show (Map.size img.elements)) ^ " elements and "
         ^ (show (Set.size img.by_tag)) ^ " metadata tags, of which " ^ (
             let (section_tags, section_ranges) = elf_memory_image_section_ranges img
             in
-            let section_tags_bare = List.map (fun tag -> 
-                match tag with 
+            let section_tags_bare = List.map (fun tag ->
+                match tag with
                     | FileFeature(ElfSection(idx, isec)) -> (idx, isec)
                     | _ -> failwith "not section tag"
                 end) section_tags
@@ -2697,9 +2701,9 @@ let interpret_linker_control_script alloc_map script linkables control_script_li
             show (length section_tags_bare)
         ) ^ " are sections.")
     in*)
-    (* The link map output for the section/address assignment basically mirrors our notion of 
+    (* The link map output for the section/address assignment basically mirrors our notion of
      * output section composition.  In the following:
-     
+
                 0x0000000000400000                PROVIDE (__executable_start, 0x400000)
                 0x0000000000400190                . = (0x400000 + SIZEOF_HEADERS)
 
@@ -2721,26 +2725,26 @@ let interpret_linker_control_script alloc_map script linkables control_script_li
 .gnu.hash
  *(.gnu.hash)
 
-... we can see that 
+... we can see that
 
         - symbol provision, holes and output sections all get lines
-        
+
         - each output section appears with its name left-aligned, and its address,
              if any, appearing afterwards; if so, the section's total size also follows.
-        
+
         - each input query is printed verbatim, e.g. "*(.note.gnu.build-id)"
-        
+
         - underneath this, a line is printed for each input section that was included,
              with its address and size. This can spill onto a second line in the usual way.
-        
+
         - holes are shown as "*fill*"
-        
+
         - provided symbols are shown as in the linker script source.
-        
+
     PROBLEM: we don't have the script in source form, so we can't print the queries verbatim.
     I should really annotate each query with its source form; when the script is parsed from source,
     this can be inserted automatically. For the moment, what to do? I could annotate each script
     element manually. For the moment, for diffing purposes, filter out lines with asterisks.
-     
+
      *)
     (img, bindings_by_name)

@@ -1,0 +1,1568 @@
+open import Basic_classes
+open import Bool
+open import List
+open import Num
+open import Show
+open import String
+
+open import Error
+open import Maybe
+
+open import Abi_utilities
+open import Abis
+open import Assert_extra
+open import Auxv
+open import Byte_pattern
+open import Byte_pattern_extra
+open import Byte_sequence
+open import Elf_dynamic
+open import Elf_file
+open import Elf_header
+open import Elf_interpreted_section
+open import Elf_interpreted_segment
+open import Elf_memory_image_of_elf64_file
+open import Elf_note
+open import Elf_program_header_table
+open import Elf_relocation
+open import Elf_section_header_table
+open import Elf_symbol_table
+open import Elf_types_native_uint
+open import Filesystem
+open import Gnu_ext_abi
+open import Gnu_ext_dynamic
+open import Gnu_ext_program_header_table
+open import Gnu_ext_section_header_table
+open import Gnu_ext_symbol_versioning
+open import Harness_interface
+open import Ldconfig
+open import Memory_image
+open import Missing_pervasives
+open import Endianness
+
+open import Abi_mips64
+open import Abi_mips64_dynamic
+open import Abi_mips64_relocation
+
+open import Abi_amd64
+open import Abi_amd64_relocation
+
+open import Abi_cheri_mips64
+open import Abi_cheri_mips64_dynamic
+open import Abi_cheri_mips64_relocation
+open import Abi_cheri_mips64_capability
+
+let get_file_abi f =
+  let guessed_abi = List.find (fun abi ->
+    abi.is_valid_elf_header f.elf64_file_header
+  ) Abis.all_abis in
+  match guessed_abi with
+    | Just abi -> Gnu_ext_abi.gnu_extend (Abis.tls_extend abi)
+    | Nothing -> failwith "output file does not conform to any known ABI"
+  end
+
+let load_memory_image f =
+  let abi = get_file_abi f in
+  elf_memory_image_of_elf64_file abi "<input file>" f
+
+let load_memory_image_with_sections f =
+  let f_without_phdr = <|
+    elf64_file_header = f.elf64_file_header;
+    elf64_file_program_header_table = [];
+    elf64_file_section_header_table = f.elf64_file_section_header_table;
+    elf64_file_interpreted_segments = f.elf64_file_interpreted_segments;
+    elf64_file_interpreted_sections = f.elf64_file_interpreted_sections;
+    elf64_file_bits_and_bobs = f.elf64_file_bits_and_bobs
+  |> in
+  load_memory_image f_without_phdr
+
+let load_memory_image_with_annotations f =
+  (* TODO: this is a hack *)
+  let raw = load_memory_image f in
+  let annotated = load_memory_image_with_sections f in
+  <|
+    elements = raw.elements;
+    by_range = annotated.by_range;
+    by_tag = annotated.by_tag
+  |>
+
+let print_elf64_phdr f =
+  let _ = Missing_pervasives.errln "Program header:" in
+  let _ = List.map (fun pent ->
+    Missing_pervasives.errln (
+      "  offset=0x" ^
+      (hex_string_of_natural (natural_of_elf64_off pent.elf64_p_offset))
+      ^ " addr=0x" ^
+      (hex_string_of_natural (natural_of_elf64_addr pent.elf64_p_vaddr))
+      ^ " filesz=0x" ^
+      (hex_string_of_natural (natural_of_elf64_xword pent.elf64_p_filesz))
+      ^ " memsz=0x" ^
+      (hex_string_of_natural (natural_of_elf64_xword pent.elf64_p_memsz))
+      ^ " flags=" ^
+      (string_of_elf_segment_permissions (natural_of_elf64_word pent.elf64_p_flags))
+    )
+  ) f.elf64_file_program_header_table in
+  ()
+
+let get_load_segment_at f addr =
+  let l = List.filter (fun seg ->
+    seg.elf64_segment_type = Elf_program_header_table.elf_pt_load &&
+      addr >= seg.elf64_segment_base &&
+      addr < seg.elf64_segment_base + seg.elf64_segment_size
+  ) f.elf64_file_interpreted_segments in
+  match l with
+    | [seg] -> return seg
+    | [] -> Error.fail ("get_load_segment_at: no segment found at 0x" ^ (hex_string_of_natural addr))
+    | _ -> Error.fail ("get_load_segment_at: multiple segments found at 0x" ^ (hex_string_of_natural addr))
+  end
+
+let get_load_segment_byte_sequence_at f addr =
+  get_load_segment_at f addr >>= fun seg ->
+  Byte_sequence.dropbytes (addr - seg.elf64_segment_base) seg.elf64_segment_body
+
+let read_nt_auxv_execfn endian auxv f =
+  Auxv.find_elf64_auxv_value auxv Auxv.at_execfn >>= fun maybe_addr ->
+  match maybe_addr with
+    | Just addr ->
+      get_load_segment_byte_sequence_at f addr >>= fun value_bs ->
+      Elf_note.read_string value_bs >>= fun (s, _) ->
+      return (Just s)
+    | Nothing -> return Nothing
+  end
+
+let read_nt_procstat_psstrings_argv0 endian note_segs f =
+  (* TODO: parse PSSTRINGS on pure CHERI ABIs *)
+  if header_is_pure_cheri_mips64 f.elf64_file_header then return Nothing else
+  Error.foldM (fun value note_seg ->
+    let note_name = name_string_of_elf64_note note_seg in
+    let note_type = natural_of_elf64_word note_seg.elf64_note_type in
+    if (note_name = "FreeBSD") && note_type = Elf_note.nt_procstat_psstrings then
+      let item_size = 8 in (* Size of an address *)
+      read_elf64_freebsd_note_desc endian note_seg item_size >>= fun bs ->
+      (* Triple indirection, just because we like it *)
+      Elf_note.read_elf64_nt_procstat_psstrings endian bs >>= fun psstrings_addr ->
+      let psstrings_addr = natural_of_elf64_addr psstrings_addr in
+      get_load_segment_byte_sequence_at f psstrings_addr >>= fun psstrings_bs ->
+      Elf_note.read_elf64_psstrings endian psstrings_bs >>= fun psstrings ->
+      let argvstr_addr = natural_of_elf64_addr psstrings.elf64_psstrings_argvstr in
+      get_load_segment_byte_sequence_at f argvstr_addr >>= fun argvstr_bs ->
+      read_elf64_addr endian argvstr_bs >>= fun (argv0_addr, _) ->
+      let argv0_addr = natural_of_elf64_addr argv0_addr in
+      get_load_segment_byte_sequence_at f argv0_addr >>= fun argv0_bs ->
+      Elf_note.read_string argv0_bs >>= fun (argv0str, _) ->
+      return (Just argv0str)
+    else
+      return value
+  ) Nothing note_segs
+
+let load_file filename =
+  let endian = Endianness.default_endianness in
+  Byte_sequence.acquire filename >>= fun bs ->
+  let read_uchar = Elf_types_native_uint.read_unsigned_char endian in
+  Error.repeatM' Elf_header.ei_nident bs read_uchar >>= fun (ident, _) ->
+  match List.index ident 4 with
+    | Nothing -> Assert_extra.failwith "ELF ident transcription error"
+    | Just c ->
+      let c = Elf_types_native_uint.natural_of_unsigned_char c in
+      if c = Elf_header.elf_class_64 then
+        Elf_file.read_elf64_file bs >>= fun f ->
+        return (bs, f)
+      else
+        Assert_extra.failwith "Unknown ELF ident"
+  end
+
+let print_memory_image img =
+  let _ = Missing_pervasives.errln "Memory image:" in
+  Map.mapi (fun k e ->
+    let start = assert_unwrap_maybe e.startpos in
+    let len = assert_unwrap_maybe e.length in
+    Missing_pervasives.errln ("  element: " ^ k ^ " start=0x" ^ (hex_string_of_natural start) ^ " len=0x" ^ (hex_string_of_natural len) ^ " contents_len=0x" ^ (hex_string_of_natural (naturalFromNat (List.length e.contents))))
+  ) img.elements
+
+let get_section_at_offset f offset =
+  let l = List.filter (fun sec ->
+    offset >= sec.elf64_section_offset &&
+      offset < sec.elf64_section_offset + sec.elf64_section_size
+  ) f.elf64_file_interpreted_sections in
+  match l with
+    | [] -> Nothing
+    | [sec] -> Just sec
+    | _ -> failwith ("get_section_at_offset: multiple sections at offset 0x" ^ (hex_string_of_natural offset))
+  end
+
+let print_elf64_section sec =
+  Missing_pervasives.errln (sec.elf64_section_name_as_string
+    ^ " offset=0x" ^ (hex_string_of_natural sec.elf64_section_addr)
+    ^ " addr=0x" ^ (hex_string_of_natural sec.elf64_section_addr)
+    ^ " len=0x" ^ (hex_string_of_natural sec.elf64_section_size))
+
+let get_section_at_addr f addr =
+  if addr = 0 then Nothing else (* TODO: is this the right thing to do? *)
+  let l = List.filter (fun sec ->
+    addr >= sec.elf64_section_addr &&
+      addr < sec.elf64_section_addr + sec.elf64_section_size
+  ) f.elf64_file_interpreted_sections in
+  match l with
+    | [] -> Nothing
+    | [sec] -> Just sec
+    | sec::_ -> Just sec (* TODO: remove me *)
+    (* | _ ->
+      let _ = List.map print_elf64_section l in
+      failwith ("get_section_at_addr: " ^ (show (List.length l)) ^ " sections at address 0x" ^ (hex_string_of_natural addr)) *)
+  end
+
+let show_section_at_addr f addr =
+  match get_section_at_addr f addr with
+    | Just section ->
+      let offset_in_section = addr - section.elf64_section_addr in
+      "[section at " ^ section.elf64_section_name_as_string ^ "+0x" ^ (hex_string_of_natural offset_in_section) ^ "]"
+    | Nothing ->
+      "[unknown section at 0x" ^ (hex_string_of_natural addr) ^ "]"
+  end
+
+val show_section_at : list mmap_entry -> elf64_file -> natural -> string
+let show_section_at mmap_table f addr =
+  match get_mmap_entry_at mmap_table addr with
+    | Just e ->
+      let entry_offset = e.mmap_entry_offset in
+      let offset_in_entry = addr - e.mmap_entry_start in
+      let file_offset = entry_offset + offset_in_entry in
+      match get_section_at_offset f file_offset with
+        | Just section ->
+          let offset_in_section = file_offset - section.elf64_section_offset in
+          "[section at 0x" ^ (hex_string_of_natural addr) ^ ", " ^ section.elf64_section_name_as_string ^ "+0x" ^ (hex_string_of_natural offset_in_section) ^ "]"
+        | Nothing ->
+          "[unknown section at 0x" ^ (hex_string_of_natural addr) ^ " with NT_FILE at 0x" ^ (hex_string_of_natural e.mmap_entry_start) ^ "]"
+      end
+    | Nothing ->
+      "[unknown section at 0x" ^ (hex_string_of_natural addr) ^ " without NT_FILE]"
+  end
+
+let rec extract_memory_image_byte_pattern img start len =
+  if len = 0 then return [] else
+  let err_msg = "extract_memory_image_byte_pattern: no core image element at 0x" ^ (hex_string_of_natural start) ^ ", it may be missing from the core file" in
+  Error.of_maybe err_msg (memory_image_element_at img start) >>= fun el ->
+  let el_start = assert_unwrap_maybe el.startpos in
+  let el_len = assert_unwrap_maybe el.length in
+  let _ = Missing_pervasives.errln ("  Matching with core image element at 0x" ^ (hex_string_of_natural el_start) ^ ", length 0x" ^ (hex_string_of_natural el_len)) in
+  let _ = Missing_pervasives.errln ("  Available for checking: 0x" ^ (hex_string_of_natural (naturalFromNat (List.length el.contents))) ^ " bytes") in
+  let offset = start - el_start in
+  (* let _ = Missing_pervasives.errln ("Skipping 0x" ^ (hex_string_of_natural offset) ^ " bytes") in *)
+  let bp = byte_pattern_skip offset el.contents in
+  let stop = start + len in
+  let el_stop = el_start + el_len in
+  if stop > el_stop then
+    extract_memory_image_byte_pattern img el_stop (stop - el_stop) >>= fun next ->
+    return (bp ++ next)
+  else
+    return bp
+
+let compare_memory_image core_img object_img (* for debugging: *) (mmap_table, object_file, object_base) =
+  let object_elements = Map_extra.toList object_img.elements in
+  let results = List.map (fun (_, object_el) ->
+    let start = assert_unwrap_maybe object_el.startpos in
+    (* let len = assert_unwrap_maybe object_el.length in *)
+    let len = naturalFromNat (List.length object_el.contents) in
+    if len = 0 then return () else
+    let _ = Missing_pervasives.errln ("Comparing memory element at 0x" ^ (hex_string_of_natural start) ^ ", length 0x" ^ (hex_string_of_natural len)) in
+
+    let object_bp = object_el.contents in
+    match extract_memory_image_byte_pattern core_img start len with
+      | Success core_bp ->
+        match compare_byte_pattern core_bp object_bp with
+          | BytePatternMatch ->
+            let _ = Missing_pervasives.errln ("  Memory image element at 0x" ^ (hex_string_of_natural start) ^ " matches!") in
+            return ()
+          | BytePatternMismatch (mismatch_offset, err_msg) ->
+            let mismatch_addr = start + mismatch_offset in
+            let _ = Missing_pervasives.errln err_msg in
+            let _ = Missing_pervasives.errln ("  Memory image element at 0x" ^ (hex_string_of_natural start) ^ " mismatches at offset 0x" ^ (hex_string_of_natural mismatch_addr) ^ " in " ^ (show_section_at mmap_table object_file mismatch_addr) ^ " :(") in
+            let _ = Missing_pervasives.errln "Addr         | object                                  | Core                                   " in
+            let _ = print_two_byte_patterns start object_bp core_bp in
+            Error.fail "Mismatch"
+        end
+      | Fail err ->
+        (* FreeBSD doesn't include read-only mmapped regions in coredumps *)
+        (* TODO: check mmap table too? *)
+        get_load_segment_at object_file (start - object_base) >>= fun seg ->
+        let (r, w, x) = seg.elf64_segment_flags in
+        if not w then
+          let _ = Missing_pervasives.errln ("  Warning: memory image element at 0x" ^ (hex_string_of_natural start) ^ " is not included in the core file") in
+          let _ = Missing_pervasives.errln ("  Skipping because it is read-only") in
+          return ()
+        else
+          Error.fail err
+    end
+  ) object_elements in
+  let _ = List.map (fun res ->
+    match res with
+      | Success _ -> ()
+      | Fail err -> Missing_pervasives.errln err
+    end
+  ) results in
+  Error.foldM (fun _ res -> res) () results
+
+let is_data_section sec =
+  false
+  || sec.elf64_section_name_as_string = ".data"
+  || sec.elf64_section_name_as_string = ".sdata" (* initialized short data *)
+  || sec.elf64_section_name_as_string = ".sbss" (* uninitialized short data *)
+  || sec.elf64_section_name_as_string = ".tdata" (* initialized thread-local data *)
+  || sec.elf64_section_name_as_string = ".tbss" (* uninitialized thread-local data *)
+  || sec.elf64_section_name_as_string = ".dynamic"
+  || sec.elf64_section_name_as_string = ".data.rel.ro" (* TODO: remove me? *)
+  || sec.elf64_section_name_as_string = ".rld_map" (* TODO: remove me *)
+
+let mask_data_sections f img =
+  let data_sections = List.filter is_data_section f.elf64_file_interpreted_sections in
+  List.foldl (fun img sec ->
+    let _ = Missing_pervasives.errln ("Masking " ^ sec.elf64_section_name_as_string ^ " at 0x" ^ (hex_string_of_natural sec.elf64_section_addr) ^ ", size 0x" ^ (hex_string_of_natural sec.elf64_section_size)) in
+    mask_memory_image img sec.elf64_section_addr sec.elf64_section_size
+  ) img data_sections
+
+let mask_relocations f img =
+  let all_relocs = Elf_memory_image.extract_all_relocs "<input file>" f in
+  let abi = get_file_abi f in
+  List.foldl (fun img (scn, rel_idx, rel_src_scn, rel) ->
+    let addr = natural_of_elf64_addr rel.elf64_ra_offset in
+    let (rel_type, _) = abi.parse_reloc_info rel.elf64_ra_info in
+    let (is_absolute, applyfn) = abi.reloc rel_type in
+    let (width, calcfn) = applyfn img addr Memory_image.null_symbol_reference_and_reloc_site in
+    let _ = Missing_pervasives.errln ("Masking relocation of type 0x" ^ (hex_string_of_natural rel_type) ^ " at 0x" ^ (hex_string_of_natural addr) ^ ", size 0x" ^ (hex_string_of_natural width) ^ " in " ^ (show_section_at_addr f addr)) in
+    (* let _ = Missing_pervasives.errln ("Relocation info: " ^ (show rel.elf64_ra_info)) in *)
+    mask_memory_image img addr width
+  ) img all_relocs
+
+let extract_all_relocs_as_symbol_references abi f =
+  let all_relocs = Elf_memory_image.extract_all_relocs "<input file>" f in
+  let all_symtab_triples_by_scnidx = mapMaybei (fun scnidx -> (fun isec ->
+    if isec.elf64_section_type = sht_symtab || isec.elf64_section_type = sht_dynsym then
+      match find_elf64_symbols_by_symtab_idx scnidx f with
+        | Fail _ -> Nothing
+        | Success triple -> Just (scnidx, triple)
+      end
+    else Nothing
+  )) f.elf64_file_interpreted_sections in
+  let (all_extracted_symtabs_by_scnidx : (Map.map natural (list (string * elf64_symbol_table_entry * natural (* scnidx *) * natural (* symidx *))))) =
+    List.foldl (fun acc ->
+      (fun (scnidx, triple) ->
+        Map.insert scnidx (Elf_memory_image.extract_all_symbols triple) acc
+      )
+    ) Map.empty all_symtab_triples_by_scnidx
+  in
+  (* let _ = Missing_pervasives.errln ("All extracted symtabs by scnidx: " ^ (show (Set_extra.toList (Map.toSet all_extracted_symtabs_by_scnidx)))) in *)
+  let ref_for_relocation_a_in_section_index = fun rel_scn_idx -> (fun rel_idx -> (fun rela ->
+    let rela_isec = match Missing_pervasives.index rel_scn_idx f.elf64_file_interpreted_sections with
+      | Just x -> x
+      | Nothing -> failwith "relocation references nonexistent section"
+    end in
+    let symtab_idx = rela_isec.elf64_section_link in
+    (* TODO: some relocations don't have a symbol. We detect those with a NULL symtab_idx, but there might be a better way to do it? *)
+    if symtab_idx = 0 then null_symbol_reference else
+    match Map.lookup symtab_idx all_extracted_symtabs_by_scnidx with
+      | Nothing -> failwith ("referenced symtab does not exist: " ^ (show symtab_idx))
+      | Just quads ->
+        let (_, sym_idx) = abi.parse_reloc_info rela.elf64_ra_info in
+        let maybe_quad = Missing_pervasives.index sym_idx quads in
+        match maybe_quad with
+          | Just(symname, syment, scnidx, symidx) ->
+            <|
+              ref_symname = symname;
+              ref_syment = syment;
+              ref_sym_scn = symtab_idx;
+              ref_sym_idx = sym_idx
+            |>
+          | Nothing ->
+            failwith ("reloc references symbol that does not exist: 0x" ^ (hex_string_of_natural sym_idx))
+            (*("reloc at index " ^ (show rel_idx) ^ " references symbol (index " ^ (show sym_idx) ^
+            ") that does not exist: symtab (index " ^ (show symtab_idx) ^ ") has " ^ (show (length quads)) ^ " entries")*)
+        end
+    end
+  )) in
+  (*let _ = Missing_pervasives.errs ("Extracted " ^ (show (length all_relocs)) ^ " reloc references (rel_scn, rel_idx, src_scn): "
+      ^ (show (List.map (fun (rel_scn, rel_idx, srcscn, rela) -> (rel_scn, rel_idx, srcscn)) all_relocs)) ^ "\n")
+  in*)
+  List.map (fun (scn, idx, srcscn, rela) ->
+    <|
+      (* NOTE that a reference is not necessarily to an undefined symbol! *)
+      ref = ref_for_relocation_a_in_section_index scn idx rela;
+      maybe_reloc = Just <|
+        ref_relent = rela;
+        ref_rel_scn = scn;
+        ref_rel_idx = idx;
+        ref_src_scn = srcscn (* what section does the reference come from? it's the 'info' link of the rel section header *)
+      |>;
+      maybe_def_bound_to = Nothing
+    |>
+  ) all_relocs
+
+type dynamic_symbol = <|
+  dynamic_symbol_name : string;
+  dynamic_symbol_entry : elf64_symbol_table_entry;
+  dynamic_symbol_value : natural;
+  dynamic_symbol_version : maybe string;
+  dynamic_symbol_version_base : bool
+|>
+
+let find_sym syms name version =
+  (* TODO: index symbols by name to speed up lookups *)
+  let matches = List.filter (fun sym -> sym.dynamic_symbol_name = name) syms in
+  let version_matches = List.filter (fun sym -> sym.dynamic_symbol_version = version) matches in
+  match version_matches with
+    | [] ->
+      match version with
+        | Just _ ->
+          (* Reference requested a specific version, accept only if the
+             definition doesn't use symbol versioning. *)
+          match matches with
+            | [sym] ->
+              (* TODO: check the reference doesn't come from the same file as
+                 this symbol (if it's the case, fatal error). *)
+              (* Make sure the definition doesn't use symbol versioning *)
+              match sym.dynamic_symbol_version with
+                | Just _ -> Nothing
+                | Nothing -> Just sym
+              end
+            | _ -> Nothing
+          end
+        | Nothing ->
+          (* Reference without version *)
+          match matches with
+            | [] -> Nothing
+            | [sym] ->
+              (* If there is exactly one version for which this symbol is
+                 defined, then this version is accepted. *)
+              Just sym
+            | _ ->
+              (* Multiple results with different versions, fallback to base
+                 definition *)
+              (* TODO: add support for: 2 is the name given later to the
+                 baseline of symbols once the library started using symbol
+                 versioning *)
+              List.find (fun sym -> sym.dynamic_symbol_version_base) matches
+          end
+      end
+    | [sym] ->
+      Just sym
+    | sym :: _ ->
+      Just sym (* When overriding symbols we just add the new one before in the list *)
+    (* | _ ->
+      failwith ("find_sym: multiple symbols for `" ^ name ^ "` version " ^ (show version)) *)
+  end
+
+let is_unsupported_relocation_type f rel_type =
+  (* TODO: add support for TLS relocs *)
+  if Abi_amd64.header_is_amd64 f.elf64_file_header then
+    rel_type = r_x86_64_irelative || rel_type = r_x86_64_tpoff64
+      || rel_type = r_x86_64_dtpoff64 || rel_type = r_x86_64_dtpmod64
+  else if Abi_mips64.header_is_mips64 f.elf64_file_header
+      || Abi_cheri_mips64.header_is_cheri_mips64 f.elf64_file_header then
+    rel_type = r_mips_tls_tprel64 || rel_type = r_mips_tls_dtpmod64
+  else
+    false
+
+val apply_relocation : forall 'abifeature. abi 'abifeature -> elf64_file -> annotated_memory_image 'abifeature -> natural -> elf64_relocation_a -> symbol_reference_and_reloc_site -> maybe dynamic_symbol -> bool -> annotated_memory_image 'abifeature
+let apply_relocation abi f img base reloc symref_and_reloc_site maybe_sym ignore_data_sections =
+  let endian = get_elf64_header_endianness f.elf64_file_header in
+  let (rel_type, _) = abi.parse_reloc_info reloc.elf64_ra_info in
+  let offset = natural_of_elf64_addr reloc.elf64_ra_offset in
+  let addend = integer_of_elf64_sxword reloc.elf64_ra_addend in
+  let addr = base + offset in
+  (* TODO: support is_absolute? *)
+  let (is_absolute, applyfn) = abi.reloc rel_type in
+  let (width, calcfn) = applyfn img addr symref_and_reloc_site in
+  let _ = Missing_pervasives.errln ("Relocation of type 0x" ^ (hex_string_of_natural rel_type) ^ " at 0x" ^ (hex_string_of_natural addr) ^ " (offset 0x" ^ (hex_string_of_natural offset) ^ "), size 0x" ^ (hex_string_of_natural width) ^ " in " ^ (show_section_at_addr f offset)) in
+
+  (* TODO: is there a way to make this nicer? *)
+  if rel_type = 0 then
+    let _ = Missing_pervasives.errln "  Skipping NONE relocation" in
+    img
+  else
+
+  let is_in_data_section =
+    if ignore_data_sections then
+      false
+    else
+      match get_section_at_addr f offset with
+        | Just sec -> is_data_section sec
+        | Nothing -> false
+      end
+  in
+  if is_in_data_section then
+    let _ = Missing_pervasives.errln "  Relocation inside a data section, ignoring" in
+    img
+  else
+    (* TODO: hard fail if symbol name is non-empty but find_sym returns Nothing? *)
+    let maybe_sym_addr = match maybe_sym with
+      | Just sym ->
+        if get_elf64_symbol_type sym.dynamic_symbol_entry = stt_gnu_ifunc then
+          let _ = Missing_pervasives.errln "  Symbol is an ifunc" in
+          Nothing
+        else
+          Just sym.dynamic_symbol_value
+      | Nothing ->
+        Just 0 (* This isn't pretty, but doing something else would be complicated *)
+    end in
+
+    let maybe_sym_addr =
+      if is_unsupported_relocation_type f rel_type then
+        let _ = Missing_pervasives.errln ("  Giving up on this one: unsupported relocation type") in
+        Nothing
+      else
+        maybe_sym_addr
+    in
+    match maybe_sym_addr with
+      | Just sym_addr ->
+        if header_is_pure_cheri_mips64 f.elf64_file_header
+            && rel_type = r_mips_cheri_capability then
+          (* CHERI capability relocations are special snowflakes, they aren't
+             just an address. *)
+          (* TODO: find a better solution *)
+          let cap_bp = abi_cheri_mips64_write_capability_byte_pattern endian Nothing
+            Nothing Nothing Nothing (Just 42) (Just 42) (Just 42) in (* TODO *)
+          let _ = Missing_pervasives.errln ("  Relocating CHERI capability `" ^ symref_and_reloc_site.ref.ref_symname ^ "`") in
+          write_memory_image img addr cap_bp
+        else
+          let existing_bytes = assert_unwrap_maybe (read_memory_image img addr width) in
+          let existing_value = Memory_image.natural_of_byte_list endian existing_bytes in
+          let new_value = calcfn sym_addr addend existing_value in
+          let field_bytes = Memory_image.natural_to_byte_list_padded_to endian width new_value in
+          let field_bp = List.map (fun b -> Just b) field_bytes in
+          let _ = Missing_pervasives.errln ("  Relocating `" ^ symref_and_reloc_site.ref.ref_symname ^ "` (existing=0x" ^ (hex_string_of_natural existing_value) ^ " addend=" ^ (show addend) ^ ") to 0x" ^ (hex_string_of_natural new_value) ^ " (symbol address 0x" ^ (hex_string_of_natural sym_addr) ^ ")") in
+          write_memory_image img addr field_bp
+      | Nothing ->
+        let _ = Missing_pervasives.errln ("  Masking relocation for `" ^ symref_and_reloc_site.ref.ref_symname ^ "`") in
+        mask_memory_image img addr width
+    end
+
+let get_sym_ref_version dynsym_scnidx maybe_versym_table sym_name sym_scn sym_idx =
+  if dynsym_scnidx <> sym_scn then Nothing else
+  match maybe_versym_table with
+    | Just versym_table ->
+      (* TODO: unify get_gnu_ext_interpreted_verneed and get_gnu_ext_interpreted_verdef *)
+      match get_gnu_ext_interpreted_verneed versym_table sym_idx with
+        | Success Nothing -> Nothing
+        | Success (Just vernaux) ->
+          (* TODO: handle vernaux.gnu_ext_interpreted_vernaux_verneed.gnu_ext_interpreted_verneed_file *)
+          Just vernaux.gnu_ext_interpreted_vernaux_name
+        | Fail errmsg ->
+          (* TODO: failwith errmsg *)
+          (* No verneed found, maybe this DSO is defining the symbol and has a reloc bound to it *)
+          match get_gnu_ext_interpreted_verdef versym_table sym_idx with
+            | Success (GnuExtInterpretedVerdefVersion verdef) ->
+              Just verdef.gnu_ext_interpreted_verdef_name
+            | _ ->
+              Nothing
+          end
+      end
+    | Nothing ->
+      Nothing
+  end
+
+let apply_all_relocations f img base syms dynsym_scnidx maybe_versym_table ignore_data_sections =
+  let abi = get_file_abi f in
+  let symbol_refs_and_reloc_sites = extract_all_relocs_as_symbol_references abi f in
+  (* let tags_and_ranges = Multimap.lookupBy Memory_image_orderings.tagEquiv (SymbolRef(null_symbol_reference_and_reloc_site)) img.by_tag in *)
+  let _ = Missing_pervasives.errln ("Number of symbol refs: " ^ (show (List.length symbol_refs_and_reloc_sites))) in
+  (* let _ = List.map (fun (tag, maybe_range) -> *)
+  List.foldl (fun img symref_and_reloc_site ->
+    let reloc_site = match symref_and_reloc_site.maybe_reloc with
+      | Nothing -> failwith "impossible: no reloc site during relocation"
+      | Just rs -> rs
+    end in
+
+    let sym_name = symref_and_reloc_site.ref.ref_symname in
+    let maybe_sym =
+      if sym_name <> "" then
+        let sym_scn = symref_and_reloc_site.ref.ref_sym_scn in
+        let sym_idx = symref_and_reloc_site.ref.ref_sym_idx in
+        let maybe_sym_version = get_sym_ref_version dynsym_scnidx maybe_versym_table sym_name sym_scn sym_idx in
+        let _ = Missing_pervasives.errln ("Searching for symbol `" ^ sym_name ^ "`, version " ^ (show maybe_sym_version)) in
+        find_sym syms sym_name maybe_sym_version
+      else
+        Nothing
+    in
+
+    apply_relocation abi f img base reloc_site.ref_relent symref_and_reloc_site maybe_sym ignore_data_sections
+  (* ) tags_and_ranges in *)
+  ) img symbol_refs_and_reloc_sites
+
+let amd64_address_size : natural = 8
+
+let init_amd64_pltgot img base dyns =
+  let maybe_pltgot_offset = List.find (fun (tag, _) ->
+    tag = Elf_dynamic.dt_pltgot
+  ) dyns in
+  match maybe_pltgot_offset with
+    | Just (_, Address pltgot_offset) ->
+      let pltgot_addr = base + natural_of_elf64_addr pltgot_offset in
+      let _ = Missing_pervasives.errln ("Initializing PLTGOT at 0x" ^ (hex_string_of_natural pltgot_addr)) in
+      (* The second entry contains a linker-specific value. FreeBSD's rtld-elf
+         uses it to store ta pointer to an internal data structure, glibc's
+         linker leaves it zeroed. *)
+      let img = mask_memory_image img (pltgot_addr + amd64_address_size) amd64_address_size in
+      (* The third entry contains the dynamic linker entry point *)
+      let img = mask_memory_image img (pltgot_addr + 2 * amd64_address_size) amd64_address_size in
+      img
+    | Nothing ->
+      let _ = Missing_pervasives.errln ("No DT_PLTGOT in .dynamic, skipping PLTGOT initialization") in
+      img
+  end
+
+let mips64_address_size : natural = 8
+
+val apply_mips64_local_got_relocations : forall 'abifeature. endianness -> annotated_memory_image 'abifeature -> natural -> natural -> natural -> (annotated_memory_image 'abifeature * natural)
+let rec apply_mips64_local_got_relocations endian img base got_entry_addr local_gotno =
+  if local_gotno = 0 then (img, got_entry_addr) else
+  let _ = Missing_pervasives.errln ("MIPS local .got relocation at 0x" ^ (hex_string_of_natural got_entry_addr) ^ " (remaining: " ^ (show local_gotno) ^ ")") in
+  let width = mips64_address_size in
+  let existing_bytes = assert_unwrap_maybe (read_memory_image img got_entry_addr width) in
+  let existing_value = Memory_image.natural_of_byte_list endian existing_bytes in
+  let new_value = base + existing_value in
+  let field_bytes = Memory_image.natural_to_byte_list_padded_to endian width new_value in
+  let field_bp = List.map (fun b -> Just b) field_bytes in
+  let _ = Missing_pervasives.errln ("  Relocating MIPS64 local .got entry from 0x" ^ (hex_string_of_natural existing_value) ^ " to 0x" ^ (hex_string_of_natural new_value)) in
+  let img = write_memory_image img got_entry_addr field_bp in
+  apply_mips64_local_got_relocations endian img base (got_entry_addr + width) (local_gotno - 1)
+
+let rec apply_mips64_global_got_relocations' abi f img dynsyms syms dynsym_scnidx maybe_versym_table base got_entry_addr (symtabno : natural) ignore_data_sections =
+  if symtabno = 0 then (img, got_entry_addr) else
+  let endian = get_elf64_header_endianness f.elf64_file_header in
+  match syms with
+    | (sym_name, sym_entry, scnidx, symidx) :: syms ->
+      let ra_info = elf64_xword_of_natural Abi_mips64_relocation.r_mips_jump_slot in
+      let ra_info = match endian with
+        | Little -> elf64_xword_lshift ra_info 56
+        | Big -> ra_info
+      end in
+
+      let reloc = <|
+        elf64_ra_offset = elf64_addr_of_natural (got_entry_addr - base);
+        elf64_ra_info = ra_info;
+        elf64_ra_addend = elf64_sxword_of_integer 0
+      |> in
+
+      (* TODO: unify this with normal relocs *)
+      let maybe_sym =
+        (* TODO: remove these special cases, especially the last one *)
+        if sym_name <> "" then
+          let maybe_sym_version = get_sym_ref_version dynsym_scnidx maybe_versym_table sym_name scnidx symidx in
+          let _ = Missing_pervasives.errln ("Searching for symbol `" ^ sym_name ^ "`, version " ^ (show maybe_sym_version)) in
+          find_sym dynsyms sym_name maybe_sym_version
+        else
+          Nothing
+      in
+
+      (* let sym_addr = base + natural_of_elf64_addr sym_entry.elf64_st_value in *)
+      let symref_and_reloc_site = null_symbol_reference_and_reloc_site in
+      let img = apply_relocation abi f img base reloc symref_and_reloc_site maybe_sym ignore_data_sections in
+
+      apply_mips64_global_got_relocations' abi f img dynsyms syms dynsym_scnidx maybe_versym_table base (got_entry_addr + mips64_address_size) (symtabno - 1) ignore_data_sections
+    | _ -> failwith "apply_mips64_global_got_relocations': not enough symbols"
+  end
+
+let apply_mips64_global_got_relocations f img dynsyms dynsym_scnidx maybe_versym_table base got_entry_addr symtab_addr gotsym symtabno ignore_data_sections =
+  let symtab_triples = mapMaybei (fun scnidx isec ->
+    if isec.elf64_section_addr = natural_of_elf64_addr symtab_addr then
+      match find_elf64_symbols_by_symtab_idx scnidx f with
+        | Fail _ -> Nothing
+        | Success triple -> Just triple
+      end
+    else
+      Nothing
+  ) f.elf64_file_interpreted_sections in
+  let (syms : list (string * elf64_symbol_table_entry * natural (* scnidx *) * natural (* symidx *))) =
+    match symtab_triples with
+      | [triple] -> Elf_memory_image.extract_all_symbols triple
+      | [] -> failwith "apply_mips64_global_got_relocations: no .symtab found"
+      | _ -> failwith "apply_mips64_global_got_relocations: multiple .symtab sections not supported for MIPS64"
+    end
+  in
+  let syms = List.drop (natFromNatural gotsym) syms in
+  let abi = get_file_abi f in
+  apply_mips64_global_got_relocations' abi f img dynsyms syms dynsym_scnidx maybe_versym_table base got_entry_addr (symtabno - gotsym) ignore_data_sections
+
+(* MIPS uses an ugly packed form for GOT relocations. See musl's do_mips_relocs
+   function. *)
+let apply_mips64_got_relocations f img dynsyms base dyns dynsym_scnidx maybe_versym_table ignore_data_sections =
+  let maybe_got_offset = List.find (fun (tag, _) -> tag = Elf_dynamic.dt_pltgot) dyns in
+  let got_offset = match maybe_got_offset with
+    | Just (_, Address got) -> got
+    | Nothing -> failwith "apply_mips64_got_relocations: missing DT_PLTGOT in .dynamic"
+  end in
+  let got_addr = base + natural_of_elf64_addr got_offset in
+  let got_entry_addr = got_addr in
+
+  (* Apply local .got relocs *)
+  let maybe_local_gotno = List.find (fun (tag, _) ->
+    tag = Abi_mips64_dynamic.abi_mips64_dt_local_gotno
+  ) dyns in
+  let (img, got_entry_addr) = match maybe_local_gotno with
+    | Just (_, Numeric local_gotno) ->
+      (* The first entry is reserved to hold the address of the entry point in
+         the dynamic linker to call when lazy resolving text symbols. The second
+         entry is reserved by DSOs linked with GNU's ld to hold the base address
+         of the loaded DSO. GNU DSOs have the MSB of the second entry set to 1.
+         IRL, some ld.so implementations skip both (uclibc), some relocate both
+         (musl), so we'll just don't check those two.
+         TODO: check the MSB of the second entry and only mask it if it's GNU. *)
+      let reserved_num = 2 in
+      let img = mask_memory_image img got_entry_addr (reserved_num * mips64_address_size) in
+      let got_entry_addr = got_addr + reserved_num * mips64_address_size in
+      let local_gotno = local_gotno - reserved_num in
+
+      let _ = Missing_pervasives.errln ("Applying " ^ (show local_gotno) ^ " MIPS64 local .got relocations") in
+      let endian = get_elf64_header_endianness f.elf64_file_header in
+      apply_mips64_local_got_relocations endian img base got_entry_addr local_gotno
+    | Nothing ->
+      let _ = Missing_pervasives.errln "Not applying MIPS64 .got relocations: missing DT_LOCAL_GOTNO" in
+      (img, got_addr)
+  end in
+
+  (* Apply R_MIPS_JUMP_SLOT relocs *)
+  let maybe_symtab_addr = List.find (fun (tag, _) ->
+    tag = Elf_dynamic.dt_symtab
+  ) dyns in
+  let symtab_addr = match maybe_symtab_addr with
+    | Just (_, Address symtab_addr) -> symtab_addr
+    | Nothing -> failwith "apply_mips64_got_relocations: missing DT_SYMTAB in .dynamic"
+  end in
+  let maybe_gotsym = List.find (fun (tag, _) ->
+    tag = Abi_mips64_dynamic.abi_mips64_dt_gotsym
+  ) dyns in
+  let gotsym = match maybe_gotsym with
+    | Just (_, Numeric gotsym) -> gotsym
+    | Nothing -> failwith "apply_mips64_got_relocations: missing DT_MIPS_GOTSYM in .dynamic"
+  end in
+  let maybe_symtabno = List.find (fun (tag, _) ->
+    tag = Abi_mips64_dynamic.abi_mips64_dt_symtabno
+  ) dyns in
+  let symtabno = match maybe_symtabno with
+    | Just (_, Numeric symtabno) -> symtabno
+    | Nothing -> failwith "apply_mips64_got_relocations: missing DT_MIPS_SYMTABNO in .dynamic"
+  end in
+  let (img, got_entry_addr) = apply_mips64_global_got_relocations f img dynsyms dynsym_scnidx maybe_versym_table base got_entry_addr symtab_addr gotsym symtabno ignore_data_sections in
+
+  img
+
+(* This function must be called after normal relocs have been applied *)
+let apply_cheri_mips64_cap_relocations f img base dyns ignore_data_sections =
+  let maybe_cap_relocs = List.find (fun (tag, _) ->
+    tag = Abi_cheri_mips64_dynamic.abi_cheri_dt___caprelocs
+  ) dyns in
+  let cap_relocs_addr = match maybe_cap_relocs with
+    | Just (_, Address cap_relocs_addr) -> natural_of_elf64_addr cap_relocs_addr
+    | Nothing -> failwith "apply_cheri_mips64_cap_relocations: missing DT_CHERI___CAPRELOCS in .dynamic"
+  end in
+  let maybe_cap_relocssz = List.find (fun (tag, _) ->
+    tag = Abi_cheri_mips64_dynamic.abi_cheri_dt___caprelocssz
+  ) dyns in
+  let cap_relocssz = match maybe_cap_relocssz with
+    | Just (_, Numeric cap_relocssz) -> cap_relocssz
+    | Nothing -> failwith "apply_cheri_mips64_cap_relocations: missing DT_CHERI___CAPRELOCSSZ in .dynamic"
+  end in
+
+  (* We need to read our memory image because some relocations have been applied
+     to the __cap_relocs section. *)
+  let cap_relocs_bs = match read_memory_image_byte_sequence img (base + cap_relocs_addr) cap_relocssz with
+    | Just bs -> bs
+    | Nothing -> failwith "apply_cheri_mips64_cap_relocations: cannot dereference DT_CHERI___CAPRELOCS"
+  end in
+
+  let endian = get_elf64_header_endianness f.elf64_file_header in
+  let cap_relocs = match read_cheri_mips64_cap_relocs endian cap_relocs_bs with
+    | Success cap_relocs -> cap_relocs
+    | Fail errmsg -> failwith errmsg
+  end in
+  let img = List.foldl (fun img reloc ->
+    let is_func = cheri_mips64_cap_reloc_is_function reloc in
+    let loc = natural_of_elf64_xword reloc.cheri_mips64_cap_reloc_location in
+    let obj = natural_of_elf64_xword reloc.cheri_mips64_cap_reloc_object in
+    let offset = natural_of_elf64_xword reloc.cheri_mips64_cap_reloc_offset in
+    let size = natural_of_elf64_xword reloc.cheri_mips64_cap_reloc_size in
+
+    let is_in_data_section =
+      if ignore_data_sections then
+        false
+      else
+        match get_section_at_addr f (loc - base) with
+          | Just sec -> is_data_section sec
+          | Nothing -> false
+        end
+    in
+    if is_in_data_section then
+      let _ = Missing_pervasives.errln ("Skipping __cap_relocs relocation at 0x" ^ (hex_string_of_natural loc) ^ ": in a data section") in
+      img
+    else
+
+    let (cursor, cap_base, len) =
+      if obj = 0 then
+        (0, 0, 0)
+      else
+        let cursor = obj + offset in
+        if is_func then
+          (cursor, 0, size)
+        else
+          (cursor, obj, size)
+    in
+    let cap_bp = abi_cheri_mips64_write_capability_byte_pattern endian Nothing
+      Nothing Nothing Nothing (Just cursor) (Just cap_base) (Just len) in
+    let _ = Missing_pervasives.errln (
+      "Applying __cap_relocs relocation at 0x" ^ (hex_string_of_natural loc)
+        ^ " in " ^ (show_section_at_addr f (loc - base))
+        ^ " offset=0x" ^ (hex_string_of_natural offset)
+        ^ " size=0x" ^ (hex_string_of_natural size)
+        ^ " object=0x" ^ (hex_string_of_natural obj)
+        ^ " cursor=0x" ^ (hex_string_of_natural cursor)
+        ^ " base=0x" ^ (hex_string_of_natural cap_base)
+        ^ " len=0x" ^ (hex_string_of_natural len)
+        ^ " is_func=" ^ (show is_func)
+    ) in
+    (* let _ = Missing_pervasives.errln (string_of_byte_pattern cap_bp) in *)
+    write_memory_image img loc cap_bp
+  ) img cap_relocs in
+
+  img
+
+let get_first_mapped_address mmap_table filename =
+  List.foldl (fun first e ->
+    if e.mmap_entry_path <> filename then first else
+    let start = e.mmap_entry_start in
+    let len = e.mmap_entry_end - start in
+    if len = 0 then first else
+    match first with
+      | Just first -> Just (if start < first then start else first)
+      | Nothing -> Just start
+    end
+  ) Nothing mmap_table
+
+let get_first_memory_image_address img =
+  let elements = Map_extra.toList img.elements in
+  List.foldl (fun first (_, e) ->
+    if assert_unwrap_maybe e.length = 0 then first else
+    let start = assert_unwrap_maybe e.startpos in
+    match first with
+      | Just first -> Just (if start < first then start else first)
+      | Nothing -> Just start
+    end
+  ) Nothing elements
+
+let get_load_segment_at_offset f offset =
+  let l = List.filter (fun seg ->
+    seg.elf64_segment_type = Elf_program_header_table.elf_pt_load &&
+      offset >= seg.elf64_segment_offset &&
+      offset < seg.elf64_segment_offset + seg.elf64_segment_size
+  ) f.elf64_file_interpreted_segments in
+  match l with
+    | [seg] -> Just seg
+    | [] -> Nothing
+    | _ -> failwith ("get_load_segment_at_offset: multiple segments found at offset 0x" ^ (hex_string_of_natural offset))
+  end
+
+(** Check that the offsets between sections are preserved.
+
+    For each LOAD segment in the object, compute the virtual address where it
+    should have been loaded, check that a page has been mmapped there, and check
+    that the mmapped file offset is correct. *)
+let check_mmaped_memory_image mmap_table object_filename object_file object_delta =
+  (* TODO: check the file has been mmaped at only one place? *)
+  Error.foldM (fun () seg ->
+    if seg.elf64_segment_type <> Elf_program_header_table.elf_pt_load then return () else
+    let seg_addr = seg.elf64_segment_base + object_delta in
+    (* let _ = Missing_pervasives.errln ("Checking LOAD segment at 0x" ^ (hex_string_of_natural seg.elf64_segment_base) ^ ", virtual address 0x" ^ (hex_string_of_natural seg_addr)) in *)
+    match get_mmap_entry_at mmap_table seg_addr with
+      | Just e ->
+        if e.mmap_entry_path = object_filename then
+          let page_start = e.mmap_entry_start in
+          let page_file_offset = e.mmap_entry_offset in
+          (* let _ = Missing_pervasives.errln ("  Matching page has virtual address 0x" ^ (hex_string_of_natural page_start) ^ " and offset 0x" ^ (hex_string_of_natural page_file_offset)) in *)
+          let seg_offset_in_page = seg_addr - page_start in
+          (* let _ = Missing_pervasives.errln ("  Segment offset in page: 0x" ^ (hex_string_of_natural seg_offset_in_page)) in *)
+          let expected_seg_file_offset = page_file_offset + seg_offset_in_page in
+          if seg.elf64_segment_offset = expected_seg_file_offset then
+            return ()
+          else
+            Error.fail ("check_mmaped_memory_image: LOAD segment at 0x" ^ (hex_string_of_natural seg.elf64_segment_base) ^ " has invalid offset: has 0x" ^ (hex_string_of_natural seg.elf64_segment_offset) ^ ", expected 0x" ^ (hex_string_of_natural expected_seg_file_offset))
+        else
+          Error.fail ("check_mmaped_memory_image: LOAD segment at 0x" ^ (hex_string_of_natural seg.elf64_segment_base) ^ " has been mmapped to another file: `" ^ e.mmap_entry_path ^ "`")
+      | Nothing ->
+        Error.fail ("check_mmaped_memory_image: LOAD segment at 0x" ^ (hex_string_of_natural seg.elf64_segment_base) ^ " has not been mmapped at 0x" ^ (hex_string_of_natural seg_addr))
+    end
+  ) () object_file.elf64_file_interpreted_segments
+
+let get_memory_image_delta img addr =
+  let img_addr = assert_unwrap_maybe (get_first_memory_image_address img) in
+  addr - img_addr
+
+let translate_memory_image img offset =
+  let elements = Map.map (fun e ->
+    let start = assert_unwrap_maybe e.startpos in
+    <|
+      startpos = Just (start + offset);
+      length = e.length;
+      contents = e.contents
+    |>
+  ) img.elements in
+  <|
+    elements = elements;
+    by_range = img.by_range;
+    by_tag = img.by_tag
+  |>
+
+val get_memory_image_stats : forall 'abifeature. annotated_memory_image 'abifeature -> (natural * natural)
+let get_memory_image_stats img =
+  List.foldl (fun stats (_, el) ->
+    List.foldl (fun (n_bytes, n_masked) maybe_b ->
+      let masked = match maybe_b with
+        | Just _ -> false
+        | Nothing -> true
+      end in
+      (n_bytes + 1, if masked then n_masked + 1 else n_masked)
+    ) stats el.contents
+  ) (0, 0) (Map_extra.toList img.elements)
+
+let read_dynamic bs f =
+  let endian = get_elf64_header_endianness f.elf64_file_header in
+  let sht = f.elf64_file_section_header_table in
+  let shared_object = is_elf64_shared_object_file f.elf64_file_header in
+  let os_additional_ranges = gnu_ext_os_additional_ranges in
+  let os = gnu_ext_tag_correspondence_of_tag in
+  let os_dyn = gnu_ext_elf64_value_of_elf64_dyn in
+  (* TODO: do not hardcode these *)
+  let (proc, proc_dyn) =
+    if Abi_mips64.header_is_mips64 f.elf64_file_header then
+      (
+        Abi_mips64_dynamic.abi_mips64_tag_correspondence_of_tag,
+        Abi_mips64_dynamic.abi_mips64_elf64_value_of_elf64_dyn
+      )
+    else if Abi_cheri_mips64.header_is_cheri_mips64 f.elf64_file_header then
+      (
+        Abi_cheri_mips64_dynamic.abi_cheri_mips64_tag_correspondence_of_tag,
+        Abi_cheri_mips64_dynamic.abi_cheri_mips64_elf64_value_of_elf64_dyn
+      )
+    else
+      (* These are no-ops *)
+      (
+        (fun tag -> Error.fail ("tag_correspondence_of_tag: unknown tag 0x" ^ (hex_string_of_natural tag))),
+        (fun _ _ -> Error.fail "elf64_value_of_elf64_dyn: unknown tag")
+      )
+  in
+  obtain_elf64_dynamic_section_contents f os_additional_ranges os proc bs >>= fun dyns ->
+  get_string_table_of_elf64_dyn_section endian dyns sht bs >>= fun stbl ->
+  Error.mapM (fun dyn ->
+    let tag = naturalFromInteger (integer_of_elf64_sxword dyn.elf64_dyn_tag) in
+    get_value_of_elf64_dyn shared_object dyn os_additional_ranges os_dyn proc_dyn stbl >>= fun dyn_value ->
+    return (tag, dyn_value)
+  ) dyns
+
+let has_dynamic_section f =
+  let dyn_secs = List.filter (fun sec ->
+    natural_of_elf64_word sec.elf64_sh_type = Elf_section_header_table.sht_dynamic
+  ) f.elf64_file_section_header_table in
+  dyn_secs <> []
+
+let sym_add_verdef sym verdef =
+  (* let _ = Missing_pervasives.errln ("Symbol `" ^ sym.dynamic_symbol_name ^ "`, version `" ^ verdef_aux ^ "`") in *)
+  <|
+    dynamic_symbol_name = sym.dynamic_symbol_name;
+    dynamic_symbol_entry = sym.dynamic_symbol_entry;
+    dynamic_symbol_value = sym.dynamic_symbol_value;
+    dynamic_symbol_version = Just verdef.gnu_ext_interpreted_verdef_name;
+    dynamic_symbol_version_base =
+      (* TODO: what's the difference between those two? *)
+      verdef.gnu_ext_interpreted_verdef_ndx = gnu_ext_verdef_base_unspecified
+      || verdef.gnu_ext_interpreted_verdef_ndx = gnu_ext_verdef_base_versioned
+  |>
+
+let extract_dynsyms f base existing_syms symtab_scnidx maybe_versym_table =
+  let symtab_scn = assert_unwrap_maybe (List.index f.elf64_file_interpreted_sections (natFromNatural symtab_scnidx)) in
+
+  find_elf64_symbols_by_symtab_idx symtab_scnidx f >>= fun triple ->
+  let syms = Elf_memory_image.extract_all_symbols triple in
+  let syms = List.filter (fun (sym_name, sym_entry, scnidx, symidx) ->
+    let sym_binding = get_elf64_symbol_binding sym_entry in
+    let sym_value = natural_of_elf64_addr sym_entry.elf64_st_value in
+    (sym_binding = Elf_symbol_table.stb_global || sym_binding = Elf_symbol_table.stb_weak)
+      (* We're only interested in symbols defined in this DSO *)
+      && natural_of_elf64_half sym_entry.elf64_st_shndx <> 0
+  ) syms in
+  let syms = List.map (fun (sym_name, sym_entry, scnidx, symidx) ->
+    (* let _ = Missing_pervasives.errln ("Library exports dynamic symbol: " ^ sym_name) in *)
+    let is_abs = (natural_of_elf64_half sym_entry.elf64_st_shndx) = shn_abs in
+    let sym_value =
+      if is_abs then
+        natural_of_elf64_addr sym_entry.elf64_st_value
+      else
+        base + natural_of_elf64_addr sym_entry.elf64_st_value
+    in
+    let sym = <|
+      dynamic_symbol_name = sym_name;
+      dynamic_symbol_entry = sym_entry;
+      dynamic_symbol_value = sym_value;
+      dynamic_symbol_version = Nothing;
+      dynamic_symbol_version_base = false
+    |> in
+    (sym, symidx)
+  ) syms in
+
+  match maybe_versym_table with
+    | Just versym_table ->
+      if List.length versym_table.gnu_ext_interpreted_versym_table_entries < List.length syms then
+        Error.fail "extract_dynsyms: versym table too short"
+      else
+        return ()
+      >>= fun () ->
+      Error.foldM (fun syms (sym, symidx) ->
+        get_gnu_ext_interpreted_verdef versym_table symidx >>= fun verdef_lookup ->
+        let versioned_sym = match verdef_lookup with
+          | GnuExtInterpretedVerdefVersion verdef ->
+            sym_add_verdef sym verdef
+          | GnuExtInterpretedVerdefHidden verdef ->
+            (* TODO: symbol is hidden and cannot be referenced outside of this object *)
+            sym_add_verdef sym verdef
+          | _ -> sym (* TODO: ignore local dynsyms? *)
+        end in
+        return (versioned_sym :: syms)
+      ) [] syms
+    | Nothing ->
+      let syms = List.map (fun (sym, symidx) -> sym) syms in
+      return syms
+  end >>= fun syms ->
+
+  (* Filter out symbols that are ignored because already defined in another object *)
+  let syms = List.foldl (fun syms sym ->
+    let sym_name = sym.dynamic_symbol_name in
+    let sym_entry = sym.dynamic_symbol_entry in
+    let sym_addr = sym.dynamic_symbol_value in
+    let sym_version = sym.dynamic_symbol_version in
+    let sym_binding = get_elf64_symbol_binding sym_entry in
+    let _ = Missing_pervasives.errln ("Processing symbol `" ^ sym_name ^ "`, 0x" ^ (hex_string_of_natural sym_addr) ^ ", binding=" ^ (show sym_binding) ^ ", version=" ^ (show sym_version)) in
+    (* Check if this symbol has already been defined in another object. Only
+       check the symbol name, we don't care about the version here. *)
+    let maybe_existing = find_sym existing_syms sym_name Nothing in
+    match maybe_existing with
+      | Just existing ->
+        let existing_entry = existing.dynamic_symbol_entry in
+        let existing_addr = existing.dynamic_symbol_value in
+        let existing_version = existing.dynamic_symbol_version in
+        if get_elf64_symbol_binding existing_entry = Elf_symbol_table.stb_weak && sym_binding <> Elf_symbol_table.stb_weak then
+          (* Existing symbol is weak and the new one isn't, replace it *)
+          let _ = Missing_pervasives.errln ("Overriding weak symbol `" ^ sym_name ^ "`, 0x" ^ (hex_string_of_natural existing_addr) ^ " -> 0x" ^ (hex_string_of_natural sym_addr)) in
+          sym :: syms
+        else if natural_of_elf64_half existing_entry.elf64_st_shndx = shn_undef && natural_of_elf64_half sym_entry.elf64_st_shndx <> 0 then
+          (* Existing symbol has an undefined ndx and the new one has a defined one, replace it *)
+          (* TODO: why is this the right thing to do? *)
+          let _ = Missing_pervasives.errln ("Overriding symbol with undefined ndx `" ^ sym_name ^ "`, 0x" ^ (hex_string_of_natural existing_addr) ^ " -> 0x" ^ (hex_string_of_natural sym_addr)) in
+          sym :: syms
+        else if existing_version <> Nothing && sym_version <> Nothing && sym_version <> existing_version then
+          (* Existing symbol has a version, and this symbol has a different version: keep both *)
+          let _ = Missing_pervasives.errln ("Adding new version `" ^ (show sym_version) ^ "` of symbol `" ^ sym_name ^ "` (already have: `" ^ (show existing_version) ^ "`)") in
+          sym :: syms
+        (* else if get_elf64_symbol_binding existing_entry = Elf_symbol_table.stb_weak && sym_binding = Elf_symbol_table.stb_weak then
+          (* TODO: is this really the right thing to do? *)
+          let _ = Missing_pervasives.errln ("Overriding weak symbol with another weak symbol `" ^ sym_name ^ "`, 0x" ^ (hex_string_of_natural existing_addr) ^ " -> 0x" ^ (hex_string_of_natural sym_addr)) in
+          sym :: syms *)
+        else
+          let _ = Missing_pervasives.errln ("Multiple definitions of `" ^ sym_name ^ "` version " ^ (show sym_version) ^ ", only keeping the first one") in
+          syms
+      | Nothing ->
+        sym :: syms
+    end
+  ) [] syms in
+  return syms
+
+let rec find_library root_path ld_library_paths soname =
+  match ld_library_paths with
+    | [] ->
+      Error.fail ("find_library: cannot find library `" ^ soname ^ "`")
+    | dir :: ld_library_paths ->
+      (* TODO: this is a hack to skip 32-bit library dirs. Instead we should load the DSO and check its header *)
+      if Missing_pervasives.string_contains dir "32" then find_library root_path ld_library_paths soname else
+      let filename = dir ^ "/" ^ soname in
+      if Filesystem.file_exists (root_path ^ filename) then
+        return filename
+      else
+        find_library root_path ld_library_paths soname
+  end
+
+let get_dynsym_section_index f dyns =
+  let maybe_dt_symtab = List.find (fun (tag, _) -> tag = Elf_dynamic.dt_symtab) dyns in
+  match maybe_dt_symtab with
+    | Just (_, Address dt_symtab) ->
+      let dt_symtab = natural_of_elf64_addr dt_symtab in
+      let maybe_symtab_scnidx = List.findIndex (fun scn ->
+        scn.elf64_section_addr = dt_symtab
+      ) f.elf64_file_interpreted_sections in
+      match maybe_symtab_scnidx with
+        | Just scnidx -> return (naturalFromNat scnidx)
+        | Nothing -> Error.fail ("get_dynsym_section: no symtab section at 0x" ^ (hex_string_of_natural dt_symtab))
+      end
+    | Nothing ->
+      Error.fail "get_dynsym_section: missing DT_SYMTAB in .dynamic"
+  end
+
+let get_soname dyns =
+  let maybe_dt_soname = List.find (fun (tag, _) -> tag = Elf_dynamic.dt_soname) dyns in
+  match maybe_dt_soname with
+    | Just (_, SOName dt_soname) -> Just dt_soname
+    | Nothing -> Nothing
+  end
+
+let get_rpath dyns =
+  let maybe_dt_rpath = List.find (fun (tag, _) -> tag = Elf_dynamic.dt_rpath) dyns in
+  match maybe_dt_rpath with
+    | Just (_, RPath dt_rpath) -> Just dt_rpath
+    | Nothing -> Nothing
+  end
+
+type linkmap = <|
+  linkmap_dynsyms : list dynamic_symbol;
+  linkmap_sonames : list string
+|>
+
+let null_linkmap = <|
+  linkmap_dynsyms = [];
+  linkmap_sonames = []
+|>
+
+type check_args = <|
+  check_ldconfig_paths : list string;
+  check_is_loaded : bool;
+  check_root_path : string;
+  check_mmap_table : list mmap_entry;
+  check_data_sections : bool
+|>
+
+let rec check_object args core_file core_img linkmap object_filename is_root =
+  Filesystem.realpath_in args.check_root_path (args.check_root_path ^ object_filename) >>= fun object_filepath ->
+  let _ = Missing_pervasives.errln ("Resolved symlinks: " ^ (args.check_root_path ^ object_filename) ^ " -> " ^ object_filepath) in
+  let object_filename = assert_unwrap_maybe (Missing_pervasives.string_suffix (naturalFromNat (String.stringLength args.check_root_path)) object_filepath) in
+
+  let _ = Missing_pervasives.errln ("Loading object from " ^ object_filepath) in
+  load_file object_filepath >>= fun (object_bs, object_file) ->
+  let _ = Missing_pervasives.errln "object file:" in
+  let _ = print_elf64_phdr object_file in
+
+  let object_img = load_memory_image object_file in
+  let _ = Missing_pervasives.errln "object image:" in
+  let _ = print_memory_image object_img in
+
+  let object_img =
+    if args.check_is_loaded && not args.check_data_sections then
+      let object_img = mask_data_sections object_file object_img in
+      object_img
+    else
+      let _ = Missing_pervasives.errln "Not masking memory image data sections" in
+      object_img
+  in
+
+  let (n_bytes, n_masked) = get_memory_image_stats object_img in
+  let _ = Missing_pervasives.errln ((show n_bytes) ^ " bytes, " ^ (show n_masked) ^ " masked bytes after masking") in
+
+  let _ = Missing_pervasives.errln ("Searching object " ^ object_filename ^ " in mmap table") in
+  let errmsg = "check_object: cannot find `" ^ object_filename ^ "` in the mmap table" in
+  Error.of_maybe errmsg (get_first_mapped_address args.check_mmap_table object_filename) >>= fun object_addr ->
+  let _ = Missing_pervasives.errln ("object has been mapped at 0x" ^ (hex_string_of_natural object_addr)) in
+  let object_delta = get_memory_image_delta object_img object_addr in
+  let _ = Missing_pervasives.errln ("object has delta 0x" ^ (hex_string_of_natural object_delta)) in
+  check_mmaped_memory_image args.check_mmap_table object_filename object_file object_delta >>= fun () ->
+  let _ = Missing_pervasives.errln "Translating object image" in
+  let object_img = translate_memory_image object_img object_delta in
+  let _ = Missing_pervasives.errln "object image after translation:" in
+  let _ = print_memory_image object_img in
+
+  let maybe_dyns_res =
+    if has_dynamic_section object_file then
+      let _ = Missing_pervasives.errln ("Reading .dynamic section") in
+      read_dynamic object_bs object_file >>= fun dyns ->
+      return (Just dyns)
+    else
+      return Nothing
+  in
+  maybe_dyns_res >>= fun maybe_dyns ->
+
+  (* Add SONAME to linkmap *)
+  let linkmap = match maybe_dyns with
+    | Just dyns ->
+      match get_soname dyns with
+        | Just soname ->
+          let _ = Missing_pervasives.errln ("Object has SONAME `" ^ soname ^ "`") in
+          <|
+            linkmap_dynsyms = linkmap.linkmap_dynsyms;
+            linkmap_sonames = soname :: linkmap.linkmap_sonames;
+          |>
+        | Nothing -> linkmap
+      end
+    | Nothing -> linkmap
+  end in
+
+  (* Add RPATH to ld search path *)
+  (* TODO: add RUNPATH support too *)
+  let maybe_rpath =
+    if is_root then
+      match maybe_dyns with
+        | Just dyns -> get_rpath dyns
+        | Nothing -> Nothing
+      end
+    else
+      Nothing (* libraries' RPATH should be ignored *)
+  in
+  let args = match maybe_rpath with
+    | Just rpath ->
+      let _ = Missing_pervasives.errln ("Object has RPATH `" ^ rpath ^ "`") in
+      let paths = Ldconfig.parse_runpath rpath object_filepath in
+      <|
+        check_ldconfig_paths = paths ++ args.check_ldconfig_paths;
+        check_is_loaded = args.check_is_loaded;
+        check_root_path = args.check_root_path;
+        check_mmap_table = args.check_mmap_table;
+        check_data_sections = args.check_data_sections
+      |>
+    | Nothing -> args
+  end in
+
+  match maybe_dyns with
+    | Just dyns ->
+      get_dynsym_section_index object_file dyns >>= fun dynsym_scnidx ->
+      let _ = Missing_pervasives.errln ("Extracting dynamic symbol version info from " ^ object_filename ^ " (if any)") in
+      obtain_gnu_ext_elf64_interpreted_versym_table object_file dyns >>= fun maybe_versym_table ->
+      let _ = Missing_pervasives.errln ("Extracting dynamic symbols from " ^ object_filename) in
+      extract_dynsyms object_file object_delta linkmap.linkmap_dynsyms dynsym_scnidx maybe_versym_table >>= fun object_dynsyms ->
+      let _ = Missing_pervasives.errln ("Object exports " ^ (show (List.length object_dynsyms)) ^ " dynamic symbols") in
+      return (dynsym_scnidx, object_dynsyms, maybe_versym_table)
+    | Nothing ->
+      return (0, [], Nothing)
+  end >>= fun (dynsym_scnidx, object_dynsyms, maybe_versym_table) ->
+
+  let linkmap = <|
+    linkmap_dynsyms = object_dynsyms ++ linkmap.linkmap_dynsyms;
+    linkmap_sonames = linkmap.linkmap_sonames
+  |> in
+
+  let maybe_interp_seg =
+    if is_root then
+      List.find (fun seg ->
+        seg.elf64_segment_type = Elf_program_header_table.elf_pt_interp
+      ) object_file.elf64_file_interpreted_segments
+    else
+      Nothing (* libraries' INTERP should be ignored *)
+  in
+  match maybe_interp_seg with
+    | Just interp_seg ->
+      Elf_note.read_string interp_seg.elf64_segment_body >>= fun (interp, _) ->
+      (* TODO: these are glibc's ld.so. They need special treatement because
+         they expect their relocations to be linked to libc.so even if they
+         don't depend on it. There's probably a special pre-linker code that
+         runs in ld.so to do this - should investigate this. *)
+      if interp = "/lib64/ld-linux-x86-64.so.2" || interp = "/lib64/ld.so.1"
+          || Missing_pervasives.string_contains interp "/ld-linux" then
+        let _ = Missing_pervasives.errln "Ignoring request to load GNU's ld.so" in
+        return Nothing
+      else
+        return (Just interp)
+    | Nothing ->
+      return Nothing
+  end >>= fun maybe_interp ->
+  match maybe_interp with
+    | Just interp ->
+      let interp = Filesystem.to_absolute (Filesystem.dirname object_filepath) interp in
+      let _ = Missing_pervasives.errln ("Requesting program interpreter: " ^ interp) in
+      let linkmap =
+        (* TODO: musl's libc.so is missing SONAME. See:
+           - http://git.musl-libc.org/cgit/musl/commit/?id=dfdc337b3b276e6ea0e4786ede699f4d0d93dc40
+           - https://git.alpinelinux.org/cgit/aports/tree/main/musl/APKBUILD#n60
+         *)
+        if Missing_pervasives.string_contains interp "musl" then
+          <|
+            linkmap_dynsyms = linkmap.linkmap_dynsyms;
+            linkmap_sonames = "libc.so" :: linkmap.linkmap_sonames;
+          |>
+        else
+          linkmap
+      in
+      check_object args core_file core_img linkmap interp false
+    | Nothing ->
+      return linkmap
+  end >>= fun linkmap ->
+
+  (* Result contains the number of linked libraries *)
+  let linked_libs_res =
+    if not args.check_is_loaded then
+      let _ = Missing_pervasives.errln "Core file hasn't been loaded; not checking linked libraries" in
+      return (0, linkmap, [])
+    else
+      match maybe_dyns with
+        | Nothing ->
+          let _ = Missing_pervasives.errln "object doesn't have a .dynamic section; not checking linked libraries" in
+          return (0, linkmap, [])
+        | Just dyns ->
+          let _ = Missing_pervasives.errln "Checking linked libraries" in
+          read_dynamic object_bs object_file >>= fun dyns ->
+
+          let dyn_dt_needed = List.filter (fun (tag, _) -> tag = Elf_dynamic.dt_needed) dyns in
+          let _ = Missing_pervasives.errln ("Found " ^ (show (List.length dyn_dt_needed)) ^ " linked libraries") in
+          Error.mapM (fun (_, dyn_value) ->
+            match dyn_value with
+              | Library soname -> return soname
+              | _ -> Error.fail "got a DT_NEEDED with something else than a Library"
+            end
+          ) dyn_dt_needed >>= fun sonames ->
+
+          Error.mapM (fun soname ->
+            (* TODO: remove this hack. *)
+            let paths =
+              if soname = "libc.so" && Abi_mips64.header_is_mips64 object_file.elf64_file_header && Missing_pervasives.string_contains object_filepath "musl" then
+                ["/lib/mips64el-linux-musl"]
+              else if header_is_pure_cheri_mips64 object_file.elf64_file_header then
+                ["/usr/libcheri"]
+              else
+                args.check_ldconfig_paths
+            in
+            let _ = Missing_pervasives.errln ("Searching needed library `" ^ soname ^ "`") in
+            find_library args.check_root_path paths soname >>= fun library_filepath ->
+            return (soname, library_filepath)
+          ) sonames >>= fun sonames_and_lib_paths ->
+
+          Error.foldM (fun linkmap (soname, library_filepath) ->
+            if List.elem soname linkmap.linkmap_sonames then
+              let _ = Missing_pervasives.errln ("check_object: skipping dependency `" ^ soname ^ "` because it has already been loaded") in
+              return linkmap
+            else
+              check_object args core_file core_img linkmap library_filepath false
+          ) linkmap sonames_and_lib_paths >>= fun linkmap ->
+          return (naturalFromNat (List.length dyn_dt_needed), linkmap, dyns)
+      end
+  in
+
+  linked_libs_res >>= fun (libs_count, linkmap, dyns) ->
+  let _ = if libs_count > 0 then
+    Missing_pervasives.errln ("OK: " ^ (show libs_count) ^ " libraries linked to " ^ object_filepath ^ " match!")
+  else () in
+
+  let object_img =
+    if args.check_is_loaded then
+      let _ = Missing_pervasives.errln ("Applying relocations in " ^ object_filename) in
+      let object_img = apply_all_relocations object_file object_img object_delta linkmap.linkmap_dynsyms dynsym_scnidx maybe_versym_table args.check_data_sections in
+      let object_img =
+        if (Abi_mips64.header_is_mips64 object_file.elf64_file_header
+              || Abi_cheri_mips64.header_is_cheri_mips64 object_file.elf64_file_header)
+            && has_dynamic_section object_file then
+          apply_mips64_got_relocations object_file object_img linkmap.linkmap_dynsyms object_delta dyns dynsym_scnidx maybe_versym_table args.check_data_sections
+        else if Abi_amd64.header_is_amd64 object_file.elf64_file_header &&
+            has_dynamic_section object_file then
+          init_amd64_pltgot object_img object_delta dyns
+        else
+          object_img
+      in
+      let object_img =
+        if Abi_cheri_mips64.header_is_cheri_mips64 object_file.elf64_file_header then
+          apply_cheri_mips64_cap_relocations object_file object_img object_delta dyns args.check_data_sections
+        else
+          object_img
+      in
+      object_img
+    else
+      object_img
+  in
+
+  let (n_bytes, n_masked) = get_memory_image_stats object_img in
+  let _ = Missing_pervasives.errln ((show n_bytes) ^ " bytes, " ^ (show n_masked) ^ " masked bytes") in
+
+  let _ = Missing_pervasives.errln ("Checking memory image of " ^ object_filename) in
+  let comparison_res = compare_memory_image core_img object_img (args.check_mmap_table, object_file, object_delta) in
+
+  match comparison_res with
+    | Success () ->
+      let _ = Missing_pervasives.errln ("OK: " ^ object_filepath ^ " matches!") in
+      return linkmap
+    | Fail msg ->
+      Error.fail (object_filepath ^ " mismatches: " ^ msg)
+  end
+
+type load_args = <|
+  load_core_filepath : string;
+  load_root_path : string;
+  load_object_filename : maybe string;
+  load_additional_object_filename : maybe string;
+  load_check_data_sections : bool;
+  load_library_paths : list string
+|>
+
+let process_file args =
+  let core_filepath = args.load_core_filepath in
+  let root_path = args.load_root_path in
+
+  Ldconfig.read_ldconfig_paths root_path >>= fun ldconfig_paths ->
+  let ldconfig_paths = args.load_library_paths ++ ldconfig_paths in
+
+  load_file core_filepath >>= fun (core_bs, core_file) ->
+  let elf_type = natural_of_elf64_half core_file.elf64_file_header.elf64_type in
+  if elf_type <> Elf_header.elf_ft_core then Error.fail ("process_file: `" ^ core_filepath ^ "` is not a core file") else
+  let endian = get_elf64_header_endianness core_file.elf64_file_header in
+  Elf_note.obtain_elf64_note_segments endian core_file.elf64_file_program_header_table core_bs >>= fun note_segs ->
+
+  read_mmap_table endian note_segs >>= fun mmap_table ->
+  if List.null mmap_table then Error.fail ("process_file: mmap table of core file `" ^ core_filepath ^ "` is empty") else
+
+  (
+    if header_is_pure_cheri_mips64 core_file.elf64_file_header then
+      return [] (* TODO: pure CHERI auxv contains capabilities *)
+    else
+      let _ = Missing_pervasives.errln "Reading auxiliary vector" in
+      read_all_elf64_nt_auxv endian note_segs
+  ) >>= fun auxv ->
+
+  read_nt_auxv_execfn endian auxv core_file >>= fun maybe_execfn ->
+  read_nt_procstat_psstrings_argv0 endian note_segs core_file >>= fun maybe_psstrings_argv0 ->
+  let maybe_detected_object_filename = match maybe_execfn with
+    | Just _ -> maybe_execfn
+    | Nothing -> maybe_psstrings_argv0
+  end in
+  let _ = Missing_pervasives.errln ("Detected object filename: " ^ (show maybe_detected_object_filename)) in
+
+  let object_filename_res = match (args.load_object_filename, maybe_detected_object_filename) with
+    | (Just object_filename, Just detected_object_filename) ->
+      let _ =
+        if object_filename <> detected_object_filename then
+          Missing_pervasives.errln ("warning: object filename `" ^ object_filename ^ "` mismatches detected filename `" ^ detected_object_filename ^ "`")
+        else
+          ()
+      in
+      return object_filename
+    | (Just object_filename, Nothing) -> return object_filename
+    | (Nothing, Just detected_object_filename) -> return detected_object_filename
+    | (Nothing, Nothing) ->
+      Error.fail "process_file: cannot detect object filename in ELF notes, please provide it"
+  end in
+  object_filename_res >>= fun object_filename ->
+
+  let _ = Missing_pervasives.errln "Core file:" in
+  let _ = print_elf64_phdr core_file in
+
+  let core_img = load_memory_image core_file in
+  let _ = Missing_pervasives.errln "Core image:" in
+  let _ = print_memory_image core_img in
+
+  (* Data sections have to be masked if coredump has been generated after _start *)
+  (* TODO: add a flag instead of this hacky thing *)
+  let is_loaded = not (Missing_pervasives.string_contains core_filepath "start") in
+
+  let check_args = <|
+    check_ldconfig_paths = ldconfig_paths;
+    check_is_loaded = is_loaded;
+    check_root_path = root_path;
+    check_mmap_table = mmap_table;
+    check_data_sections = args.load_check_data_sections
+  |> in
+
+  check_object check_args core_file core_img null_linkmap object_filename true >>= fun dynsyms ->
+
+  match args.load_additional_object_filename with
+    | Just additional_object_filename ->
+      let _ = Missing_pervasives.errln ("Loading additonnal object: " ^ additional_object_filename) in
+      check_object check_args core_file core_img dynsyms additional_object_filename false
+    | Nothing ->
+      return dynsyms
+  end >>= fun _ ->
+
+  return ()
+
+type load_arg =
+  | CoreFilepath of string
+  | RootPath of string
+  | ObjectFilename of string
+  | AdditionalObjectFilename of string
+  | CheckDataSections
+  | LibraryPath of string
+
+let print_help () =
+  let _ = Missing_pervasives.outln (
+    "usage: main_load [options] <core-file>\n"
+    ^ "\n"
+    ^ "Options:\n"
+    ^ "  -r <root-path>          Specify the root path. This is required when\n"
+    ^ "                          checking coredumps generated on other machines\n"
+    ^ "                          (for instance, on a VM). The root directory\n"
+    ^ "                          must not have been modified since the coredump\n"
+    ^ "                          generation.\n"
+    ^ "  -f <filename>           Specify the filename of the binary relative to\n"
+    ^ "                          the root path. This is sometimes required when\n"
+    ^ "                          it cannot be extracted from the coredump.\n"
+    ^ "  -l <additional-object>  Load an additional object. The argument is a\n"
+    ^ "                          filename relative to the root path. This is\n"
+    ^ "                          useful when checking `ld.so <binary>` for\n"
+    ^ "                          instance.\n"
+    ^ "  -d                      Also check data sections. This is disabled by\n"
+    ^ "                          default because of constructors. This is useful\n"
+    ^ "                          for constructor-free binaries (e.g. linked with\n"
+    ^ "                          musl instead of glibc) and for linkers that\n"
+    ^ "                          support disabling constructors (e.g.\n"
+    ^ "                          LD_SKIP_INIT_FUNCS and LD_CHERI_SKIP_INIT_FUNCS\n"
+    ^ "                          on the CheriBSD `rtld-cheri-elf` linker).\n"
+    ^ "  --library-path <path>   Add an additional library search path.\n"
+    ^ "  -h, --help              Show this help message.\n"
+  ) in
+  Assert_extra.failwith ""
+
+let rec parse_args argv =
+  if argv = [] then [] else
+  let (parsed, argv) = match argv with
+    | "-r" :: root_path :: argv -> (RootPath root_path, argv)
+    | "-f" :: object_filename :: argv -> (ObjectFilename object_filename, argv)
+    | "-l" :: additional_object_filename :: argv -> (AdditionalObjectFilename additional_object_filename, argv)
+    | "-d" :: argv -> (CheckDataSections, argv)
+    | "--library-path" :: library_path :: argv -> (LibraryPath library_path, argv)
+    | "-h" :: _ -> print_help ()
+    | "--help" :: _ -> print_help ()
+    | [core_filepath] -> (CoreFilepath core_filepath, [])
+    | _ -> print_help ()
+  end in
+  parsed :: (parse_args argv)
+
+let has_arg f args =
+  Maybe.isJust (List.find f args)
+
+let find_arg f args =
+  List.foldl (fun maybe_value arg ->
+    match (f arg, maybe_value) with
+      | (Nothing, _) -> maybe_value
+      | (Just v, Nothing) -> Just v
+      | (Just _, Just _) -> Assert_extra.failwith "find_arg: duplicate argument"
+    end
+  ) Nothing args
+
+let accumulate_args f args =
+  List.foldl (fun l arg ->
+    match f arg with
+      | Just v -> v :: l
+      | Nothing -> l
+    end
+  ) [] args
+
+let collect_args args =
+  let core_filepath = match find_arg (fun arg -> match arg with CoreFilepath v -> Just v | _ -> Nothing end) args with
+    | Just core_filepath -> core_filepath
+    | Nothing -> Assert_extra.failwith "usage: main_load [options] <core-file>"
+  end in
+  let root_path = match find_arg (fun arg -> match arg with RootPath v -> Just v | _ -> Nothing end) args with
+    | Just root_path -> root_path
+    | Nothing -> ""
+  end in
+  <|
+    load_core_filepath = core_filepath;
+    load_root_path = root_path;
+    load_object_filename = find_arg (fun arg -> match arg with ObjectFilename v -> Just v | _ -> Nothing end) args;
+    load_additional_object_filename = find_arg (fun arg -> match arg with AdditionalObjectFilename v -> Just v | _ -> Nothing end) args;
+    load_check_data_sections = has_arg (fun arg -> match arg with CheckDataSections -> true | _ -> false end) args;
+    load_library_paths = accumulate_args (fun arg -> match arg with LibraryPath p -> Just p | _ -> Nothing end) args
+  |>
+
+let _ =
+  let argv = match Missing_pervasives.argv with
+    | _::args -> args
+    | _ -> []
+  end in
+  let args = collect_args (parse_args argv) in
+  match process_file args with
+    | Fail err -> failwith err
+    | Success () -> Missing_pervasives.errln "OK: ALL GREEN"
+  end

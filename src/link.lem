@@ -194,7 +194,7 @@ let mark_fate_of_relocs linkable_idx a options bindings_by_name item img =
                             end)
                         in
                         let (reloc_is_absolute : reloc_site -> bool) = fun rs ->
-                            let kind = get_elf64_relocation_a_type rs.ref_relent in
+                            let (kind, _) = a.parse_reloc_info rs.ref_relent.elf64_ra_info in
                             let (is_abs, _) = a.reloc kind in
                             is_abs
                         in
@@ -555,7 +555,9 @@ let relocate_output_image a bindings_by_name img =
             | Just r -> r
         end
         in
-        let (field_is_absolute_addr, applyfn) = a.reloc (get_elf64_relocation_a_type reloc_site.ref_relent)
+        let (rel_type, _) = a.parse_reloc_info reloc_site.ref_relent.elf64_ra_info
+        in
+        let (field_is_absolute_addr, applyfn) = a.reloc rel_type
         in
         let element = match Map.lookup el_name img.elements with
             Nothing -> failwith "impossible: reloc site in nonexistent section"

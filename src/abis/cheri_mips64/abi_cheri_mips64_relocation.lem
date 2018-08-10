@@ -1,0 +1,87 @@
+open import Assert_extra
+open import Basic_classes
+open import List
+open import Num
+open import String
+
+open import Byte_sequence
+open import Elf_file
+open import Elf_header
+open import Elf_relocation
+open import Elf_symbol_table
+open import Elf_types_native_uint
+open import Endianness
+open import Error
+open import Memory_image
+open import Missing_pervasives
+
+open import Abi_mips64_relocation
+
+(* Relocation types *)
+
+let r_mips_cheri_absptr : natural = 70
+let r_mips_cheri_size : natural = 71
+let r_mips_cheri_capability : natural = 90
+
+val string_of_cheri_mips_relocation_subtype : natural -> string
+let string_of_cheri_mips_relocation_subtype rel_type =
+  if rel_type = r_mips_cheri_absptr then
+    "R_MIPS_CHERI_ABSPTR"
+  else if rel_type = r_mips_cheri_absptr then
+    "R_MIPS_CHERI_SIZE"
+  else if rel_type = r_mips_cheri_capability then
+    "R_MIPS_CHERI_CAPABILITY"
+  else
+    string_of_mips64_relocation_subtype rel_type
+
+val string_of_cheri_mips64_relocation_type : natural -> string
+let string_of_cheri_mips64_relocation_type rel_type =
+  let (type1, type2, type3) = get_mips64_relocation_subtypes rel_type in
+  (string_of_cheri_mips_relocation_subtype type1)
+    ^ "/" ^ (string_of_cheri_mips_relocation_subtype type2)
+    ^ "/" ^ (string_of_cheri_mips_relocation_subtype type3)
+
+val cheri_mips64_reloc : forall 'abifeature. reloc_fn 'abifeature
+let cheri_mips64_reloc r =
+  match (string_of_cheri_mips64_relocation_type r) with
+    (* TODO: it seems rather strange to return a natural with a capability in it.
+       Should we do that? *)
+    | "R_MIPS_CHERI_CAPABILITY/R_MIPS_NONE/R_MIPS_NONE" -> (false, fun img -> (fun site_addr -> (fun rr -> (32 (* TODO: this is only for CHERI256 *), fun s -> fun a -> fun ea -> Assert_extra.failwith "cheri_mips64_reloc: unimplemented R_MIPS_CHERI_CAPABILITY"))))
+    | _ -> mips64_reloc r
+  end
+
+
+(* CHERI __cap_relocs section *)
+
+let abi_cheri_mips64_function_reloc_flag = natural_of_hex "0x8000000000000000"
+
+type cheri_mips64_cap_reloc = <|
+  cheri_mips64_cap_reloc_location : elf64_xword;
+  cheri_mips64_cap_reloc_object : elf64_xword;
+  cheri_mips64_cap_reloc_offset : elf64_xword;
+  cheri_mips64_cap_reloc_size : elf64_xword;
+  cheri_mips64_cap_reloc_permissions : elf64_xword
+|>
+
+val read_cheri_mips64_cap_relocs : endianness -> byte_sequence -> error (list cheri_mips64_cap_reloc)
+let rec read_cheri_mips64_cap_relocs endian bs =
+  if Byte_sequence.length bs = 0 then return [] else
+  read_elf64_xword endian bs >>= fun (location, bs) ->
+  read_elf64_xword endian bs >>= fun (obj, bs) ->
+  read_elf64_xword endian bs >>= fun (offset, bs) ->
+  read_elf64_xword endian bs >>= fun (size, bs) ->
+  read_elf64_xword endian bs >>= fun (permissions, bs) ->
+  let cap_reloc = <|
+    cheri_mips64_cap_reloc_location = location;
+    cheri_mips64_cap_reloc_object = obj;
+    cheri_mips64_cap_reloc_offset = offset;
+    cheri_mips64_cap_reloc_size = size;
+    cheri_mips64_cap_reloc_permissions = permissions
+  |> in
+  read_cheri_mips64_cap_relocs endian bs >>= fun next ->
+  return (cap_reloc :: next)
+
+val cheri_mips64_cap_reloc_is_function : cheri_mips64_cap_reloc -> bool
+let cheri_mips64_cap_reloc_is_function reloc =
+  let perms = natural_of_elf64_xword reloc.cheri_mips64_cap_reloc_permissions in
+  natural_land perms abi_cheri_mips64_function_reloc_flag <> 0

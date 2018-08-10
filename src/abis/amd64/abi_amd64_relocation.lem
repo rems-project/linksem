@@ -133,13 +133,13 @@ let string_of_amd64_relocation_type rel_type =
     "Invalid X86_64 relocation"
 
 (* How do we find the GOT? *)
-(* We really want to find the GOT without knowing how it's labelled, because 
- * in this file 'abifeature is abstract. This is a real problem. So for now, 
+(* We really want to find the GOT without knowing how it's labelled, because
+ * in this file 'abifeature is abstract. This is a real problem. So for now,
  * we use the HACK of looking for a section called ".got".
  * Even then, we can't understand the content of the GOT without reading the tag.
  *
  * So we can
- * 
+ *
  * - accept an argument of type abi 'abifeature and call a function on it to get the GOT
        (but then type abi becomes a recursive record type);
  * - extend the AbiFeatureTagEquiv class into a generic class capturing ABIs;
@@ -178,7 +178,7 @@ val abi_amd64_apply_relocation : elf64_relocation_a -> val_map string integer ->
   -> error (relocation_frame elf64_addr integer)
 let abi_amd64_apply_relocation rel val_map ef =
   if is_elf64_relocatable_file ef.elf64_file_header then
-    let rel_type = get_elf64_relocation_a_type rel in
+    let (rel_type, _) = parse_elf64_relocation_info rel.elf64_ra_info in
     let a_val    = integer_of_elf64_sxword rel.elf64_ra_addend in
       (** No width, No calculation *)
       if rel_type = r_x86_64_none then

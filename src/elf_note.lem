@@ -3,11 +3,15 @@
   * section/segment.
   *)
 
+open import Assert_extra
 open import Basic_classes
+open import Bool
 open import List
+open import Maybe
 open import Num
 open import String
 
+open import Auxv
 open import Byte_sequence
 open import Endianness
 open import Error
@@ -98,8 +102,20 @@ let nt_arm_sve : natural = natural_of_hex "0x405" (** ARM Scalable Vector Extens
 
 let nt_version : natural = 1 (** Contains a version string. *)
 
+(* FreeBSD-specific *)
 
-(** [elf32_nt_file] represents the contents of a NT_FILE note. *)
+let nt_procstat_proc : natural = 8 (** Procstat proc data. *)
+let nt_procstat_files : natural = 9 (** Procstat files data. *)
+let nt_procstat_vmmap : natural = 10 (** Procstat vmmap data. *)
+let nt_procstat_groups : natural = 11 (** Procstat groups data. *)
+let nt_procstat_umask : natural = 12 (** Procstat umask data. *)
+let nt_procstat_rlimit : natural = 13 (** Procstat rlimit data. *)
+let nt_procstat_osrel : natural = 14 (** Procstat osreldate data. *)
+let nt_procstat_psstrings : natural = 15 (** Procstat ps_strings data. *)
+let nt_procstat_auxv : natural = 16 (** Procstat auxv data. *)
+
+
+(** [elf64_nt_file_entry] represents the contents of a NT_FILE note entry. *)
 type elf64_nt_file_entry =
   <| elf64_nt_file_entry_start : elf64_xword
    ; elf64_nt_file_entry_end : elf64_xword
@@ -112,6 +128,28 @@ type elf64_nt_file =
   <| elf64_nt_file_count : elf64_xword
    ; elf64_nt_file_page_size : elf64_xword
    ; elf64_nt_file_entries : list elf64_nt_file_entry
+   |>
+
+(** [elf64_nt_procstat_vmentry] represents the contents of a FreeBSD
+    NT_PROCSTAT_VMMAP note entry (see `struct kinfo_vmentry`). *)
+type elf64_nt_procstat_vmentry =
+  <| elf64_nt_procstat_vmentry_type : elf64_word (** Type of map entry. *)
+   ; elf64_nt_procstat_vmentry_start : elf64_xword (** Starting address. *)
+   ; elf64_nt_procstat_vmentry_end : elf64_xword (** Finishing address. *)
+   ; elf64_nt_procstat_vmentry_offset : elf64_xword (** Mapping offset in object *)
+   ; elf64_nt_procstat_vmentry_vn_fileid : elf64_xword (** inode number if vnode *)
+   ; elf64_nt_procstat_vmentry_vn_fsid : elf64_word (** dev_t of vnode location *)
+   ; elf64_nt_procstat_vmentry_flags : elf64_word (** Flags on map entry. *)
+   ; elf64_nt_procstat_vmentry_resident : elf64_word (** Number of resident pages. *)
+   ; elf64_nt_procstat_vmentry_protection : elf64_word (** Protection bitmask. *)
+   ; elf64_nt_procstat_vmentry_ref_count : elf64_word (** VM obj ref count. *)
+   ; elf64_nt_procstat_vmentry_shadow_count : elf64_word (** VM obj shadow count. *)
+   ; elf64_nt_procstat_vmentry_vn_type : elf64_word (** Vnode type. *)
+   ; elf64_nt_procstat_vmentry_vn_size : elf64_xword (** File size. *)
+   ; elf64_nt_procstat_vmentry_vn_rdev : elf64_word (** Device id if device. *)
+   ; elf64_nt_procstat_vmentry_vn_mode : elf64_half (** File mode. *)
+   ; elf64_nt_procstat_vmentry_status : elf64_half (** Status flags. *)
+   ; elf64_nt_procstat_vmentry_path : string (** Path to VM obj, if any. *)
    |>
 
 (* Note names and descriptions are 4-byte aligned (even ELF64 notes) *)
@@ -315,6 +353,18 @@ let name_string_of_elf64_note note =
     | Fail err -> Assert_extra.failwith err
   end
 
+(** [read_freebsd_note_desc] unwraps a FreeBSD note description, checking that
+    the size of  *)
+val read_elf64_freebsd_note_desc : endianness -> elf64_note -> natural -> error byte_sequence
+let read_elf64_freebsd_note_desc endian note struct_size =
+  let note_name = name_string_of_elf64_note note in
+  if note_name <> "FreeBSD" then Error.fail ("read_elf64_freebsd_note_desc: `" ^ note_name ^ "` isn't a FreeBSD note") else
+  read_elf64_word endian note.elf64_note_desc >>= fun (size, bs) ->
+  if natural_of_elf64_word size <> struct_size then
+    Error.fail ("read_elf64_freebsd_note_desc: unsupported struct size for FreeBSD note type " ^ (show note.elf64_note_type) ^ " (has " ^ (show size) ^ ", want " ^ (show struct_size) ^ ")")
+  else
+    return bs
+
 (* Functions to parse specific note types *)
 
 val read_string' : byte_sequence -> error (list byte * byte_sequence)
@@ -373,3 +423,191 @@ let read_elf64_nt_file endian bs =
     elf64_nt_file_page_size = page_size;
     elf64_nt_file_entries = entries
   |>
+
+val read_elf64_nt_procstat_vmentry : endianness -> byte_sequence -> error (elf64_nt_procstat_vmentry * byte_sequence)
+let read_elf64_nt_procstat_vmentry endian bs =
+  let bs_len_before = Byte_sequence.length bs in
+  read_elf64_word endian bs >>= fun (structsize, bs) ->
+  read_elf64_word endian bs >>= fun (type_, bs) ->
+  read_elf64_xword endian bs >>= fun (start, bs) ->
+  read_elf64_xword endian bs >>= fun (end_, bs) ->
+  read_elf64_xword endian bs >>= fun (offset, bs) ->
+  read_elf64_xword endian bs >>= fun (vn_fileid, bs) ->
+  read_elf64_word endian bs >>= fun (vn_fsid, bs) ->
+  read_elf64_word endian bs >>= fun (flags, bs) ->
+  read_elf64_word endian bs >>= fun (resident, bs) ->
+  read_elf64_word endian bs >>= fun (protection, bs) ->
+  read_elf64_word endian bs >>= fun (ref_count, bs) ->
+  read_elf64_word endian bs >>= fun (shadow_count, bs) ->
+  read_elf64_word endian bs >>= fun (vn_type, bs) ->
+  read_elf64_xword endian bs >>= fun (vn_size, bs) ->
+  read_elf64_word endian bs >>= fun (vn_rdev, bs) ->
+  read_elf64_half endian bs >>= fun (vn_mode, bs) ->
+  read_elf64_half endian bs >>= fun (status, bs) ->
+  read_elf64_word endian bs >>= fun (vn_rdev, bs) ->
+  Byte_sequence.dropbytes (12 * 4) bs >>= fun bs -> (* int _kve_ispare[12] *)
+  let bs_len_after = Byte_sequence.length bs in
+  let remaining = (natural_of_elf64_word structsize) - (bs_len_before - bs_len_after) in
+  (* path_bs is NULL-terminated *)
+  Byte_sequence.partition remaining bs >>= fun (path_bs, bs) ->
+  read_string path_bs >>= fun (path, _) ->
+  let e = <|
+    elf64_nt_procstat_vmentry_type = type_;
+    elf64_nt_procstat_vmentry_start = start;
+    elf64_nt_procstat_vmentry_end = end_;
+    elf64_nt_procstat_vmentry_offset = offset;
+    elf64_nt_procstat_vmentry_vn_fileid = vn_fileid;
+    elf64_nt_procstat_vmentry_vn_fsid = vn_fsid;
+    elf64_nt_procstat_vmentry_flags = flags;
+    elf64_nt_procstat_vmentry_resident = resident;
+    elf64_nt_procstat_vmentry_protection = protection;
+    elf64_nt_procstat_vmentry_ref_count = ref_count;
+    elf64_nt_procstat_vmentry_shadow_count = shadow_count;
+    elf64_nt_procstat_vmentry_vn_type = vn_type;
+    elf64_nt_procstat_vmentry_vn_size = vn_size;
+    elf64_nt_procstat_vmentry_vn_rdev = vn_rdev;
+    elf64_nt_procstat_vmentry_vn_mode = vn_mode;
+    elf64_nt_procstat_vmentry_status = status;
+    elf64_nt_procstat_vmentry_path = path;
+  |> in
+  return (e, bs)
+
+val read_elf64_nt_procstat_vmmap : endianness -> byte_sequence -> error (list elf64_nt_procstat_vmentry)
+let rec read_elf64_nt_procstat_vmmap endian bs =
+  if Byte_sequence.length bs = 0 then
+    return []
+  else
+    read_elf64_nt_procstat_vmentry endian bs >>= fun (e, bs) ->
+    read_elf64_nt_procstat_vmmap endian bs >>= fun (next) ->
+    return (e :: next)
+
+val read_elf64_nt_procstat_psstrings : endianness -> byte_sequence -> error elf64_addr
+let read_elf64_nt_procstat_psstrings endian bs =
+  read_elf64_addr endian bs >>= fun (addr, _) ->
+  return addr
+
+(* Some various structs one can find in notes *)
+
+(** [elf64_psstrings] is FreeBSD's `struct ps_strings` *)
+type elf64_psstrings = <|
+  elf64_psstrings_argvstr : elf64_addr;
+  elf64_psstrings_nargvstr : elf64_word; (** the number of argument strings *)
+  elf64_psstrings_envstr : elf64_addr;
+  elf64_psstrings_nenvstr : elf64_word; (** the number of environment strings *)
+|>
+
+val read_elf64_psstrings : endianness -> byte_sequence -> error elf64_psstrings
+let read_elf64_psstrings endian bs =
+  read_elf64_addr endian bs >>= fun (argvstr, bs) ->
+  read_elf64_word endian bs >>= fun (nargvstr, bs) ->
+  read_elf64_addr endian bs >>= fun (envstr, bs) ->
+  read_elf64_word endian bs >>= fun (nenvstr, _) ->
+  return <|
+    elf64_psstrings_argvstr = argvstr;
+    elf64_psstrings_nargvstr = nargvstr;
+    elf64_psstrings_envstr = envstr;
+    elf64_psstrings_nenvstr = nenvstr;
+  |>
+
+(* Interpreted, abstracted, common versions of those structs *)
+
+(** A mmap table entry suitable for both Linux and FreeBSD. *)
+type mmap_entry = <|
+  mmap_entry_start : natural;
+  mmap_entry_end : natural;
+  mmap_entry_offset : natural;
+  mmap_entry_path : string
+|>
+
+let read_nt_file_entries endian note_segs =
+  Error.foldM (fun acc note_seg ->
+    let note_name = name_string_of_elf64_note note_seg in
+    let note_type = natural_of_elf64_word note_seg.elf64_note_type in
+    if note_name = "CORE" && note_type = nt_file then
+      read_elf64_nt_file endian note_seg.elf64_note_desc >>= fun nt_file ->
+      let entries = List.map (fun e ->
+        let _ = Missing_pervasives.errln (
+          "NT_FILE"
+          ^ " start=0x" ^ (hex_string_of_natural (natural_of_elf64_xword e.elf64_nt_file_entry_start))
+          ^ " end=0x" ^ (hex_string_of_natural (natural_of_elf64_xword e.elf64_nt_file_entry_end))
+          ^ " offset=0x" ^ (hex_string_of_natural (natural_of_elf64_xword e.elf64_nt_file_entry_offset))
+          ^ " filename=`" ^ e.elf64_nt_file_entry_filename ^ "`"
+        ) in
+        <|
+          mmap_entry_start = natural_of_elf64_xword e.elf64_nt_file_entry_start;
+          mmap_entry_end = natural_of_elf64_xword e.elf64_nt_file_entry_end;
+          mmap_entry_offset = natural_of_elf64_xword e.elf64_nt_file_entry_offset;
+          mmap_entry_path = e.elf64_nt_file_entry_filename
+        |>
+      ) nt_file.elf64_nt_file_entries in
+      return (acc ++ entries)
+    else
+      return acc
+  ) [] note_segs
+
+let read_nt_procstat_vmmap endian note_segs =
+  Error.foldM (fun acc note_seg ->
+    let note_name = name_string_of_elf64_note note_seg in
+    let note_type = natural_of_elf64_word note_seg.elf64_note_type in
+    if note_name = "FreeBSD" && note_type = nt_procstat_vmmap then
+      let struct_size = natural_of_hex "0x488" in (* sizeof(struct kinfo_vmentry) *)
+      read_elf64_freebsd_note_desc endian note_seg struct_size >>= fun bs ->
+      read_elf64_nt_procstat_vmmap endian bs >>= fun entries ->
+
+      let entries = List.map (fun e ->
+        let _ = Missing_pervasives.errln (
+          "NT_PROCSTAT_VMMAP"
+          ^ " start=0x" ^ (hex_string_of_natural (natural_of_elf64_xword e.elf64_nt_procstat_vmentry_start))
+          ^ " end=0x" ^ (hex_string_of_natural (natural_of_elf64_xword e.elf64_nt_procstat_vmentry_end))
+          ^ " offset=0x" ^ (hex_string_of_natural (natural_of_elf64_xword e.elf64_nt_procstat_vmentry_offset))
+          ^ " path=`" ^ e.elf64_nt_procstat_vmentry_path ^ "`"
+        ) in
+        <|
+          mmap_entry_start = natural_of_elf64_xword e.elf64_nt_procstat_vmentry_start;
+          mmap_entry_end = natural_of_elf64_xword e.elf64_nt_procstat_vmentry_end;
+          mmap_entry_offset = natural_of_elf64_xword e.elf64_nt_procstat_vmentry_offset;
+          mmap_entry_path = e.elf64_nt_procstat_vmentry_path
+        |>
+      ) entries in
+
+      return (acc ++ entries)
+    else
+      return acc
+  ) [] note_segs
+
+val read_mmap_table : endianness -> list elf64_note -> error (list mmap_entry)
+let read_mmap_table endian note_segs =
+  read_nt_file_entries endian note_segs >>= fun nt_file_entries ->
+  read_nt_procstat_vmmap endian note_segs >>= fun nt_procstat_vmmap ->
+  (* TODO: don't allow both mmap table types to be present at the same time *)
+  return (nt_file_entries ++ nt_procstat_vmmap)
+
+val get_mmap_entry_at : list mmap_entry -> natural -> maybe mmap_entry
+let get_mmap_entry_at mmap_table addr =
+  let l = List.filter (fun e ->
+    addr >= e.mmap_entry_start && addr < e.mmap_entry_end
+  ) mmap_table in
+  match l with
+    | [e] -> Just e
+    | [] -> Nothing
+    | _ -> failwith ("get_mmap_entry_at: multiple mmap entries found at 0x" ^ (hex_string_of_natural addr))
+  end
+
+let read_all_elf64_nt_auxv endian note_segs =
+  Error.foldM (fun auxv_list note_seg ->
+    let note_name = name_string_of_elf64_note note_seg in
+    let note_type = natural_of_elf64_word note_seg.elf64_note_type in
+    if (note_name = "CORE" && note_type = nt_auxv)
+        || (note_name = "FreeBSD" && note_type = nt_procstat_auxv) then
+      let bs = note_seg.elf64_note_desc in
+      let bs_res = if note_name = "FreeBSD" then
+        read_elf64_freebsd_note_desc endian note_seg 16 (* sizeof(Elf_Auxvinfo) *)
+      else
+        return bs
+      in
+      bs_res >>= fun bs ->
+      Auxv.read_all_elf64_auxv endian bs >>= fun l ->
+      return (auxv_list ++ l)
+    else
+      return auxv_list
+  ) [] note_segs

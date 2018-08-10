@@ -1,0 +1,59 @@
+open import Basic_classes
+open import Bool
+open import List
+open import Num
+open import Maybe
+open import Missing_pervasives
+
+open import Elf_header
+open import Elf_types_native_uint
+
+open import Endianness
+
+val abi_cheri_mips64_data_encoding : natural
+let abi_cheri_mips64_data_encoding = elf_data_2msb
+
+val abi_cheri_mips64_endianness : endianness
+let abi_cheri_mips64_endianness = Big (* Must match above *)
+
+val abi_cheri_mips64_file_class : natural
+let abi_cheri_mips64_file_class = elf_class_64
+
+val abi_cheri_mips64_file_version : natural
+let abi_cheri_mips64_file_version = elf_ev_current
+
+val abi_cheri_mips64_page_size_min : natural
+let abi_cheri_mips64_page_size_min = 4096
+
+val abi_cheri_mips64_page_size_max : natural
+let abi_cheri_mips64_page_size_max = 65536
+
+let ef_mips_abi_cheriabi : natural = natural_of_hex "0x0000C000"
+
+let ef_mips_mach_cheri128 : natural = natural_of_hex "0x00C10000"
+let ef_mips_mach_cheri256 : natural = natural_of_hex "0x00C20000"
+
+val is_valid_abi_cheri_mips64_machine_architecture : natural -> bool
+let is_valid_abi_cheri_mips64_machine_architecture m =
+  m = elf_ma_mips
+
+val is_valid_abi_cheri_mips64_magic_number : list unsigned_char -> bool
+let is_valid_abi_cheri_mips64_magic_number magic =
+  match List.index magic (unsafe_nat_of_natural elf_ii_class) with
+    | Nothing  -> false
+    | Just cls ->
+      match List.index magic (unsafe_nat_of_natural elf_ii_data) with
+        | Nothing   -> false
+        | Just data ->
+            (natural_of_unsigned_char cls = abi_cheri_mips64_file_class) &&
+              (natural_of_unsigned_char data = abi_cheri_mips64_data_encoding)
+      end
+  end
+
+val is_pure_abi_cheri_mips64_flag : natural -> bool
+let is_pure_abi_cheri_mips64_flag flags =
+  natural_land flags ef_mips_abi_cheriabi <> 0
+
+val is_valid_abi_cheri256_mips64_flag : natural -> bool
+let is_valid_abi_cheri256_mips64_flag flags =
+  natural_land flags ef_mips_mach_cheri256 <> 0

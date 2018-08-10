@@ -1,0 +1,47 @@
+open import Maybe
+open import Num
+
+open import Byte_pattern
+open import Endianness
+open import Memory_image
+open import Missing_pervasives
+
+val natural_to_byte_pattern_padded_to : endianness -> natural -> natural -> byte_pattern
+let natural_to_byte_pattern_padded_to endian width value =
+  let bl = Memory_image.natural_to_byte_list_padded_to endian width value in
+  Byte_pattern.byte_list_to_byte_pattern bl
+
+(** Format a CHERI256 capability. *)
+val abi_cheri_mips64_write_capability_byte_pattern : endianness
+  -> maybe natural -> maybe bool -> maybe natural -> maybe natural
+  -> maybe natural -> maybe natural -> maybe natural
+  -> byte_pattern
+let abi_cheri_mips64_write_capability_byte_pattern endian
+    otype sealed perms uperms cursor base len =
+  let bp = Byte_pattern.init_byte_pattern 32 in
+
+  (* TODO: write other fields too *)
+
+  let bp = match cursor with
+    | Just cursor ->
+      let cursor_bp = natural_to_byte_pattern_padded_to endian 8 cursor in
+      write_byte_pattern bp 8 cursor_bp
+    | Nothing -> bp
+  end in
+
+  let bp = match base with
+    | Just base ->
+      let base_bp = natural_to_byte_pattern_padded_to endian 8 base in
+      write_byte_pattern bp 16 base_bp
+    | Nothing -> bp
+  end in
+
+  let bp = match len with
+    | Just len ->
+      let len = (natural_of_hex "0xffffffffffffffff") - len in (* TODO: what, why? *)
+      let len_bp = natural_to_byte_pattern_padded_to endian 8 len in
+      write_byte_pattern bp 24 len_bp
+    | Nothing -> bp
+  end in
+
+  bp

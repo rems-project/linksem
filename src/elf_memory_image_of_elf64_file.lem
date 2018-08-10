@@ -11,6 +11,7 @@ open import Num
 open import Maybe
 open import Assert_extra
 
+open import Byte_pattern
 open import Byte_sequence
 open import Default_printing
 open import Error
@@ -171,7 +172,9 @@ let elf_memory_image_of_elf64_file a fname f =
                             | Nothing -> failwith "relocs came from nonexistent section"
                         end
                         in
-                        let (_, applyfn) = a.reloc (get_elf64_relocation_a_type rel.ref_relent)
+                        let (rel_type, _) = a.parse_reloc_info rel.ref_relent.elf64_ra_info
+                        in
+                        let (_, applyfn) = a.reloc rel_type
                         in
                         let (width, calcfn) = applyfn (get_empty_memory_image ()) 0 x
                          (* GAH. We don't have an image.

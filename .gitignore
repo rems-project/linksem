@@ -10,6 +10,7 @@ src/**/*.ml
 !src/uint64_wrapper.ml
 !src/ml_bindings.ml
 !src/byte_sequence_wrapper.ml
+!src/filesystem_wrapper.ml
 !src/src_lem_library/*.ml
 
 *.opt
@@ -18,6 +19,8 @@ src/main_elf
 src/main_elf.native
 src/main_link
 src/main_link.native
+src/main_load
+src/main_load.native
 src/copy_elf
 src/copy_elf.native
 src/lem_ocaml_sentinel

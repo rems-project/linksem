@@ -1,4 +1,4 @@
-all: copy_elf.native main_elf.native main_link.native
+all: copy_elf.native main_elf.native main_link.native main_load.native
 
 include lem.mk
 
