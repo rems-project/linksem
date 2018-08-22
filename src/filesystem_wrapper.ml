@@ -47,7 +47,6 @@ let normalize p =
   String.concat "/" l
 
 let to_absolute working_dir p =
-  let _ = Printf.printf "HEY: %s %s\n" working_dir p in
   if is_abs_path p then
     normalize p
   else
