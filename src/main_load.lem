@@ -51,6 +51,8 @@ open import Abi_cheri_mips64_dynamic
 open import Abi_cheri_mips64_relocation
 open import Abi_cheri_mips64_capability
 
+open import Load
+
 let get_file_abi f =
   let guessed_abi = List.find (fun abi ->
     abi.is_valid_elf_header f.elf64_file_header
@@ -63,27 +65,6 @@ let get_file_abi f =
 let load_memory_image f =
   let abi = get_file_abi f in
   elf_memory_image_of_elf64_file abi "<input file>" f
-
-let load_memory_image_with_sections f =
-  let f_without_phdr = <|
-    elf64_file_header = f.elf64_file_header;
-    elf64_file_program_header_table = [];
-    elf64_file_section_header_table = f.elf64_file_section_header_table;
-    elf64_file_interpreted_segments = f.elf64_file_interpreted_segments;
-    elf64_file_interpreted_sections = f.elf64_file_interpreted_sections;
-    elf64_file_bits_and_bobs = f.elf64_file_bits_and_bobs
-  |> in
-  load_memory_image f_without_phdr
-
-let load_memory_image_with_annotations f =
-  (* TODO: this is a hack *)
-  let raw = load_memory_image f in
-  let annotated = load_memory_image_with_sections f in
-  <|
-    elements = raw.elements;
-    by_range = annotated.by_range;
-    by_tag = annotated.by_tag
-  |>
 
 let print_elf64_phdr f =
   let _ = Missing_pervasives.errln "Program header:" in
@@ -195,30 +176,6 @@ let print_elf64_section sec =
     ^ " addr=0x" ^ (hex_string_of_natural sec.elf64_section_addr)
     ^ " len=0x" ^ (hex_string_of_natural sec.elf64_section_size))
 
-let get_section_at_addr f addr =
-  if addr = 0 then Nothing else (* TODO: is this the right thing to do? *)
-  let l = List.filter (fun sec ->
-    addr >= sec.elf64_section_addr &&
-      addr < sec.elf64_section_addr + sec.elf64_section_size
-  ) f.elf64_file_interpreted_sections in
-  match l with
-    | [] -> Nothing
-    | [sec] -> Just sec
-    | sec::_ -> Just sec (* TODO: remove me *)
-    (* | _ ->
-      let _ = List.map print_elf64_section l in
-      failwith ("get_section_at_addr: " ^ (show (List.length l)) ^ " sections at address 0x" ^ (hex_string_of_natural addr)) *)
-  end
-
-let show_section_at_addr f addr =
-  match get_section_at_addr f addr with
-    | Just section ->
-      let offset_in_section = addr - section.elf64_section_addr in
-      "[section at " ^ section.elf64_section_name_as_string ^ "+0x" ^ (hex_string_of_natural offset_in_section) ^ "]"
-    | Nothing ->
-      "[unknown section at 0x" ^ (hex_string_of_natural addr) ^ "]"
-  end
-
 val show_section_at : list mmap_entry -> elf64_file -> natural -> string
 let show_section_at mmap_table f addr =
   match get_mmap_entry_at mmap_table addr with
@@ -301,37 +258,6 @@ let compare_memory_image core_img object_img (* for debugging: *) (mmap_table, o
   ) results in
   Error.foldM (fun _ res -> res) () results
 
-let is_data_section sec =
-  false
-  || sec.elf64_section_name_as_string = ".data"
-  || sec.elf64_section_name_as_string = ".sdata" (* initialized short data *)
-  || sec.elf64_section_name_as_string = ".sbss" (* uninitialized short data *)
-  || sec.elf64_section_name_as_string = ".tdata" (* initialized thread-local data *)
-  || sec.elf64_section_name_as_string = ".tbss" (* uninitialized thread-local data *)
-  || sec.elf64_section_name_as_string = ".dynamic"
-  || sec.elf64_section_name_as_string = ".data.rel.ro" (* TODO: remove me? *)
-  || sec.elf64_section_name_as_string = ".rld_map" (* TODO: remove me *)
-
-let mask_data_sections f img =
-  let data_sections = List.filter is_data_section f.elf64_file_interpreted_sections in
-  List.foldl (fun img sec ->
-    let _ = Missing_pervasives.errln ("Masking " ^ sec.elf64_section_name_as_string ^ " at 0x" ^ (hex_string_of_natural sec.elf64_section_addr) ^ ", size 0x" ^ (hex_string_of_natural sec.elf64_section_size)) in
-    mask_memory_image img sec.elf64_section_addr sec.elf64_section_size
-  ) img data_sections
-
-let mask_relocations f img =
-  let all_relocs = Elf_memory_image.extract_all_relocs "<input file>" f in
-  let abi = get_file_abi f in
-  List.foldl (fun img (scn, rel_idx, rel_src_scn, rel) ->
-    let addr = natural_of_elf64_addr rel.elf64_ra_offset in
-    let (rel_type, _) = abi.parse_reloc_info rel.elf64_ra_info in
-    let (is_absolute, applyfn) = abi.reloc rel_type in
-    let (width, calcfn) = applyfn img addr Memory_image.null_symbol_reference_and_reloc_site in
-    let _ = Missing_pervasives.errln ("Masking relocation of type 0x" ^ (hex_string_of_natural rel_type) ^ " at 0x" ^ (hex_string_of_natural addr) ^ ", size 0x" ^ (hex_string_of_natural width) ^ " in " ^ (show_section_at_addr f addr)) in
-    (* let _ = Missing_pervasives.errln ("Relocation info: " ^ (show rel.elf64_ra_info)) in *)
-    mask_memory_image img addr width
-  ) img all_relocs
-
 let extract_all_relocs_as_symbol_references abi f =
   let all_relocs = Elf_memory_image.extract_all_relocs "<input file>" f in
   let all_symtab_triples_by_scnidx = mapMaybei (fun scnidx -> (fun isec ->
@@ -395,171 +321,7 @@ let extract_all_relocs_as_symbol_references abi f =
     |>
   ) all_relocs
 
-type dynamic_symbol = <|
-  dynamic_symbol_name : string;
-  dynamic_symbol_entry : elf64_symbol_table_entry;
-  dynamic_symbol_value : natural;
-  dynamic_symbol_version : maybe string;
-  dynamic_symbol_version_base : bool
-|>
-
-let find_sym syms name version =
-  (* TODO: index symbols by name to speed up lookups *)
-  let matches = List.filter (fun sym -> sym.dynamic_symbol_name = name) syms in
-  let version_matches = List.filter (fun sym -> sym.dynamic_symbol_version = version) matches in
-  match version_matches with
-    | [] ->
-      match version with
-        | Just _ ->
-          (* Reference requested a specific version, accept only if the
-             definition doesn't use symbol versioning. *)
-          match matches with
-            | [sym] ->
-              (* TODO: check the reference doesn't come from the same file as
-                 this symbol (if it's the case, fatal error). *)
-              (* Make sure the definition doesn't use symbol versioning *)
-              match sym.dynamic_symbol_version with
-                | Just _ -> Nothing
-                | Nothing -> Just sym
-              end
-            | _ -> Nothing
-          end
-        | Nothing ->
-          (* Reference without version *)
-          match matches with
-            | [] -> Nothing
-            | [sym] ->
-              (* If there is exactly one version for which this symbol is
-                 defined, then this version is accepted. *)
-              Just sym
-            | _ ->
-              (* Multiple results with different versions, fallback to base
-                 definition *)
-              (* TODO: add support for: 2 is the name given later to the
-                 baseline of symbols once the library started using symbol
-                 versioning *)
-              List.find (fun sym -> sym.dynamic_symbol_version_base) matches
-          end
-      end
-    | [sym] ->
-      Just sym
-    | sym :: _ ->
-      Just sym (* When overriding symbols we just add the new one before in the list *)
-    (* | _ ->
-      failwith ("find_sym: multiple symbols for `" ^ name ^ "` version " ^ (show version)) *)
-  end
-
-let is_unsupported_relocation_type f rel_type =
-  (* TODO: add support for TLS relocs *)
-  if Abi_amd64.header_is_amd64 f.elf64_file_header then
-    rel_type = r_x86_64_irelative || rel_type = r_x86_64_tpoff64
-      || rel_type = r_x86_64_dtpoff64 || rel_type = r_x86_64_dtpmod64
-  else if Abi_mips64.header_is_mips64 f.elf64_file_header
-      || Abi_cheri_mips64.header_is_cheri_mips64 f.elf64_file_header then
-    rel_type = r_mips_tls_tprel64 || rel_type = r_mips_tls_dtpmod64
-  else
-    false
-
-val apply_relocation : forall 'abifeature. abi 'abifeature -> elf64_file -> annotated_memory_image 'abifeature -> natural -> elf64_relocation_a -> symbol_reference_and_reloc_site -> maybe dynamic_symbol -> bool -> annotated_memory_image 'abifeature
-let apply_relocation abi f img base reloc symref_and_reloc_site maybe_sym ignore_data_sections =
-  let endian = get_elf64_header_endianness f.elf64_file_header in
-  let (rel_type, _) = abi.parse_reloc_info reloc.elf64_ra_info in
-  let offset = natural_of_elf64_addr reloc.elf64_ra_offset in
-  let addend = integer_of_elf64_sxword reloc.elf64_ra_addend in
-  let addr = base + offset in
-  (* TODO: support is_absolute? *)
-  let (is_absolute, applyfn) = abi.reloc rel_type in
-  let (width, calcfn) = applyfn img addr symref_and_reloc_site in
-  let _ = Missing_pervasives.errln ("Relocation of type 0x" ^ (hex_string_of_natural rel_type) ^ " at 0x" ^ (hex_string_of_natural addr) ^ " (offset 0x" ^ (hex_string_of_natural offset) ^ "), size 0x" ^ (hex_string_of_natural width) ^ " in " ^ (show_section_at_addr f offset)) in
-
-  (* TODO: is there a way to make this nicer? *)
-  if rel_type = 0 then
-    let _ = Missing_pervasives.errln "  Skipping NONE relocation" in
-    img
-  else
-
-  let is_in_data_section =
-    if ignore_data_sections then
-      false
-    else
-      match get_section_at_addr f offset with
-        | Just sec -> is_data_section sec
-        | Nothing -> false
-      end
-  in
-  if is_in_data_section then
-    let _ = Missing_pervasives.errln "  Relocation inside a data section, ignoring" in
-    img
-  else
-    (* TODO: hard fail if symbol name is non-empty but find_sym returns Nothing? *)
-    let maybe_sym_addr = match maybe_sym with
-      | Just sym ->
-        if get_elf64_symbol_type sym.dynamic_symbol_entry = stt_gnu_ifunc then
-          let _ = Missing_pervasives.errln "  Symbol is an ifunc" in
-          Nothing
-        else
-          Just sym.dynamic_symbol_value
-      | Nothing ->
-        Just 0 (* This isn't pretty, but doing something else would be complicated *)
-    end in
-
-    let maybe_sym_addr =
-      if is_unsupported_relocation_type f rel_type then
-        let _ = Missing_pervasives.errln ("  Giving up on this one: unsupported relocation type") in
-        Nothing
-      else
-        maybe_sym_addr
-    in
-    match maybe_sym_addr with
-      | Just sym_addr ->
-        if header_is_pure_cheri_mips64 f.elf64_file_header
-            && rel_type = r_mips_cheri_capability then
-          (* CHERI capability relocations are special snowflakes, they aren't
-             just an address. *)
-          (* TODO: find a better solution *)
-          let cap_bp = abi_cheri_mips64_write_capability_byte_pattern endian Nothing
-            Nothing Nothing Nothing (Just 42) (Just 42) (Just 42) in (* TODO *)
-          let _ = Missing_pervasives.errln ("  Relocating CHERI capability `" ^ symref_and_reloc_site.ref.ref_symname ^ "`") in
-          write_memory_image img addr cap_bp
-        else
-          let existing_bytes = assert_unwrap_maybe (read_memory_image img addr width) in
-          let existing_value = Memory_image.natural_of_byte_list endian existing_bytes in
-          let new_value = calcfn sym_addr addend existing_value in
-          let field_bytes = Memory_image.natural_to_byte_list_padded_to endian width new_value in
-          let field_bp = List.map (fun b -> Just b) field_bytes in
-          let _ = Missing_pervasives.errln ("  Relocating `" ^ symref_and_reloc_site.ref.ref_symname ^ "` (existing=0x" ^ (hex_string_of_natural existing_value) ^ " addend=" ^ (show addend) ^ ") to 0x" ^ (hex_string_of_natural new_value) ^ " (symbol address 0x" ^ (hex_string_of_natural sym_addr) ^ ")") in
-          write_memory_image img addr field_bp
-      | Nothing ->
-        let _ = Missing_pervasives.errln ("  Masking relocation for `" ^ symref_and_reloc_site.ref.ref_symname ^ "`") in
-        mask_memory_image img addr width
-    end
-
-let get_sym_ref_version dynsym_scnidx maybe_versym_table sym_name sym_scn sym_idx =
-  if dynsym_scnidx <> sym_scn then Nothing else
-  match maybe_versym_table with
-    | Just versym_table ->
-      (* TODO: unify get_gnu_ext_interpreted_verneed and get_gnu_ext_interpreted_verdef *)
-      match get_gnu_ext_interpreted_verneed versym_table sym_idx with
-        | Success Nothing -> Nothing
-        | Success (Just vernaux) ->
-          (* TODO: handle vernaux.gnu_ext_interpreted_vernaux_verneed.gnu_ext_interpreted_verneed_file *)
-          Just vernaux.gnu_ext_interpreted_vernaux_name
-        | Fail errmsg ->
-          (* TODO: failwith errmsg *)
-          (* No verneed found, maybe this DSO is defining the symbol and has a reloc bound to it *)
-          match get_gnu_ext_interpreted_verdef versym_table sym_idx with
-            | Success (GnuExtInterpretedVerdefVersion verdef) ->
-              Just verdef.gnu_ext_interpreted_verdef_name
-            | _ ->
-              Nothing
-          end
-      end
-    | Nothing ->
-      Nothing
-  end
-
-let apply_all_relocations f img base syms dynsym_scnidx maybe_versym_table ignore_data_sections =
-  let abi = get_file_abi f in
+let apply_all_relocations abi f img base syms dynsym_scnidx maybe_versym_table ignore_data_sections =
   let symbol_refs_and_reloc_sites = extract_all_relocs_as_symbol_references abi f in
   (* let tags_and_ranges = Multimap.lookupBy Memory_image_orderings.tagEquiv (SymbolRef(null_symbol_reference_and_reloc_site)) img.by_tag in *)
   let _ = Missing_pervasives.errln ("Number of symbol refs: " ^ (show (List.length symbol_refs_and_reloc_sites))) in
@@ -585,243 +347,6 @@ let apply_all_relocations f img base syms dynsym_scnidx maybe_versym_table ignor
     apply_relocation abi f img base reloc_site.ref_relent symref_and_reloc_site maybe_sym ignore_data_sections
   (* ) tags_and_ranges in *)
   ) img symbol_refs_and_reloc_sites
-
-let amd64_address_size : natural = 8
-
-let init_amd64_pltgot img base dyns =
-  let maybe_pltgot_offset = List.find (fun (tag, _) ->
-    tag = Elf_dynamic.dt_pltgot
-  ) dyns in
-  match maybe_pltgot_offset with
-    | Just (_, Address pltgot_offset) ->
-      let pltgot_addr = base + natural_of_elf64_addr pltgot_offset in
-      let _ = Missing_pervasives.errln ("Initializing PLTGOT at 0x" ^ (hex_string_of_natural pltgot_addr)) in
-      (* The second entry contains a linker-specific value. FreeBSD's rtld-elf
-         uses it to store ta pointer to an internal data structure, glibc's
-         linker leaves it zeroed. *)
-      let img = mask_memory_image img (pltgot_addr + amd64_address_size) amd64_address_size in
-      (* The third entry contains the dynamic linker entry point *)
-      let img = mask_memory_image img (pltgot_addr + 2 * amd64_address_size) amd64_address_size in
-      img
-    | Nothing ->
-      let _ = Missing_pervasives.errln ("No DT_PLTGOT in .dynamic, skipping PLTGOT initialization") in
-      img
-  end
-
-let mips64_address_size : natural = 8
-
-val apply_mips64_local_got_relocations : forall 'abifeature. endianness -> annotated_memory_image 'abifeature -> natural -> natural -> natural -> (annotated_memory_image 'abifeature * natural)
-let rec apply_mips64_local_got_relocations endian img base got_entry_addr local_gotno =
-  if local_gotno = 0 then (img, got_entry_addr) else
-  let _ = Missing_pervasives.errln ("MIPS local .got relocation at 0x" ^ (hex_string_of_natural got_entry_addr) ^ " (remaining: " ^ (show local_gotno) ^ ")") in
-  let width = mips64_address_size in
-  let existing_bytes = assert_unwrap_maybe (read_memory_image img got_entry_addr width) in
-  let existing_value = Memory_image.natural_of_byte_list endian existing_bytes in
-  let new_value = base + existing_value in
-  let field_bytes = Memory_image.natural_to_byte_list_padded_to endian width new_value in
-  let field_bp = List.map (fun b -> Just b) field_bytes in
-  let _ = Missing_pervasives.errln ("  Relocating MIPS64 local .got entry from 0x" ^ (hex_string_of_natural existing_value) ^ " to 0x" ^ (hex_string_of_natural new_value)) in
-  let img = write_memory_image img got_entry_addr field_bp in
-  apply_mips64_local_got_relocations endian img base (got_entry_addr + width) (local_gotno - 1)
-
-let rec apply_mips64_global_got_relocations' abi f img dynsyms syms dynsym_scnidx maybe_versym_table base got_entry_addr (symtabno : natural) ignore_data_sections =
-  if symtabno = 0 then (img, got_entry_addr) else
-  let endian = get_elf64_header_endianness f.elf64_file_header in
-  match syms with
-    | (sym_name, sym_entry, scnidx, symidx) :: syms ->
-      let ra_info = elf64_xword_of_natural Abi_mips64_relocation.r_mips_jump_slot in
-      let ra_info = match endian with
-        | Little -> elf64_xword_lshift ra_info 56
-        | Big -> ra_info
-      end in
-
-      let reloc = <|
-        elf64_ra_offset = elf64_addr_of_natural (got_entry_addr - base);
-        elf64_ra_info = ra_info;
-        elf64_ra_addend = elf64_sxword_of_integer 0
-      |> in
-
-      (* TODO: unify this with normal relocs *)
-      let maybe_sym =
-        (* TODO: remove these special cases, especially the last one *)
-        if sym_name <> "" then
-          let maybe_sym_version = get_sym_ref_version dynsym_scnidx maybe_versym_table sym_name scnidx symidx in
-          let _ = Missing_pervasives.errln ("Searching for symbol `" ^ sym_name ^ "`, version " ^ (show maybe_sym_version)) in
-          find_sym dynsyms sym_name maybe_sym_version
-        else
-          Nothing
-      in
-
-      (* let sym_addr = base + natural_of_elf64_addr sym_entry.elf64_st_value in *)
-      let symref_and_reloc_site = null_symbol_reference_and_reloc_site in
-      let img = apply_relocation abi f img base reloc symref_and_reloc_site maybe_sym ignore_data_sections in
-
-      apply_mips64_global_got_relocations' abi f img dynsyms syms dynsym_scnidx maybe_versym_table base (got_entry_addr + mips64_address_size) (symtabno - 1) ignore_data_sections
-    | _ -> failwith "apply_mips64_global_got_relocations': not enough symbols"
-  end
-
-let apply_mips64_global_got_relocations f img dynsyms dynsym_scnidx maybe_versym_table base got_entry_addr symtab_addr gotsym symtabno ignore_data_sections =
-  let symtab_triples = mapMaybei (fun scnidx isec ->
-    if isec.elf64_section_addr = natural_of_elf64_addr symtab_addr then
-      match find_elf64_symbols_by_symtab_idx scnidx f with
-        | Fail _ -> Nothing
-        | Success triple -> Just triple
-      end
-    else
-      Nothing
-  ) f.elf64_file_interpreted_sections in
-  let (syms : list (string * elf64_symbol_table_entry * natural (* scnidx *) * natural (* symidx *))) =
-    match symtab_triples with
-      | [triple] -> Elf_memory_image.extract_all_symbols triple
-      | [] -> failwith "apply_mips64_global_got_relocations: no .symtab found"
-      | _ -> failwith "apply_mips64_global_got_relocations: multiple .symtab sections not supported for MIPS64"
-    end
-  in
-  let syms = List.drop (natFromNatural gotsym) syms in
-  let abi = get_file_abi f in
-  apply_mips64_global_got_relocations' abi f img dynsyms syms dynsym_scnidx maybe_versym_table base got_entry_addr (symtabno - gotsym) ignore_data_sections
-
-(* MIPS uses an ugly packed form for GOT relocations. See musl's do_mips_relocs
-   function. *)
-let apply_mips64_got_relocations f img dynsyms base dyns dynsym_scnidx maybe_versym_table ignore_data_sections =
-  let maybe_got_offset = List.find (fun (tag, _) -> tag = Elf_dynamic.dt_pltgot) dyns in
-  let got_offset = match maybe_got_offset with
-    | Just (_, Address got) -> got
-    | Nothing -> failwith "apply_mips64_got_relocations: missing DT_PLTGOT in .dynamic"
-  end in
-  let got_addr = base + natural_of_elf64_addr got_offset in
-  let got_entry_addr = got_addr in
-
-  (* Apply local .got relocs *)
-  let maybe_local_gotno = List.find (fun (tag, _) ->
-    tag = Abi_mips64_dynamic.abi_mips64_dt_local_gotno
-  ) dyns in
-  let (img, got_entry_addr) = match maybe_local_gotno with
-    | Just (_, Numeric local_gotno) ->
-      (* The first entry is reserved to hold the address of the entry point in
-         the dynamic linker to call when lazy resolving text symbols. The second
-         entry is reserved by DSOs linked with GNU's ld to hold the base address
-         of the loaded DSO. GNU DSOs have the MSB of the second entry set to 1.
-         IRL, some ld.so implementations skip both (uclibc), some relocate both
-         (musl), so we'll just don't check those two.
-         TODO: check the MSB of the second entry and only mask it if it's GNU. *)
-      let reserved_num = 2 in
-      let img = mask_memory_image img got_entry_addr (reserved_num * mips64_address_size) in
-      let got_entry_addr = got_addr + reserved_num * mips64_address_size in
-      let local_gotno = local_gotno - reserved_num in
-
-      let _ = Missing_pervasives.errln ("Applying " ^ (show local_gotno) ^ " MIPS64 local .got relocations") in
-      let endian = get_elf64_header_endianness f.elf64_file_header in
-      apply_mips64_local_got_relocations endian img base got_entry_addr local_gotno
-    | Nothing ->
-      let _ = Missing_pervasives.errln "Not applying MIPS64 .got relocations: missing DT_LOCAL_GOTNO" in
-      (img, got_addr)
-  end in
-
-  (* Apply R_MIPS_JUMP_SLOT relocs *)
-  let maybe_symtab_addr = List.find (fun (tag, _) ->
-    tag = Elf_dynamic.dt_symtab
-  ) dyns in
-  let symtab_addr = match maybe_symtab_addr with
-    | Just (_, Address symtab_addr) -> symtab_addr
-    | Nothing -> failwith "apply_mips64_got_relocations: missing DT_SYMTAB in .dynamic"
-  end in
-  let maybe_gotsym = List.find (fun (tag, _) ->
-    tag = Abi_mips64_dynamic.abi_mips64_dt_gotsym
-  ) dyns in
-  let gotsym = match maybe_gotsym with
-    | Just (_, Numeric gotsym) -> gotsym
-    | Nothing -> failwith "apply_mips64_got_relocations: missing DT_MIPS_GOTSYM in .dynamic"
-  end in
-  let maybe_symtabno = List.find (fun (tag, _) ->
-    tag = Abi_mips64_dynamic.abi_mips64_dt_symtabno
-  ) dyns in
-  let symtabno = match maybe_symtabno with
-    | Just (_, Numeric symtabno) -> symtabno
-    | Nothing -> failwith "apply_mips64_got_relocations: missing DT_MIPS_SYMTABNO in .dynamic"
-  end in
-  let (img, got_entry_addr) = apply_mips64_global_got_relocations f img dynsyms dynsym_scnidx maybe_versym_table base got_entry_addr symtab_addr gotsym symtabno ignore_data_sections in
-
-  img
-
-(* This function must be called after normal relocs have been applied *)
-let apply_cheri_mips64_cap_relocations f img base dyns ignore_data_sections =
-  let maybe_cap_relocs = List.find (fun (tag, _) ->
-    tag = Abi_cheri_mips64_dynamic.abi_cheri_dt___caprelocs
-  ) dyns in
-  let cap_relocs_addr = match maybe_cap_relocs with
-    | Just (_, Address cap_relocs_addr) -> natural_of_elf64_addr cap_relocs_addr
-    | Nothing -> failwith "apply_cheri_mips64_cap_relocations: missing DT_CHERI___CAPRELOCS in .dynamic"
-  end in
-  let maybe_cap_relocssz = List.find (fun (tag, _) ->
-    tag = Abi_cheri_mips64_dynamic.abi_cheri_dt___caprelocssz
-  ) dyns in
-  let cap_relocssz = match maybe_cap_relocssz with
-    | Just (_, Numeric cap_relocssz) -> cap_relocssz
-    | Nothing -> failwith "apply_cheri_mips64_cap_relocations: missing DT_CHERI___CAPRELOCSSZ in .dynamic"
-  end in
-
-  (* We need to read our memory image because some relocations have been applied
-     to the __cap_relocs section. *)
-  let cap_relocs_bs = match read_memory_image_byte_sequence img (base + cap_relocs_addr) cap_relocssz with
-    | Just bs -> bs
-    | Nothing -> failwith "apply_cheri_mips64_cap_relocations: cannot dereference DT_CHERI___CAPRELOCS"
-  end in
-
-  let endian = get_elf64_header_endianness f.elf64_file_header in
-  let cap_relocs = match read_cheri_mips64_cap_relocs endian cap_relocs_bs with
-    | Success cap_relocs -> cap_relocs
-    | Fail errmsg -> failwith errmsg
-  end in
-  let img = List.foldl (fun img reloc ->
-    let is_func = cheri_mips64_cap_reloc_is_function reloc in
-    let loc = natural_of_elf64_xword reloc.cheri_mips64_cap_reloc_location in
-    let obj = natural_of_elf64_xword reloc.cheri_mips64_cap_reloc_object in
-    let offset = natural_of_elf64_xword reloc.cheri_mips64_cap_reloc_offset in
-    let size = natural_of_elf64_xword reloc.cheri_mips64_cap_reloc_size in
-
-    let is_in_data_section =
-      if ignore_data_sections then
-        false
-      else
-        match get_section_at_addr f (loc - base) with
-          | Just sec -> is_data_section sec
-          | Nothing -> false
-        end
-    in
-    if is_in_data_section then
-      let _ = Missing_pervasives.errln ("Skipping __cap_relocs relocation at 0x" ^ (hex_string_of_natural loc) ^ ": in a data section") in
-      img
-    else
-
-    let (cursor, cap_base, len) =
-      if obj = 0 then
-        (0, 0, 0)
-      else
-        let cursor = obj + offset in
-        if is_func then
-          (cursor, 0, size)
-        else
-          (cursor, obj, size)
-    in
-    let cap_bp = abi_cheri_mips64_write_capability_byte_pattern endian Nothing
-      Nothing Nothing Nothing (Just cursor) (Just cap_base) (Just len) in
-    let _ = Missing_pervasives.errln (
-      "Applying __cap_relocs relocation at 0x" ^ (hex_string_of_natural loc)
-        ^ " in " ^ (show_section_at_addr f (loc - base))
-        ^ " offset=0x" ^ (hex_string_of_natural offset)
-        ^ " size=0x" ^ (hex_string_of_natural size)
-        ^ " object=0x" ^ (hex_string_of_natural obj)
-        ^ " cursor=0x" ^ (hex_string_of_natural cursor)
-        ^ " base=0x" ^ (hex_string_of_natural cap_base)
-        ^ " len=0x" ^ (hex_string_of_natural len)
-        ^ " is_func=" ^ (show is_func)
-    ) in
-    (* let _ = Missing_pervasives.errln (string_of_byte_pattern cap_bp) in *)
-    write_memory_image img loc cap_bp
-  ) img cap_relocs in
-
-  img
 
 let get_first_mapped_address mmap_table filename =
   List.foldl (fun first e ->
@@ -960,116 +485,6 @@ let has_dynamic_section f =
   ) f.elf64_file_section_header_table in
   dyn_secs <> []
 
-let sym_add_verdef sym verdef =
-  (* let _ = Missing_pervasives.errln ("Symbol `" ^ sym.dynamic_symbol_name ^ "`, version `" ^ verdef_aux ^ "`") in *)
-  <|
-    dynamic_symbol_name = sym.dynamic_symbol_name;
-    dynamic_symbol_entry = sym.dynamic_symbol_entry;
-    dynamic_symbol_value = sym.dynamic_symbol_value;
-    dynamic_symbol_version = Just verdef.gnu_ext_interpreted_verdef_name;
-    dynamic_symbol_version_base =
-      (* TODO: what's the difference between those two? *)
-      verdef.gnu_ext_interpreted_verdef_ndx = gnu_ext_verdef_base_unspecified
-      || verdef.gnu_ext_interpreted_verdef_ndx = gnu_ext_verdef_base_versioned
-  |>
-
-let extract_dynsyms f base existing_syms symtab_scnidx maybe_versym_table =
-  let symtab_scn = assert_unwrap_maybe (List.index f.elf64_file_interpreted_sections (natFromNatural symtab_scnidx)) in
-
-  find_elf64_symbols_by_symtab_idx symtab_scnidx f >>= fun triple ->
-  let syms = Elf_memory_image.extract_all_symbols triple in
-  let syms = List.filter (fun (sym_name, sym_entry, scnidx, symidx) ->
-    let sym_binding = get_elf64_symbol_binding sym_entry in
-    let sym_value = natural_of_elf64_addr sym_entry.elf64_st_value in
-    (sym_binding = Elf_symbol_table.stb_global || sym_binding = Elf_symbol_table.stb_weak)
-      (* We're only interested in symbols defined in this DSO *)
-      && natural_of_elf64_half sym_entry.elf64_st_shndx <> 0
-  ) syms in
-  let syms = List.map (fun (sym_name, sym_entry, scnidx, symidx) ->
-    (* let _ = Missing_pervasives.errln ("Library exports dynamic symbol: " ^ sym_name) in *)
-    let is_abs = (natural_of_elf64_half sym_entry.elf64_st_shndx) = shn_abs in
-    let sym_value =
-      if is_abs then
-        natural_of_elf64_addr sym_entry.elf64_st_value
-      else
-        base + natural_of_elf64_addr sym_entry.elf64_st_value
-    in
-    let sym = <|
-      dynamic_symbol_name = sym_name;
-      dynamic_symbol_entry = sym_entry;
-      dynamic_symbol_value = sym_value;
-      dynamic_symbol_version = Nothing;
-      dynamic_symbol_version_base = false
-    |> in
-    (sym, symidx)
-  ) syms in
-
-  match maybe_versym_table with
-    | Just versym_table ->
-      if List.length versym_table.gnu_ext_interpreted_versym_table_entries < List.length syms then
-        Error.fail "extract_dynsyms: versym table too short"
-      else
-        return ()
-      >>= fun () ->
-      Error.foldM (fun syms (sym, symidx) ->
-        get_gnu_ext_interpreted_verdef versym_table symidx >>= fun verdef_lookup ->
-        let versioned_sym = match verdef_lookup with
-          | GnuExtInterpretedVerdefVersion verdef ->
-            sym_add_verdef sym verdef
-          | GnuExtInterpretedVerdefHidden verdef ->
-            (* TODO: symbol is hidden and cannot be referenced outside of this object *)
-            sym_add_verdef sym verdef
-          | _ -> sym (* TODO: ignore local dynsyms? *)
-        end in
-        return (versioned_sym :: syms)
-      ) [] syms
-    | Nothing ->
-      let syms = List.map (fun (sym, symidx) -> sym) syms in
-      return syms
-  end >>= fun syms ->
-
-  (* Filter out symbols that are ignored because already defined in another object *)
-  let syms = List.foldl (fun syms sym ->
-    let sym_name = sym.dynamic_symbol_name in
-    let sym_entry = sym.dynamic_symbol_entry in
-    let sym_addr = sym.dynamic_symbol_value in
-    let sym_version = sym.dynamic_symbol_version in
-    let sym_binding = get_elf64_symbol_binding sym_entry in
-    let _ = Missing_pervasives.errln ("Processing symbol `" ^ sym_name ^ "`, 0x" ^ (hex_string_of_natural sym_addr) ^ ", binding=" ^ (show sym_binding) ^ ", version=" ^ (show sym_version)) in
-    (* Check if this symbol has already been defined in another object. Only
-       check the symbol name, we don't care about the version here. *)
-    let maybe_existing = find_sym existing_syms sym_name Nothing in
-    match maybe_existing with
-      | Just existing ->
-        let existing_entry = existing.dynamic_symbol_entry in
-        let existing_addr = existing.dynamic_symbol_value in
-        let existing_version = existing.dynamic_symbol_version in
-        if get_elf64_symbol_binding existing_entry = Elf_symbol_table.stb_weak && sym_binding <> Elf_symbol_table.stb_weak then
-          (* Existing symbol is weak and the new one isn't, replace it *)
-          let _ = Missing_pervasives.errln ("Overriding weak symbol `" ^ sym_name ^ "`, 0x" ^ (hex_string_of_natural existing_addr) ^ " -> 0x" ^ (hex_string_of_natural sym_addr)) in
-          sym :: syms
-        else if natural_of_elf64_half existing_entry.elf64_st_shndx = shn_undef && natural_of_elf64_half sym_entry.elf64_st_shndx <> 0 then
-          (* Existing symbol has an undefined ndx and the new one has a defined one, replace it *)
-          (* TODO: why is this the right thing to do? *)
-          let _ = Missing_pervasives.errln ("Overriding symbol with undefined ndx `" ^ sym_name ^ "`, 0x" ^ (hex_string_of_natural existing_addr) ^ " -> 0x" ^ (hex_string_of_natural sym_addr)) in
-          sym :: syms
-        else if existing_version <> Nothing && sym_version <> Nothing && sym_version <> existing_version then
-          (* Existing symbol has a version, and this symbol has a different version: keep both *)
-          let _ = Missing_pervasives.errln ("Adding new version `" ^ (show sym_version) ^ "` of symbol `" ^ sym_name ^ "` (already have: `" ^ (show existing_version) ^ "`)") in
-          sym :: syms
-        (* else if get_elf64_symbol_binding existing_entry = Elf_symbol_table.stb_weak && sym_binding = Elf_symbol_table.stb_weak then
-          (* TODO: is this really the right thing to do? *)
-          let _ = Missing_pervasives.errln ("Overriding weak symbol with another weak symbol `" ^ sym_name ^ "`, 0x" ^ (hex_string_of_natural existing_addr) ^ " -> 0x" ^ (hex_string_of_natural sym_addr)) in
-          sym :: syms *)
-        else
-          let _ = Missing_pervasives.errln ("Multiple definitions of `" ^ sym_name ^ "` version " ^ (show sym_version) ^ ", only keeping the first one") in
-          syms
-      | Nothing ->
-        sym :: syms
-    end
-  ) [] syms in
-  return syms
-
 let rec find_library root_path ld_library_paths soname =
   match ld_library_paths with
     | [] ->
@@ -1169,6 +584,8 @@ let rec check_object args core_file core_img linkmap object_filename is_root =
   let object_img = translate_memory_image object_img object_delta in
   let _ = Missing_pervasives.errln "object image after translation:" in
   let _ = print_memory_image object_img in
+
+  let abi = get_file_abi object_file in
 
   let maybe_dyns_res =
     if has_dynamic_section object_file then
@@ -1341,12 +758,12 @@ let rec check_object args core_file core_img linkmap object_filename is_root =
   let object_img =
     if args.check_is_loaded then
       let _ = Missing_pervasives.errln ("Applying relocations in " ^ object_filename) in
-      let object_img = apply_all_relocations object_file object_img object_delta linkmap.linkmap_dynsyms dynsym_scnidx maybe_versym_table args.check_data_sections in
+      let object_img = apply_all_relocations abi object_file object_img object_delta linkmap.linkmap_dynsyms dynsym_scnidx maybe_versym_table args.check_data_sections in
       let object_img =
         if (Abi_mips64.header_is_mips64 object_file.elf64_file_header
               || Abi_cheri_mips64.header_is_cheri_mips64 object_file.elf64_file_header)
             && has_dynamic_section object_file then
-          apply_mips64_got_relocations object_file object_img linkmap.linkmap_dynsyms object_delta dyns dynsym_scnidx maybe_versym_table args.check_data_sections
+          apply_mips64_got_relocations abi object_file object_img linkmap.linkmap_dynsyms object_delta dyns dynsym_scnidx maybe_versym_table args.check_data_sections
         else if Abi_amd64.header_is_amd64 object_file.elf64_file_header &&
             has_dynamic_section object_file then
           init_amd64_pltgot object_img object_delta dyns
