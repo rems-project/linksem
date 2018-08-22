@@ -58,6 +58,10 @@ val init_byte_pattern : natural -> byte_pattern
 let init_byte_pattern len =
   List.replicate (natFromNatural len) Nothing
 
+val byte_pattern_length : byte_pattern -> natural
+let byte_pattern_length bp =
+  naturalFromNat (List.length bp)
+
 val relax_byte_pattern_revacc : byte_pattern -> byte_pattern -> list bool -> byte_pattern
 let rec relax_byte_pattern_revacc revacc bytes cares =
     match bytes with

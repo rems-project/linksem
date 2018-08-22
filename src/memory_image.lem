@@ -624,7 +624,7 @@ let pattern_possible_starts_in_one_byte_sequence pattern seq offset =
     (* let _ = Missing_pervasives.errs ("Looking for matches of " ^
         (show (List.length pattern)) ^ "-byte pattern in " ^ (show (List.length seq)) ^ "-byte region\n")
     in *)
-    accum_pattern_possible_starts_in_one_byte_sequence pattern (List.length pattern) seq (List.length seq) offset []
+    accum_pattern_possible_starts_in_one_byte_sequence pattern (natFromNatural (byte_pattern_length pattern)) seq (List.length seq) offset []
 
 val compute_virtual_address_adjustment : natural -> natural -> natural -> natural
 let compute_virtual_address_adjustment max_page_size offset vaddr =

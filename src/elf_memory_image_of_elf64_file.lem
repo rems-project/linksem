@@ -231,7 +231,7 @@ let elf_memory_image_of_elf64_file a fname f =
                     in
                     let (this_element_reloc_ranges : list (natural * natural)) = snd (unzip this_element_name_and_reloc_ranges)
                     in
-                    let (all_ranges_expanded : list bool) = expand_unsorted_ranges this_element_reloc_ranges (Missing_pervasives.length content) []
+                    let (all_ranges_expanded : list bool) = expand_unsorted_ranges this_element_reloc_ranges (byte_pattern_length content) []
                     in
                     relax_byte_pattern content all_ranges_expanded
                 ))
