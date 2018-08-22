@@ -517,6 +517,7 @@ let sym_add_verdef sym verdef =
       || verdef.gnu_ext_interpreted_verdef_ndx = gnu_ext_verdef_base_versioned
   |>
 
+val extract_dynsyms : elf64_file -> natural -> list dynamic_symbol -> natural -> maybe gnu_ext_interpreted_versym_table -> error (list dynamic_symbol)
 let extract_dynsyms f base existing_syms symtab_scnidx maybe_versym_table =
   let symtab_scn = assert_unwrap_maybe (List.index f.elf64_file_interpreted_sections (natFromNatural symtab_scnidx)) in
 
