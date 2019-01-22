@@ -1,11 +1,11 @@
 opam-version: "1.2"
 name: "linksem"
-version: "0.3"
+version: "0.4"
 maintainer: "Stephen Kell <Stephen.Kell@cl.cam.ac.uk>"
 authors: ["Stephen Kell" "Dominic Mulligan" "Peter Sewell"]
 homepage: "https://github.com/rems-project/linksem"
 bug-reports: "https://github.com/rems-project/linksem/issues"
-license: "?"
+license: "BSD-2"
 dev-repo: "http://github.com/rems-project/linksem.git"
 build: [make]
 install: [make "install"]
