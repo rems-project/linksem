@@ -3784,7 +3784,14 @@ let evaluate_call_frame_instruction (fi: frame_info) (cie: cie) (state: cfa_stat
       match state.cs_current_row.ctr_cfa with
       | CR_register r' i ->
           update_cfa (CR_register r i)
-      | _ -> Assert_extra.failwith "DW_CFA_def_cfa_register: current rule is not CR_register"
+      | CR_undefined ->
+          (* FIXME: this is to handle a bug in riscv64-gcc.
+          gcc generates "DW_CFA_def_cfa_register: r2 (sp)" as the first instruction.
+          Dwarf5 documentation  seems to suggest this is not valid.
+          We think what gcc meant to generate is "DW_CFA_def_cfa: r2 (sp) ofs 0" *)
+          update_cfa (CR_register r 0)
+      | CR_expression _ ->
+          Assert_extra.failwith "DW_CFA_def_cfa_register: current rule is CR_expression"
       end
   | DW_CFA_def_cfa_offset n       ->
       match state.cs_current_row.ctr_cfa with
