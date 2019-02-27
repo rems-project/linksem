@@ -1081,7 +1081,7 @@ let get_elf32_file_global_symbol_init f3 =
             ) img
           in
             match chunks with
-              | []    -> fail "get_elf32_global_symbol_init: global variable not present in executable image"
+              | []    -> return (symbol, (typ, size, addr, Nothing, bind))
               | [(x, _)]   ->
                 let rebase   = addr - x.elf32_segment_base in
                 Byte_sequence.offset_and_cut rebase size x.elf32_segment_body >>= fun relevant ->
@@ -1120,7 +1120,7 @@ let get_elf64_file_global_symbol_init f3 =
             ) img
           in
             match chunks with
-              | []    -> fail "get_elf64_global_symbol_init: global variable not present in executable image"
+              | []    -> return (symbol, (typ, size, addr, Nothing, bind))
               | [(x, _)]   ->
                 let rebase   = addr - x.elf64_segment_base in
                 Byte_sequence.offset_and_cut rebase size x.elf64_segment_body >>= fun relevant ->
