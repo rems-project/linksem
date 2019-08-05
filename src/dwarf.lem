@@ -276,7 +276,7 @@ type abbreviations_table = list abbreviation_declaration
 
 (* .debug_info section *)
 
-type attribute_value =
+type attribute_value =  (* following Figure 3 *)
   | AV_addr of natural
   | AV_block of natural * list byte
   | AV_constantN of natural * list byte
@@ -1399,7 +1399,7 @@ let pp_operation_encoding n = pp_maybe (fun n -> lookup_aBcd_a n operation_encod
 let tag_encode (s: string) : natural =
   match lookup_Ab_b s tag_encodings with
   | Just n -> n
-  | Nothing -> Assert_extra.failwith "attribute_encode"
+  | Nothing -> Assert_extra.failwith "tag_encode"
   end
 
 
@@ -2066,6 +2066,8 @@ let find_attribute_value (an: string) (die:die) : maybe attribute_value =
       if at' = at then Just av else Nothing)
     ats
 
+
+  
 (** compilation unit header: pp and parsing *)
 
 let pp_dwarf_format df = match df with Dwarf32 -> "(32-bit)" | Dwarf64 -> "(64-bit)" end
@@ -2400,7 +2402,7 @@ let pp_loc c (cuh: compilation_unit_header) (lls: list location_list) =
   "    Offset   Begin    End      Expression\n"
   ^  myconcat "" (List.map (pp_location_list c cuh) lls)
 
-(* Note that this is just pp'ing the raw location list data - Sectoin
+(* Note that this is just pp'ing the raw location list data - Section
 3.1.1 says: The applicable base address of a location list entry is
 determined by the closest preceding base address selection entry in
 the same location list. If there is no such selection entry, then the
@@ -3146,9 +3148,9 @@ let pp_line_info li
 let pp_dwarf d =
   let c : p_context = <| endianness = d.d_endianness |> in
 
-  "\n************** .debug_info section - abbreviated *****************\n"
+(*  "\n************** .debug_info section - abbreviated *****************\n"
   ^ pp_compilation_units_abbrev c d.d_str d.d_compilation_units
-  ^ "\n************** .debug_info section - full ************************\n"
+  ^*) "\n************** .debug_info section - full ************************\n"
   ^ pp_compilation_units c d.d_str d.d_compilation_units
   ^ "\n************** .debug_loc section: location lists ****************\n"
   ^ let (cuh_default : compilation_unit_header) = let cu = myhead d.d_compilation_units in cu.cu_header in
@@ -3902,6 +3904,110 @@ let pp_evaluated_frame_info (efi: evaluated_frame_info) =
 
 
 (** ************************************************************ *)
+(** **  pp of type info                                          *)
+(** ************************************************************ *)
+
+(* partial pp of type info - incomplete, but enough for some C code *)
+
+  
+val find_maybe : forall 'a 'b. ('a -> maybe 'b) -> list 'a -> maybe 'b 
+let rec find_maybe f l =
+  match l with 
+  | []      -> Nothing
+  | x :: xs ->
+     match f x with
+     | Just y -> Just y
+     | Nothing -> find_maybe f xs
+     end
+  end
+
+let rec find_die_by_offset offset die : maybe die =
+  if die.die_offset = offset then Just die else
+    find_maybe (find_die_by_offset offset) die.die_children
+
+
+  
+let find_DW_AT_type_of_die c d cu cuh str die =
+  let ppd () = pp_die c cuh str 0 false die ^ "\n" in
+  match find_attribute_value "DW_AT_type" die with
+  | Nothing -> Fail ("find_DW_AT_type_of_die found no DW_AT_type\n" ^ ppd())
+  | Just av ->
+     match av with
+     | AV_ref n -> 
+     (* "offset from the first byte of the compilation header for the compilation unit containing the reference" *)
+        match find_die_by_offset n cu.cu_die with
+        | Just die' -> Success die'
+        | Nothing -> Fail ("find_DW_AT_type_of_die failed\n"^ppd())
+        end 
+     | _ -> Fail ("find_DW_AT_type_of_die not supported\n"^ppd() )
+     end
+  end  
+
+
+
+(* expect the die to have a DW_AT_type, and pp it *)
+
+let rec pp_type_info_die_DW_AT_type c (d: dwarf) cu cuh str die =    
+  match find_DW_AT_type_of_die c d cu cuh str die with
+  | Fail s -> s
+  | Success die' -> pp_type_info_die c (d: dwarf) cu cuh str die'
+  end 
+
+and pp_type_info_die c (d: dwarf) cu cuh str die = 
+
+  let ppd () = "pp_type_info_die on:\n" ^ pp_die c cuh str 0 false die ^ "\n" in 
+
+  if die.die_abbreviation_declaration.ad_tag = tag_encode "DW_TAG_base_type" then
+    match find_name_of_die str die with
+    | Just name -> (*"base type: " ^*) name
+    | Nothing -> "DW_TAG_base_type without name"
+    end 
+
+  else if die.die_abbreviation_declaration.ad_tag = tag_encode "DW_TAG_typedef" then
+    "typedef(" ^ 
+    match find_name_of_die str die with
+    | Nothing -> "DW_TAG_typedef without name"
+    | Just name -> 
+       name ^ "=" ^  pp_type_info_die_DW_AT_type c (d: dwarf) cu cuh str die
+    end
+    ^ ")"
+
+  else if die.die_abbreviation_declaration.ad_tag = tag_encode "DW_TAG_enumeration_type" then
+    "enumeration(" ^ 
+      pp_type_info_die_DW_AT_type c (d: dwarf) cu cuh str die
+      ^ ")"
+
+  else if die.die_abbreviation_declaration.ad_tag = tag_encode "DW_TAG_structure_type" then
+    "structure(" ^ 
+    match find_name_of_die str die with
+    | Nothing -> "DW_TAG_structure_type without name"
+    | Just name -> 
+       name 
+    end
+    ^ ")"
+
+  else if die.die_abbreviation_declaration.ad_tag = tag_encode "DW_TAG_volatile_type" then
+    "volatile(" ^ 
+      pp_type_info_die_DW_AT_type c (d: dwarf) cu cuh str die
+      ^ ")"
+
+  else if die.die_abbreviation_declaration.ad_tag = tag_encode "DW_TAG_pointer_type" then
+    "pointer(" ^ 
+      match find_attribute_value "DW_AT_type" die with
+      | Just die' -> pp_type_info_die_DW_AT_type c (d: dwarf) cu cuh str die
+      | Nothing -> 
+        match find_attribute_value "DW_AT_byte_size" die with
+        | Just (AV_block n bs) -> ppbytes bs
+        | Nothing -> "not handled"
+        end 
+      end 
+      ^ ")"
+
+  else
+     "non-handled-type" ^ ppd ()
+
+
+(** ************************************************************ *)
 (** **  analysis of location and frame data for reverse mapping  *)
 (** ************************************************************ *)
 
@@ -4121,11 +4227,12 @@ let pp_analysed_locations2 c cuh mnnls =
   | Nothing -> "  <no locations>\n"
   end
 
-let pp_analysed_locations3 c cuh str (als: analysed_location_data) : string =
+let pp_analysed_locations3 c d cu cuh str (als: analysed_location_data) : string =
   myconcat "\n"
     (List.map
        (fun ((cu,parents,die),mnnls) ->
          pp_die_abbrev c cuh str 0 false parents die
+         ^ pp_type_info_die_DW_AT_type c d cu cuh str die ^"\n"
          ^ pp_analysed_locations2 c cuh mnnls
        )
        als
@@ -4133,8 +4240,9 @@ let pp_analysed_locations3 c cuh str (als: analysed_location_data) : string =
 
 let pp_analysed_location_data (d: dwarf) (als: analysed_location_data) : string =
   let c : p_context = <| endianness = d.d_endianness |> in
-  let (cuh_default : compilation_unit_header) = let cu = myhead d.d_compilation_units in cu.cu_header in
-  pp_analysed_locations3 c (*HACK*) cuh_default d.d_str als
+  let cu = myhead d.d_compilation_units in 
+  let (cuh_default : compilation_unit_header) = cu.cu_header in
+  pp_analysed_locations3 c (*HACK*) d cu cuh_default d.d_str als
 
 
 
