@@ -94,7 +94,7 @@ copy_elf main_elf main_link scratch: %: %.ml $(ALL_UTIL_ML_WO_LEM) lem_ocaml_sen
 
 copy_elf.opt main_elf.opt main_link.opt: OCAMLFIND_PACKAGES += -package unix -package str
 copy_elf.opt main_elf.opt main_link.opt scratch.opt: %.opt: %.ml $(ALL_UTIL_ML_WO_LEM) lem_ocaml_sentinel
-	ocamlfind ocamlopt $(OCAMLFLAGS) -p -o "$@" -g \
+	ocamlfind ocamlopt $(OCAMLFLAGS) -o "$@" -g \
 	$(OCAMLFIND_PACKAGES) \
 	$(ALL_UTIL_ML) \
 	$(patsubst %.lem,%.ml,$(LEM_ELF_SRC)) \
