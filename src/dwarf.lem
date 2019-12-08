@@ -3257,67 +3257,73 @@ let parse_dwarf c
    d_line_info = li;
   |>
 
-val extract_dwarf : elf_file -> maybe dwarf
-let extract_dwarf f =
-
+val extract_section_body : elf_file -> string -> bool -> p_context * natural * list byte
+let extract_section_body (f:elf_file) (section_name:string) (strict: bool) =
   let (en: Endianness.endianness) =
     match f with
     | ELF_File_32 f32 -> Elf_header.get_elf32_header_endianness f32.Elf_file.elf32_file_header
     | ELF_File_64 f64 -> Elf_header.get_elf64_header_endianness f64.Elf_file.elf64_file_header
     end in
   let (c: p_context) = <| endianness = en |> in
-  let extract_section_body section_name (strict: bool) =
-    match f with
-    | ELF_File_32 f32 ->
-        let sections =
-          List.filter
-            (fun x ->
-              x.Elf_interpreted_section.elf32_section_name_as_string = section_name
-            ) f32.elf32_file_interpreted_sections in
-        match sections with
-        | [section] ->
-            let section_body = byte_list_of_byte_sequence section.Elf_interpreted_section.elf32_section_body in
-            let _ = my_debug4 (section_name ^ (": \n" ^ (Elf_interpreted_section.string_of_elf32_interpreted_section section ^ "\n"
-                           ^ "  body = " ^ ppbytes2 0 section_body ^ "\n"))) in
-            section_body
-        | [] ->
-            if strict then
-              Assert_extra.failwith ("" ^ section_name ^ " section not present")
-            else
-              []
-        | _ -> Assert_extra.failwith ("multiple " ^ section_name ^ " sections present")
-        end
+  match f with
+  | ELF_File_32 f32 ->
+      let sections =
+        List.filter
+          (fun x ->
+            x.Elf_interpreted_section.elf32_section_name_as_string = section_name
+          ) f32.elf32_file_interpreted_sections in
+      match sections with
+      | [section] ->
+          let section_addr = section.Elf_interpreted_section.elf32_section_addr in 
+          let section_body = byte_list_of_byte_sequence section.Elf_interpreted_section.elf32_section_body in
+          let _ = my_debug4 (section_name ^ (": \n" ^ (Elf_interpreted_section.string_of_elf32_interpreted_section section ^ "\n"
+                         ^ "  body = " ^ ppbytes2 0 section_body ^ "\n"))) in
+          (c,section_addr,section_body)
+      | [] ->
+          if strict then
+            Assert_extra.failwith ("" ^ section_name ^ " section not present")
+          else
+            (c,0,[])
+      | _ -> Assert_extra.failwith ("multiple " ^ section_name ^ " sections present")
+      end
 
 
-    | ELF_File_64 f64 ->
-        let sections =
-          List.filter
-            (fun x ->
-              x.Elf_interpreted_section.elf64_section_name_as_string = section_name
-            ) f64.elf64_file_interpreted_sections in
-        match sections with
-        | [section] ->
-            byte_list_of_byte_sequence section.Elf_interpreted_section.elf64_section_body
-        | [] ->
-            if strict then
-              Assert_extra.failwith ("" ^ section_name ^ " section not present")
-            else
-              []
-        | _ -> Assert_extra.failwith ("multiple " ^ section_name ^ " sections present")
-        end
-    end in
+  | ELF_File_64 f64 ->
+      let sections =
+        List.filter
+          (fun x ->
+            x.Elf_interpreted_section.elf64_section_name_as_string = section_name
+          ) f64.elf64_file_interpreted_sections in
+      match sections with
+      | [section] ->
+          let section_addr = section.Elf_interpreted_section.elf64_section_addr in 
+          let section_body = byte_list_of_byte_sequence section.Elf_interpreted_section.elf64_section_body in
+          (c,section_addr,section_body)
+      | [] ->
+          if strict then
+            Assert_extra.failwith ("" ^ section_name ^ " section not present")
+          else
+            (c,0,[])
+      | _ -> Assert_extra.failwith ("multiple " ^ section_name ^ " sections present")
+      end
+  end
 
-  let debug_info_section_body   = extract_section_body ".debug_info"   true  in
-  let debug_abbrev_section_body = extract_section_body ".debug_abbrev" false in
-  let debug_str_section_body    = extract_section_body ".debug_str"    false in
-  let debug_loc_section_body    = extract_section_body ".debug_loc"    false in
-  let debug_ranges_section_body = extract_section_body ".debug_ranges" false in
-  let debug_frame_section_body  = extract_section_body ".debug_frame" false in
-  let debug_line_section_body   = extract_section_body ".debug_line" false in
+val extract_dwarf : elf_file -> maybe dwarf
+let extract_dwarf f =
+  let (c, _, debug_info_section_body)   = extract_section_body f ".debug_info"   true  in
+  let (c, _, debug_abbrev_section_body) = extract_section_body f ".debug_abbrev" false in
+  let (c, _, debug_str_section_body)    = extract_section_body f ".debug_str"    false in
+  let (c, _, debug_loc_section_body)    = extract_section_body f ".debug_loc"    false in
+  let (c, _, debug_ranges_section_body) = extract_section_body f ".debug_ranges" false in
+  let (c, _, debug_frame_section_body)  = extract_section_body f ".debug_frame" false in
+  let (c, _, debug_line_section_body)   = extract_section_body f ".debug_line" false in
 
   let d = parse_dwarf c debug_info_section_body debug_abbrev_section_body debug_str_section_body debug_loc_section_body debug_ranges_section_body debug_frame_section_body debug_line_section_body in
 
   Just d
+
+val extract_text : elf_file -> p_context * natural * list byte  (*elf32/64_section_addr, elf32/64_section_body) *)
+let extract_text f = extract_section_body f ".text" true 
 
 
 (** ************************************************************ *)
