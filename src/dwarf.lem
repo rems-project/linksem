@@ -4371,7 +4371,6 @@ let names_of_address
 
 val filtered_analysed_location_data : dwarf_static -> natural -> analysed_location_data
 let filtered_analysed_location_data ds pc = 
-(*
   List.mapMaybe
     (fun (cupd,mnns) ->
       match mnns with
@@ -4384,8 +4383,7 @@ let filtered_analysed_location_data ds pc =
          end
      end)
     ds.ds_analysed_location_data
- *)
-  []
+
     
 (** ************************************************************ *)
 (** **  evaluation of line-number info                           *)
