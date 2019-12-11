@@ -4411,7 +4411,51 @@ let filtered_analysed_location_data ds pc =
      end)
     ds.ds_analysed_location_data
 
-    
+
+(** ************************************************************ *)
+(** **  pull out subprograms                                     *)
+(** ************************************************************ *)
+(*
+val analyse_subprograms : dwarf -> analysed_location_data
+let analyse_subprograms (d: dwarf) : analysed_location_data =
+
+  let c : p_context = <| endianness = d.d_endianness |> in
+
+  let (cuh_default : compilation_unit_header) = let cu = myhead d.d_compilation_units in cu.cu_header in
+
+  (* find all DW_TAG_subprogram dies *)
+  let tags = List.map tag_encode ["DW_TAG_subprogram"] in
+  let dies : list (compilation_unit * (list die) * die) =
+    find_dies
+      (fun die ->
+        List.elem die.die_abbreviation_declaration.ad_tag tags
+          && has_attribute "DW_AT_name" die
+          && has_attribute "DW_AT_location" die)
+      d in
+
+  List.map
+    (fun (((cu:compilation_unit), (parents: list die), (die: die)) as x) ->
+
+      let name =
+        match find_name_of_die d.d_str die with
+        | Just s ->  s
+        | Nothing -> "<no name>\n"
+        end in
+
+      let entry_point : maybe attribute_value =
+        match find_attribute_value "DW_AT_entry_pc" die with
+        | Nothing -> Nothing
+        | 
+       
+     let base_address = cu_base_address cu in
+      let interpreted_locations : maybe (list (natural * natural * single_location_description)) =
+        interpreted_location_of_die c cuh_default d.d_loc d.d_ranges base_address parents die in
+      (x,interpreted_locations)
+    )
+    dies
+ *)
+
+  
 (** ************************************************************ *)
 (** **  evaluation of line-number info                           *)
 (** ************************************************************ *)
