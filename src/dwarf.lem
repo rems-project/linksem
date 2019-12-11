@@ -2200,6 +2200,33 @@ let rec pp_die_abbrev c cuh str level (pp_children:bool) parents die =
       if pp_children then myconcat "" (List.map (pp_die_abbrev c cuh str (level +1) pp_children (die::parents)) die.die_children) else ""
 
 
+(* condensed pp for variables *)
+val pp_die_abbrev_var : p_context -> compilation_unit_header -> list byte -> natural -> bool -> (list die) -> die -> string
+let rec pp_die_abbrev_var c cuh str level (pp_children:bool) parents die =
+  indent_level level
+  (*  ^ pp_tag_encoding die.die_abbreviation_declaration.ad_tag*)
+(*  ^ ": Abbrev Number: " ^ show die.die_abbreviation_code *)
+    ^
+    let ats = List.zip
+        die.die_abbreviation_declaration.ad_attribute_specifications
+        die.die_attribute_values in
+    (match find_name str ats with Just s -> s | Nothing -> "-" end)
+    ^ " (" ^ pp_pos die.die_offset
+    ^ ","
+    ^ match die.die_abbreviation_declaration.ad_tag with
+      | DW_TAG_variable -> "var"
+      | DW_TAG_formal_parameter -> "param"
+      | _ -> "other"
+      end
+    ^ ") "
+
+  (*    ^ "   :  " ^ myconcat " : " (List.map (fun die' ->  pp_tag_encoding die'.die_abbreviation_declaration.ad_tag) parents)*)
+    (* ^ "\n"*)
+(*    ^ (*(myconcat "" (List.map (pp_die_abbrev_attribute c cuh str) ats))*)*)
+
+(*      if pp_children then myconcat "" (List.map (pp_die_abbrev c cuh str (level +1) pp_children (die::parents)) die.die_children) else ""*)
+    
+
 
 val parse_die : p_context -> list byte -> compilation_unit_header -> (natural->abbreviation_declaration) -> parser (maybe die)
 let rec parse_die c str cuh find_abbreviation_declaration =
@@ -4254,25 +4281,25 @@ let analyse_locations (d: dwarf) : analysed_location_data =
 let pp_analysed_locations1 c cuh (nnls: list (natural * natural * single_location_description)) : string =
   myconcat ""
     (List.map
-       (fun (n1,n2,bs) -> "  " ^ pphex n1 ^ "  " ^ pphex n2 ^ " " ^ parse_and_pp_operations c cuh bs ^ "\n")
+       (fun (n1,n2,bs) -> "  " ^ pphex n1 ^ "  " ^ pphex n2 ^ " " ^ parse_and_pp_operations c cuh bs)
        nnls)
 
 let pp_analysed_locations2 c cuh mnnls =
   match mnnls with
   | Just nnls -> pp_analysed_locations1 c cuh nnls
-  | Nothing -> "  <no locations>\n"
+  | Nothing -> "  <no locations>"
   end
 
 let pp_analysed_locations3 c d cu cuh str (als: analysed_location_data) : string =
-  myconcat "\n"
+  pad_rows 
     (List.map
        (fun ((cu,parents,die),mnnls) ->
-         pp_die_abbrev c cuh str 0 false parents die
-         ^ pp_type_info_die_DW_AT_type c d cu cuh str die ^"\n"
-         ^ pp_analysed_locations2 c cuh mnnls
+         [" ";pp_die_abbrev_var c cuh str 0 false parents die
+          ^ pp_type_info_die_DW_AT_type c d cu cuh str die;
+          pp_analysed_locations2 c cuh mnnls]
        )
        als
-  )
+    )
 
 let pp_analysed_location_data (d: dwarf) (als: analysed_location_data) : string =
   let c : p_context = <| endianness = d.d_endianness |> in
