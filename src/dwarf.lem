@@ -3809,6 +3809,21 @@ let pp_evaluated_fde (fde, (rows: list cfa_table_row)) : string =
     List.map (fun row -> pphex row.ctr_loc :: pp_cfa_rule row.ctr_cfa :: List.map (fun r -> pp_register_rule (rrp_lookup r row.ctr_regs)) regs) rows  in
   pad_rows (header :: ppd_rows)
 
+let semi_pp_evaluated_fde (fde, (rows: list cfa_table_row)) : list (natural (*address*) * string (*cfa*) * list (string*string) (*register rules*) ) =
+  let regs = register_footprint rows in
+  let ppd_rows =
+    List.map
+      (fun row ->
+        (row.ctr_loc,
+         pp_cfa_rule row.ctr_cfa,
+         List.map (fun r -> (pp_cfa_register r, pp_register_rule (rrp_lookup r row.ctr_regs))) regs))
+      rows  in
+  ppd_rows
+
+val semi_pp_evaluated_frame_info : evaluated_frame_info -> list (natural (*address*) * string (*cfa*) * list (string*string) (*register rules*) )
+let semi_pp_evaluated_frame_info efi = 
+  List.concat (List.map semi_pp_evaluated_fde efi)
+  
 
 
 (** evaluation of cfa information from .debug_frame *)
@@ -3965,6 +3980,7 @@ let pp_evaluated_frame_info (efi: evaluated_frame_info) =
   myconcat "\n" (List.map pp_evaluated_fde efi)
 
 
+  
 
 (** ************************************************************ *)
 (** **  pp of type info                                          *)
