@@ -3202,6 +3202,16 @@ let pp_line_info li
 
 (** all dwarf info: pp and parsing *)
 
+(* roughly matching objdump --dwarf=abbrev,info *)
+let pp_dwarf_like_objdump d =
+  let c : p_context = <| endianness = d.d_endianness |> in
+(*  "\n************** .debug_info section - abbreviated *****************\n"
+  ^ pp_compilation_units_abbrev c d.d_str d.d_compilation_units
+  ^*) "\n************** .debug_info section - full ************************\n"
+  ^ pp_compilation_units c d.d_str d.d_compilation_units
+
+
+    
 let pp_dwarf d =
   let c : p_context = <| endianness = d.d_endianness |> in
 
@@ -4758,6 +4768,17 @@ let pp_text_section f =
 (** **  top level for main_elf  ******************************** *)
 (** ************************************************************ *)
 
+val harness_string_of_elf_like_objdump : elf_file -> byte_sequence -> string
+let harness_string_of_elf_like_objdump f1 bs =
+  let mds = extract_dwarf_static f1 in
+  match mds with
+  | Nothing -> "<no dwarf information extracted>"
+  | Just ds ->
+   "" (*pp_text_section f1*)
+   ^ pp_dwarf_like_objdump ds.ds_dwarf
+  end
+
+    
 val harness_string_of_elf : elf_file -> byte_sequence -> string
 let harness_string_of_elf f1 bs =
   let mds = extract_dwarf_static f1 in
@@ -4783,3 +4804,15 @@ let {ocaml} harness_string_of_elf64_debug_info_section f1 bs0 (*os proc usr hdr 
 val harness_string_of_elf32_debug_info_section : elf32_file -> byte_sequence -> (* (natural -> string) -> (natural -> string) -> (natural -> string) -> elf32_header -> elf32_section_header_table -> string_table ->*) string
 let {ocaml} harness_string_of_elf32_debug_info_section f1 bs0 (*os proc usr hdr sht stbl*) =
   harness_string_of_elf (ELF_File_32 f1) bs0
+
+
+
+val harness_string_of_elf64_like_objdump : elf64_file -> byte_sequence -> (*(natural -> string) -> (natural -> string) -> (natural -> string) -> elf64_header -> elf64_section_header_table -> string_table -> *) string
+let {ocaml} harness_string_of_elf64_like_objdump f1 bs0 (*os proc usr hdr sht stbl*) =
+  harness_string_of_elf_like_objdump (ELF_File_64 f1) bs0
+
+val harness_string_of_elf32_like_objdump : elf32_file -> byte_sequence -> (* (natural -> string) -> (natural -> string) -> (natural -> string) -> elf32_header -> elf32_section_header_table -> string_table ->*) string
+let {ocaml} harness_string_of_elf32_like_objdump f1 bs0 (*os proc usr hdr sht stbl*) =
+  harness_string_of_elf_like_objdump (ELF_File_32 f1) bs0
+
+    

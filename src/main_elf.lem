@@ -274,6 +274,19 @@ let _ =
                   f1.elf32_file_section_header_table
                   stbl*)
                   )
+              else if flag = "--debug-dump=dies" then
+                Elf_file.read_elf32_file bs0 >>= fun f1 ->
+                get_elf32_file_section_header_string_table f1 >>= fun stbl ->
+                return (Dwarf.harness_string_of_elf32_like_objdump
+                  f1
+                  bs0
+                  (*string_of_gnu_ext_section_type
+                  (fun x -> show x)
+                  (fun x -> show x)
+                  f1.elf32_file_header
+                  f1.elf32_file_section_header_table
+                  stbl*)
+                  )
               else
                 failwith "Unrecognised flag"
             in
@@ -352,8 +365,21 @@ let _ =
                   f1.elf64_file_section_header_table
                   stbl*)
                   )
+              else if flag = "--debug-dump=dies" then
+                Elf_file.read_elf64_file bs0 >>= fun f1 ->
+                get_elf64_file_section_header_string_table f1 >>= fun stbl ->
+                return (Dwarf.harness_string_of_elf64_like_objdump
+                  f1
+                  bs0
+                  (*string_of_gnu_ext_section_type
+                  (fun x -> show x)
+                  (fun x -> show x)
+                  f1.elf64_file_header
+                  f1.elf64_file_section_header_table
+                  stbl*)
+                  )
               else
-                failwith "Unimplemented (for ELF64) or unrecognised flag"
+                failwith ("Unimplemented (for ELF64) or unrecognised flag: "^flag)
             in
               ret
         else
