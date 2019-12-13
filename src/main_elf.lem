@@ -368,7 +368,7 @@ let _ =
               else if flag = "--debug-dump=dies" then
                 Elf_file.read_elf64_file bs0 >>= fun f1 ->
                 get_elf64_file_section_header_string_table f1 >>= fun stbl ->
-                return (Dwarf.harness_string_of_elf64_like_objdump
+                return ("\n"^arg^":     file format [...]" ^"\n\n"^ Dwarf.harness_string_of_elf64_like_objdump
                   f1
                   bs0
                   (*string_of_gnu_ext_section_type

@@ -846,6 +846,8 @@ let attribute_encodings = [
   ("DW_AT_const_expr"           , natural_of_hex "0x6c", [DWA_flag])                                        ;
   ("DW_AT_enum_class"           , natural_of_hex "0x6d", [DWA_flag])                                        ;
   ("DW_AT_linkage_name"         , natural_of_hex "0x6e", [DWA_string])                                      ;
+(* DW_AT_noreturn is a gcc extension to support the C11 _Noreturn keyword*)
+  ("DW_AT_noreturn"             , natural_of_hex "0x87", [DWA_flag])                                      ;
   ("DW_AT_lo_user"              , natural_of_hex "0x2000", [DWA_dash])                                      ;
   ("DW_AT_hi_user"              , natural_of_hex "0x3fff", [DWA_dash])
 ]
@@ -1296,12 +1298,18 @@ let rec mynth (n:natural) xs =
 
 (** basic pretty printing *)
 
-let pphex n = "0x" ^ unsafe_hex_string_of_natural 0 n
+let pphexplain n = unsafe_hex_string_of_natural 0 n
+let pphex n = "0x" ^ pphexplain n
 
 let ppbytes xs = show (List.map (fun x -> show x) xs)
 
 let rec ppbytes2 n xs = match xs with | [] -> "" | x::xs' -> "<"^pphex n^">  "^show x^"\n"^ppbytes2 (n+1) xs' end
 
+let rec ppbytesplain (n:natural) xs = match xs with | [] -> "" | x::xs' -> "<"^pphex n^">  "^ppbytesplain (n+1) xs' end
+(*
+  unsafe_hex_string_of_uc_list (List.map unsigned_char_of_byte xs) (*match xs with | [] -> "" | x::xs' -> pphexplain x ^ ppbytesplain (n+1) xs' end*)
+*)
+  
 (* workaround: from String *)
 val mytoString : list char -> string
 declare ocaml    target_rep function mytoString = `Xstring.implode`
@@ -1389,7 +1397,7 @@ let rec lookup_abCde_de z0 xyzwus =
   end
 
 
-let pp_maybe ppf n = match ppf n with Just s -> s | Nothing -> "encoding not found: " ^ pphex n end
+let pp_maybe ppf n = match ppf n with Just s -> s | Nothing -> "Unknown AT value: " ^ pphexplain n (*encoding not found: "" ^ pphex n*) end
 
 let pp_tag_encoding n = pp_maybe (fun n -> lookup_aB_a n tag_encodings) n
 let pp_attribute_encoding n = pp_maybe (fun n -> lookup_aBc_a n attribute_encodings) n
@@ -1792,12 +1800,36 @@ let pp_abbreviation_declaration (x:abbreviation_declaration) =
   ^ myconcat ""
       (List.map
          (fun (n1,n2) ->
-           "    " ^ pp_attribute_encoding n1 ^ "     " ^ pp_attribute_form_encoding n2 ^ "\n")
+           "    " ^ right_space_padded_to 18 (pp_attribute_encoding n1) ^ " " ^ pp_attribute_form_encoding n2 ^ "\n")
          x.ad_attribute_specifications)
+  ^ "    DW_AT value: 0     DW_FORM value: 0\n"
 
+      
 let pp_abbreviations_table (x:abbreviations_table) =
   myconcat "" (List.map (pp_abbreviation_declaration) x)
 
+(* print the distinct abbreviation tables used by all compilation units *)
+let rec remove_duplicates xys xys_acc =
+  match xys with
+  | [] -> List.reverse xys_acc
+  | (x,y)::xys' ->
+      if List.any (fun (x',y') -> x'=x) xys_acc then
+        remove_duplicates xys' xys_acc
+      else
+        remove_duplicates xys' ((x,y)::xys_acc)
+  end
+  
+let pp_abbreviations_tables (d:dwarf) = 
+  let xs : list (natural * abbreviations_table) =
+    List.map
+      (fun cu -> (cu.cu_header.cuh_debug_abbrev_offset, cu.cu_abbreviations_table)) 
+      d.d_compilation_units in
+  let ys = remove_duplicates xs [] in
+  myconcat "*********************\n" (List.map (fun (x,y)->pp_abbreviations_table y) ys)
+  
+
+
+    
 let parse_abbreviation_declaration c : parser (maybe abbreviation_declaration) =
     fun (pc: parse_context) ->
       pr_bind (parse_ULEB128 pc) (fun n1 pc' ->
@@ -1959,6 +1991,33 @@ let pp_attribute_value c cuh str at av =
       ^ pp_debug_str_entry str n
   end
 
+val pp_attribute_value_like_objdump : p_context -> compilation_unit_header -> list byte -> natural (*attribute tag*) -> attribute_value -> string
+let pp_attribute_value_like_objdump c cuh str at av =
+  match av with
+  | AV_addr x -> (*"AV_addr " ^*) pphex x
+  | AV_block n bs -> (*"AV_block " ^ show n ^ " " ^ ppbytes bs
+      ^ if at = attribute_encode "DW_AT_location" then " " ^ parse_and_pp_operations c cuh bs else ""*) 
+   (* show n ^ " byte block: " *) ppbytesplain n bs
+      ^ if at = attribute_encode "DW_AT_location" then " " ^ parse_and_pp_operations c cuh bs else ""
+  | AV_constantN n bs -> ppbytes bs (*"AV_constantN " ^ show n ^ " " ^ ppbytes bs*)
+  | AV_constant_SLEB128 i -> (*"AV_constant_SLEB128 " ^*) show i
+  | AV_constant_ULEB128 n -> (*"AV_constant_ULEB128 " ^*) show n
+  | AV_exprloc n bs -> (*"AV_exprloc " ^ show n ^ " " ^*) ppbytes bs
+      ^ " " ^ parse_and_pp_operations c cuh bs
+  | AV_flag b -> (*"AV_flag " ^*)if b then "1" else "0"
+  | AV_ref n -> (*"AV_ref " ^*) "<"^pphex n^">"
+  | AV_ref_addr n -> (*"AV_ref_addr " ^*) pphex n
+  | AV_ref_sig8 n -> (*"AV_ref_sig8 " ^*) pphex n
+  | AV_sec_offset n -> (*"AV_sec_offset " ^*) pphex  n
+     ^ if at = attribute_encode "DW_AT_location" then " (location list)"  else ""
+  | AV_string bs -> string_of_bytes bs 
+  | AV_strp n -> (*"AV_sec_offset " ^ pphex n ^ " "
+                   ^ pp_debug_str_entry str n*)
+      "(indirect string, offset: "^pphex n ^ "): " ^ pp_debug_str_entry str n
+  end
+
+
+  
 
 val parser_of_attribute_form_non_indirect : p_context -> compilation_unit_header -> natural -> parser attribute_value
 let parser_of_attribute_form_non_indirect c cuh n =
@@ -2157,20 +2216,34 @@ let parse_type_unit_header c : parser type_unit_header =
     <5a>   DW_AT_location    : 2 byte block: 91 6c 	(DW_OP_fbreg: -20)
 *)
 
-let pp_pos pos = "<" ^ pphex pos ^">"
+let pp_pos pos = "<" ^ pphexplain pos ^">"
 
-let indent_level (level: natural) = (toString (replicate (3 * level) #' '))
-
-let pp_die_attribute c (cuh:compilation_unit_header) (str : list byte) (level: natural) (((at: natural), (af: natural)), ((pos: natural),(av:attribute_value))) : string =
-  indent_level (level + 1) ^ pp_pos pos  ^ "   "
-  ^ pp_attribute_encoding at ^ "     : "
-  ^ "(" ^ pp_attribute_form_encoding af ^ ") "
-  ^ pp_attribute_value c cuh str at av
-  ^ "\n"
-
-val pp_die : p_context -> compilation_unit_header -> list byte -> natural -> bool -> die -> string
-let rec pp_die c cuh str level (pp_children:bool) die =
-  indent_level level ^ "<" ^ show level ^ ">"
+let indent_level (indent: bool) (level: natural) =
+  if indent then
+    (toString (replicate (3 * level) #' '))
+  else
+    " "
+let indent_level_plus_one indent level =
+  if indent then
+    indent_level indent (level+1)
+  else
+    " "^"   "
+      
+let pp_die_attribute c (cuh:compilation_unit_header) (str : list byte) (indent:bool) (level: natural) (((at: natural), (af: natural)), ((pos: natural),(av:attribute_value))) : string =
+  indent_level_plus_one indent level ^ pp_pos pos  ^ "   "
+  ^ right_space_padded_to 17 (pp_attribute_encoding at) ^ " : "
+  ^
+    if indent then
+      "(" ^ pp_attribute_form_encoding af ^ ") "
+      ^ pp_attribute_value c cuh str at av
+      ^ "\n"
+    else
+      pp_attribute_value_like_objdump c cuh str at av
+      ^ "\n"
+          
+val pp_die : p_context -> compilation_unit_header -> list byte -> bool -> natural -> bool -> die -> string
+let rec pp_die c cuh str indent level (pp_children:bool) die =
+  indent_level indent level ^ "<" ^ show level ^ ">"
   ^ pp_pos die.die_offset
   ^ ": Abbrev Number: " ^ show die.die_abbreviation_code
   ^ " (" ^ pp_tag_encoding die.die_abbreviation_declaration.ad_tag ^")\n"
@@ -2178,13 +2251,13 @@ let rec pp_die c cuh str level (pp_children:bool) die =
     let ats = List.zip
         die.die_abbreviation_declaration.ad_attribute_specifications
         die.die_attribute_values in
-    (myconcat "" (List.map (pp_die_attribute c cuh str level) ats))
+    (myconcat "" (List.map (pp_die_attribute c cuh str indent level) ats))
     ^
-      if pp_children then myconcat "" (List.map (pp_die c cuh str (level +1) pp_children) die.die_children) else ""
+      if pp_children then myconcat "" (List.map (pp_die c cuh str indent (level +1) pp_children) die.die_children) else ""
 
 val pp_die_abbrev : p_context -> compilation_unit_header -> list byte -> natural -> bool -> (list die) -> die -> string
 let rec pp_die_abbrev c cuh str level (pp_children:bool) parents die =
-  indent_level level
+  indent_level true level
   ^ pp_tag_encoding die.die_abbreviation_declaration.ad_tag
   ^ " (" ^ pp_pos die.die_offset ^ ") "
 (*  ^ ": Abbrev Number: " ^ show die.die_abbreviation_code *)
@@ -2203,7 +2276,7 @@ let rec pp_die_abbrev c cuh str level (pp_children:bool) parents die =
 (* condensed pp for variables *)
 val pp_die_abbrev_var : p_context -> compilation_unit_header -> list byte -> natural -> bool -> (list die) -> die -> string
 let rec pp_die_abbrev_var c cuh str level (pp_children:bool) parents die =
-  indent_level level
+  indent_level true level
   (*  ^ pp_tag_encoding die.die_abbreviation_declaration.ad_tag*)
 (*  ^ ": Abbrev Number: " ^ show die.die_abbreviation_code *)
     ^
@@ -2248,7 +2321,7 @@ let rec parse_die c str cuh find_abbreviation_declaration =
             die_abbreviation_declaration = ad;
             die_attribute_values = avs;
             die_children = [];
-          |> in let _ = my_debug3 ("die_header " ^ pp_die cuh str 999 die_header) in
+          |> in let _ = my_debug3 ("die_header " ^ pp_die cuh str true 999 die_header) in
   *)
             pr_bind
               (if ad.ad_has_children then parse_list (parse_die c str cuh find_abbreviation_declaration) pc'' else pr_return [] pc'')
@@ -2260,7 +2333,7 @@ let rec parse_die c str cuh find_abbreviation_declaration =
                   die_abbreviation_declaration = ad;
                   die_attribute_values = avs;
                   die_children = dies;
-                |> in (* let _ = my_debug3 ("die entire " ^ pp_die cuh str 999 die) in *)die)) pc''')))
+                |> in (* let _ = my_debug3 ("die entire " ^ pp_die cuh str true 999 die) in *)die)) pc''')))
 
 let has_attribute (an: string) (die: die) : bool =
   List.elem
@@ -2270,18 +2343,20 @@ let has_attribute (an: string) (die: die) : bool =
 
 (** compilation units: pp and parsing *)
 
-let pp_compilation_unit c (debug_str_section_body: list byte) cu =
-
-  "*** compilation unit header               ***\n"
+let pp_compilation_unit c (indent:bool) (debug_str_section_body: list byte) cu =
+  ""
+(*  "*** compilation unit header               ***\n"*)
   ^ pp_compilation_unit_header cu.cu_header
-  ^ "\n*** compilation unit abbreviation table ***\n"
+(*  ^ "\n*** compilation unit abbreviation table ***\n"
   ^ pp_abbreviations_table cu.cu_abbreviations_table
-  ^ "\n*** compilation unit die tree           ***\n"
-  ^ pp_die c cu.cu_header debug_str_section_body 0 true cu.cu_die
+ *)
+(*  ^ "\n"*)
+(*  ^ "*** compilation unit die tree           ***\n"*)
+  ^ pp_die c cu.cu_header debug_str_section_body indent 0 true cu.cu_die
   ^ "\n"
 
-let pp_compilation_units c debug_string_section_body (compilation_units: list compilation_unit) : string =
-  myconcat "" (List.map (pp_compilation_unit c debug_string_section_body) compilation_units)
+let pp_compilation_units c (indent:bool) debug_string_section_body (compilation_units: list compilation_unit) : string =
+  myconcat "" (List.map (pp_compilation_unit c indent debug_string_section_body) compilation_units)
 
 
 let pp_compilation_unit_abbrev c (debug_str_section_body: list byte) cu =
@@ -2346,7 +2421,7 @@ let parse_compilation_units c (debug_str_section_body: list byte) (debug_abbrev_
 let pp_type_unit c (debug_str_section_body: list byte) tu =
   pp_type_unit_header tu.tu_header
   ^ pp_abbreviations_table tu.tu_abbreviations_table
-  ^ pp_die c tu.tu_header.tuh_cuh debug_str_section_body 0 true tu.tu_die
+  ^ pp_die c tu.tu_header.tuh_cuh debug_str_section_body true 0 true tu.tu_die
 
 let pp_type_units c debug_string_section_body (type_units: list type_unit) : string =
   myconcat "" (List.map (pp_type_unit c debug_string_section_body) type_units)
@@ -3205,10 +3280,20 @@ let pp_line_info li
 (* roughly matching objdump --dwarf=abbrev,info *)
 let pp_dwarf_like_objdump d =
   let c : p_context = <| endianness = d.d_endianness |> in
+  ""
+
+(*  ^ "\n*** compilation unit abbreviation table ***\n" *)
+  ^ "Contents of the .debug_abbrev section:\n\n"
+  ^ "  Number TAG (0x0)\n"
+  ^ pp_abbreviations_tables d
+(*  ^ "\n*** compilation unit die tree           ***\n"*)
+
 (*  "\n************** .debug_info section - abbreviated *****************\n"
   ^ pp_compilation_units_abbrev c d.d_str d.d_compilation_units
-  ^*) "\n************** .debug_info section - full ************************\n"
-  ^ pp_compilation_units c d.d_str d.d_compilation_units
+    ^*)
+(*  ^"\n************** .debug_info section - full ************************\n"*)
+  ^ "\nContents of the .debug_info section:\n\n"
+  ^ pp_compilation_units c false (*false for no indent, like objdump; true for nice indent *) d.d_str d.d_compilation_units
 
 
     
@@ -3218,7 +3303,7 @@ let pp_dwarf d =
 (*  "\n************** .debug_info section - abbreviated *****************\n"
   ^ pp_compilation_units_abbrev c d.d_str d.d_compilation_units
   ^*) "\n************** .debug_info section - full ************************\n"
-  ^ pp_compilation_units c d.d_str d.d_compilation_units
+  ^ pp_compilation_units c true d.d_str d.d_compilation_units
   ^ "\n************** .debug_loc section: location lists ****************\n"
   ^ let (cuh_default : compilation_unit_header) = let cu = myhead d.d_compilation_units in cu.cu_header in
     pp_loc c cuh_default d.d_loc
@@ -4017,7 +4102,7 @@ let rec find_die_by_offset offset die : maybe die =
 
   
 let find_DW_AT_type_of_die c d cu cuh str die =
-  let ppd () = pp_die c cuh str 0 false die ^ "\n" in
+  let ppd () = pp_die c cuh str true 0 false die ^ "\n" in
   match find_attribute_value "DW_AT_type" die with
   | Nothing -> Fail ("find_DW_AT_type_of_die found no DW_AT_type\n" ^ ppd())
   | Just av ->
@@ -4044,7 +4129,7 @@ let rec pp_type_info_die_DW_AT_type c (d: dwarf) cu cuh str die =
 
 and pp_type_info_die c (d: dwarf) cu cuh str die = 
 
-  let ppd () = "pp_type_info_die on:\n" ^ pp_die c cuh str 0 false die ^ "\n" in 
+  let ppd () = "pp_type_info_die on:\n" ^ pp_die c cuh str true 0 false die ^ "\n" in 
 
   if die.die_abbreviation_declaration.ad_tag = tag_encode "DW_TAG_base_type" then
     match find_name_of_die str die with
