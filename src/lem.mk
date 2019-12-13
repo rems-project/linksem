@@ -15,7 +15,7 @@ ifneq ($(MAKECMDGOALS),clean)
 # Lem optionally vendors the zarith dependency, but currently
 # we don't use that -- just assume the host system has zarith.
 ifeq ($(shell ocamlfind query zarith),)
-$(error No zarith installed [anywhere ocamlfind can find it]; install it (opam install zarith || apt-get install libzarith-ocaml{,-dev} || yum install ocaml-zarith), or use make install_dependencies in lem/ocaml-lib, or hack $(THIS_MAKEFILE) to use Lem's vendored copy locally.)
+$(error No zarith installed [anywhere ocamlfind can find it]; install it (opam install zarith || apt-get install libzarith-ocaml{,-dev} || yum install ocaml-zarith), or use make install_dependencies in lem/ocaml-lib, or hack $(THIS_MAKEFILE) to use the Lem vendored copy locally.)
 endif
 # assume the host system has lem
 ifeq ($(shell printenv | grep CAML 1>&2 && env OCAMLPATH=$(OCAMLPATH) ocamlfind query lem),)
@@ -36,9 +36,9 @@ LEM_UTIL_SRC := default_printing.lem missing_pervasives.lem show.lem endianness.
 ALL_UTIL_ML := \
 	uint64_wrapper.ml uint32_wrapper.ml \
 	show.ml endianness.ml error.ml ml_bindings.ml missing_pervasives.ml multimap.ml \
-	multimapAuxiliary.ml default_printing.ml byte_sequence_wrapper.ml byte_sequence_impl.ml \
+	default_printing.ml byte_sequence_wrapper.ml byte_sequence_impl.ml \
 	filesystem.ml filesystem_wrapper.ml
-	# missing_pervasivesAuxiliary.ml
+	# missing_pervasivesAuxiliary.ml multimapAuxiliary.ml 
 ALL_UTIL_ML_WO_LEM := $(filter-out $(patsubst %.lem,%.ml,$(LEM_UTIL_SRC)) $(patsubst %.lem,%Auxiliary.ml,$(LEM_UTIL_SRC)),$(ALL_UTIL_ML))
 
 # Nasty cycle:

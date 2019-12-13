@@ -108,6 +108,7 @@ let testEquiv x y = if (x >= 3 && x < 5 && y >= 3 && y <= 5) then true
      else if (x > 5 && y > 5) then true
      else false
 
+         (*
 assert lowest_simple: findLowestKVWithKEquivTo 4 testEquiv 
 ({ (1, 0); (2, 0); (3, 0); (4, 0); (5, 0); (6, 0) } : set (natural * natural)) Nothing = Just (3, 0)
 assert lowest_kv: findLowestKVWithKEquivTo 4 testEquiv 
@@ -118,7 +119,8 @@ assert lowest_onepast: findLowestKVWithKEquivTo 4 testEquiv
 ({ (6, 0) } : set (natural * natural)) Nothing = Nothing
 assert lowest_oneprev: findLowestKVWithKEquivTo 4 testEquiv 
 ({ (2, 0) } : set (natural * natural)) Nothing = Nothing
-
+          *)
+         
 (* Note we can't just use findLowestEquiv with inverted relations, because 
  * chooseAndSplit returns us (lower, chosen, higher) and we need to swap
  * around how we consume that. *)
@@ -166,6 +168,7 @@ let _ = Missing_pervasives.errln ("choose_and_split {3, 4, 5} is " ^
      | Nothing -> "Nothing" end))
 *)
 
+  (*
 assert highest_simple: findHighestKVWithKEquivTo 4 testEquiv
 ({ (1, 0); (2, 0); (3, 0); (4, 0); (5, 0); (6, 0) } : set (natural * natural)) Nothing = Just (5, 0)
 assert highest_kv: findHighestKVWithKEquivTo 4 testEquiv
@@ -176,7 +179,8 @@ assert highest_onepast: findHighestKVWithKEquivTo 4 testEquiv
 ({ (6, 0) } : set (natural * natural)) Nothing = Nothing
 assert highest_oneprev: findHighestKVWithKEquivTo 4 testEquiv
 ({ (2, 0) } : set (natural * natural)) Nothing = Nothing
-
+   *)
+  
 (* get the list of all pairs with key equiv to k. *)
 val lookupBy : forall 'k 'v. 
     Ord 'k, Ord 'v, SetType 'k, SetType 'v =>
@@ -215,7 +219,7 @@ let _ = Missing_pervasives.errln
 ^ (show (lookupBy testEquiv 
 4 ({ (1, 0); (2, 0); (3, 0); (4, 0); (5, 0); (6, 0) } : set (natural * natural)))))
 *)
-
+(*
 assert lookup_simple : lookupBy testEquiv 
 4 ({ (1, 0); (2, 0); (3, 0); (4, 0); (5, 0); (6, 0) } : set (natural * natural))
 = ([(3, 0); (4, 0); (5, 0)] : list (natural * natural))
@@ -230,7 +234,7 @@ assert lookup_onepast: lookupBy testEquiv
 4 ({ (6, 0) } : set (natural * natural)) = ([] : list (natural * natural))
 assert lookup_oneprev: lookupBy testEquiv 
 4 ({ (2, 0) } : set (natural * natural)) = ([] : list (natural * natural))
-
+*)
 
 (* To delete all pairs with key equiv to k, can use deleteBy *)
 
