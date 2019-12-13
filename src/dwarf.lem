@@ -4122,15 +4122,19 @@ let find_DW_AT_type_of_die c d cu cuh str die =
   match find_attribute_value "DW_AT_type" die with
   | Nothing -> Fail ("find_DW_AT_type_of_die found no DW_AT_type\n" ^ ppd())
   | Just av ->
-     match av with
-     | AV_ref n -> 
-     (* "offset from the first byte of the compilation header for the compilation unit containing the reference" *)
+      (* this is a bit strange, as we'd more naturally offset here from the .debug_info, not those of this cu *)
+      let find n =  
         match find_die_by_offset n cu.cu_die with
         | Just die' -> Success die'
         | Nothing -> Fail ("find_DW_AT_type_of_die failed\n"^ppd())
-        end 
-     | _ -> Fail ("find_DW_AT_type_of_die not supported\n"^ppd() )
-     end
+        end  in 
+      match av with
+        (* "offset from the first byte of the compilation header for the compilation unit containing the reference" *)
+        | AV_ref n -> find (n+cuh.cuh_offset)
+        (* offset in .debug_info *)
+        | AV_ref_addr n -> find (n)
+        | _ -> Fail ("find_DW_AT_type_of_die AV ("^pp_attribute_value c cuh str (attribute_encode "DW_AT_type") av^") not supported\n"^ppd() )
+        end
   end  
 
 
