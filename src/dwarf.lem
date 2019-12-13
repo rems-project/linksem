@@ -1235,9 +1235,25 @@ let bytes_of_natural en size n =
   else
     Assert_extra.failwith "bytes_of_natural given size that is not 4 or 8"
 
-(* TODO: generalise *)
+let rec natural_of_bytes_little bs : natural =
+  match bs with
+  | [] -> 0
+  | b::bs' -> natural_of_byte b + 256 * natural_of_bytes_little bs' 
+  end
+
+let natural_of_bytes_big bs =
+  natural_of_bytes_little (List.reverse bs)
+   
+  
+  
 val natural_of_bytes: endianness -> list byte -> natural
 let natural_of_bytes en bs =
+  match en with
+  | Little -> natural_of_bytes_little bs
+  | Big -> natural_of_bytes_big bs
+  end
+(* TODO: generalise *)
+(*
   match bs with
   | b0::b1::b2::b3::b4::b5::b6::b7::[] ->
       let v = if en=Little then
@@ -1268,7 +1284,7 @@ let natural_of_bytes en bs =
       natural_of_byte b0
   | _ -> Assert_extra.failwith "natural_of_bytes given not-8/4/2/1 bytes"
   end
-
+*)
 
 val bigunionListMap : forall 'a 'b. SetType 'b => ('a -> set 'b) -> list 'a -> set 'b
 let rec bigunionListMap f xs =
@@ -1305,7 +1321,7 @@ let ppbytes xs = show (List.map (fun x -> show x) xs)
 
 let rec ppbytes2 n xs = match xs with | [] -> "" | x::xs' -> "<"^pphex n^">  "^show x^"\n"^ppbytes2 (n+1) xs' end
 
-let rec ppbytesplain (n:natural) xs = match xs with | [] -> "" | x::xs' -> "<"^pphex n^">  "^ppbytesplain (n+1) xs' end
+let rec ppbytesplain (c:p_context) (n:natural) xs = show (natural_of_bytes c.endianness xs) 
 (*
   unsafe_hex_string_of_uc_list (List.map unsigned_char_of_byte xs) (*match xs with | [] -> "" | x::xs' -> pphexplain x ^ ppbytesplain (n+1) xs' end*)
 *)
@@ -1997,7 +2013,7 @@ let pp_attribute_value_like_objdump c cuh str at av =
   | AV_addr x -> (*"AV_addr " ^*) pphex x
   | AV_block n bs -> (*"AV_block " ^ show n ^ " " ^ ppbytes bs
       ^ if at = attribute_encode "DW_AT_location" then " " ^ parse_and_pp_operations c cuh bs else ""*) 
-   (* show n ^ " byte block: " *) ppbytesplain n bs
+   (* show n ^ " byte block: " *) ppbytesplain c n bs
       ^ if at = attribute_encode "DW_AT_location" then " " ^ parse_and_pp_operations c cuh bs else ""
   | AV_constantN n bs -> ppbytes bs (*"AV_constantN " ^ show n ^ " " ^ ppbytes bs*)
   | AV_constant_SLEB128 i -> (*"AV_constant_SLEB128 " ^*) show i
@@ -2005,9 +2021,9 @@ let pp_attribute_value_like_objdump c cuh str at av =
   | AV_exprloc n bs -> (*"AV_exprloc " ^ show n ^ " " ^*) ppbytes bs
       ^ " " ^ parse_and_pp_operations c cuh bs
   | AV_flag b -> (*"AV_flag " ^*)if b then "1" else "0"
-  | AV_ref n -> (*"AV_ref " ^*) "<"^pphex n^">"
-  | AV_ref_addr n -> (*"AV_ref_addr " ^*) pphex n
-  | AV_ref_sig8 n -> (*"AV_ref_sig8 " ^*) pphex n
+  | AV_ref n -> (*"AV_ref " ^*) "<"^pphex (n + cuh.cuh_offset)^">"
+  | AV_ref_addr n -> (*"AV_ref_addr " ^*) "<"^pphex n^">"
+  | AV_ref_sig8 n -> "AV_ref_sig8 " ^ pphex n
   | AV_sec_offset n -> (*"AV_sec_offset " ^*) pphex  n
      ^ if at = attribute_encode "DW_AT_location" then " (location list)"  else ""
   | AV_string bs -> string_of_bytes bs 
@@ -2231,7 +2247,7 @@ let indent_level_plus_one indent level =
       
 let pp_die_attribute c (cuh:compilation_unit_header) (str : list byte) (indent:bool) (level: natural) (((at: natural), (af: natural)), ((pos: natural),(av:attribute_value))) : string =
   indent_level_plus_one indent level ^ pp_pos pos  ^ "   "
-  ^ right_space_padded_to 17 (pp_attribute_encoding at) ^ " : "
+  ^ right_space_padded_to 18 (pp_attribute_encoding at) ^ ": "
   ^
     if indent then
       "(" ^ pp_attribute_form_encoding af ^ ") "
