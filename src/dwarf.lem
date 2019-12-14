@@ -3911,8 +3911,12 @@ let rec pad_row xs lens =
   end
 
 let pad_rows (xss : list (list string)) : string =
-  let lens = max_lengths xss in
-  myconcat "" (List.map (fun xs -> myconcat " " (pad_row xs lens) ^ "\n") xss)
+  match xss with
+  | [] -> ""
+  | _ ->
+     let lens = max_lengths xss in
+     myconcat "" (List.map (fun xs -> myconcat " " (pad_row xs lens) ^ "\n") xss)
+  end
 
 let pp_evaluated_fde (fde, (rows: list cfa_table_row)) : string =
   let regs = register_footprint rows in
