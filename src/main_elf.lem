@@ -325,12 +325,13 @@ let _ =
                   f1
                   print_reloc
                   bs0)
-              (*else if flag = "--symbols" then
-                Harness_interface.harness_string_of_elf64_syms
+              else if flag = "--symbols" then
+                Elf_file.read_elf64_file bs0 >>= fun f1 ->
+                return (Harness_interface.harness_string_of_elf64_syms
                   f1
                   show
                   show
-                  bs0*)
+                  bs0)
               else if flag = "--dynamic" then
                 Elf_file.read_elf64_file bs0 >>= fun f1 ->
                 let so = is_elf64_shared_object_file f1.elf64_file_header in
