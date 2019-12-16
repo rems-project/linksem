@@ -912,15 +912,35 @@ let {ocaml} harness_string_of_elf64_syms' endian os proc f1 filtered_sht sht shd
     ) filtered_sht
   >>=
     mapM (fun (syms, ent, strtab, typ) ->
+      List.map
+        (fun (sym_ent:elf64_symbol_table_entry) ->
+          let nm =
+            let idx = natural_of_elf64_word sym_ent.elf64_st_name in
+            if idx = 0 then
+              ""
+            else
+              match String_table.get_string_at idx strtab with
+              | Fail err -> err
+              | Success s -> s
+              end
+            in
+            let vlu = natural_of_elf64_addr sym_ent.elf64_st_value in
+            (nm,vlu)
+         )
+        syms)
+(*
+
       let nm  = natural_of_elf64_word ent.elf64_sh_name in
       let len = show (List.length syms) in
       String_table.get_string_at nm shdr >>= fun nm ->
+
       let hdr = "Symbol table '" ^ nm ^ "' contains " ^ len ^ " entries:\n" in
       let ttl = "   Num:    Value          Size Type    Bind   Vis      Ndx Name\n" in
       let body = concatS (intercalate "\n" (List.mapi (fun n ->
         harness_string_of_elf64_symbol_table_entry n os proc strtab) syms))
       in
       return (hdr ^ ttl ^ body))
+*)
   in
     match rels with
       | Fail err -> err
@@ -946,6 +966,62 @@ let {ocaml} harness_string_of_elf64_syms f1 os proc bs0 =
         harness_string_of_elf64_syms' endian os proc f1 sym_secs sht shdr bs0
     end
 
+
+
+(* convenient symbol table extractor for read-dwarf *)
+(*
+  val read_dwarf_symbol_table_of_elf64_syms' : endianness -> (natural -> string) -> (natural -> string) -> elf64_file -> elf64_section_header_table -> elf64_section_header_table -> string_table -> byte_sequence -> list (string * natural)
+let {ocaml} read_dwarf_symbol_table_of_elf64_syms' endian os proc f1 filtered_sht sht shdr bs0 =
+  let rels =
+    mapM (fun ent ->
+      let off = natural_of_elf64_off  ent.elf64_sh_offset in
+      let siz = natural_of_elf64_xword ent.elf64_sh_size in
+      let lnk = natural_of_elf64_word ent.elf64_sh_link in
+      let typ = natural_of_elf64_word ent.elf64_sh_type in
+        Byte_sequence.offset_and_cut off siz bs0 >>= fun syms ->
+        Elf_symbol_table.read_elf64_symbol_table endian syms >>= fun sect ->
+        Elf_file.get_elf64_string_table_by_index f1 lnk >>= fun strtab ->
+        return (sect, ent, strtab, typ)
+    ) filtered_sht
+  >>=
+    mapM (fun (syms, ent, strtab, typ) ->
+      let nm  = natural_of_elf64_word ent.elf64_sh_name in
+      let len = show (List.length syms) in
+      String_table.get_string_at nm shdr >>= fun nm ->
+      let hdr = "Symbol table '" ^ nm ^ "' contains " ^ len ^ " entries:\n" in
+      let ttl = "   Num:    Value          Size Type    Bind   Vis      Ndx Name\n" in
+      let body = concatS (intercalate "\n" (List.mapi (fun n ->
+        read_dwarf_symbol_table_of_elf64_symbol_table_entry n os proc strtab) syms))
+      in
+      return (hdr ^ ttl ^ body))
+  in
+    match rels with
+      | Fail err -> err
+      | Success s -> concatS (intercalate "\n\n" s)
+    end
+
+val read_dwarf_symbol_table_of_elf64_syms : elf64_file -> (natural -> string) -> (natural -> string) -> byte_sequence -> string
+let {ocaml} read_dwarf_symbol_table_of_elf64_syms f1 os proc bs0 =
+  let hdr = f1.elf64_file_header in
+  let sht = f1.elf64_file_section_header_table in
+  let endian = get_elf64_header_endianness hdr in
+  let sym_secs = List.filter (fun x ->
+    x.elf64_sh_type = elf64_word_of_natural sht_dynsym ||
+    x.elf64_sh_type = elf64_word_of_natural sht_symtab) sht
+  in
+  if List.length sym_secs = 0 then
+    [] (*"\nThere are no symbols in this file."*)
+  else
+    match get_elf64_file_section_header_string_table f1 with
+      | Fail err     -> err
+      | Success shdr ->
+(*        "\n" ^ *)
+        read_dwarf_symbol_table_of_elf64_syms' endian os proc f1 sym_secs sht shdr bs0
+    end
+*)
+(* end *)
+
+  
 val string_of_unix_time : natural -> string
 declare ocaml target_rep function string_of_unix_time = `Ml_bindings.string_of_unix_time`
 
