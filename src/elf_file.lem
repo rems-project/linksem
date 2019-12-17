@@ -784,6 +784,35 @@ let get_elf64_file_symbol_string_table f3 =
     >>= fun strings ->
       String_table.concat strings
 
+(** [get_elf32_file_string_table_by_index f1 index] returns the ELF file [f1]
+  * string table that is pointed to by the section header table entry at index
+  * [index].  May fail if index is out of range, or otherwise.
+  *)
+val get_elf32_string_table_by_index : elf32_file -> natural -> error string_table
+let get_elf32_string_table_by_index ef link =
+  let hdr     = ef.elf32_file_header in
+  let sht     = ef.elf32_file_section_header_table in
+  let sects   = ef.elf32_file_interpreted_sections in
+    match List.index sects (unsafe_nat_of_natural link) with
+      | Nothing  -> fail "get_elf32_string_table_by_index: invalid index"
+      | Just sym -> return (mk_string_table (Byte_sequence.string_of_byte_sequence sym.elf32_section_body) Missing_pervasives.null_char)
+    end
+
+(** [get_elf64_file_string_table_by_index f1 index] returns the ELF file [f1]
+  * string table that is pointed to by the section header table entry at index
+  * [index].  May fail if index is out of range, or otherwise.
+  *)
+val get_elf64_string_table_by_index : elf64_file -> natural -> error string_table
+let get_elf64_string_table_by_index ef link =
+  let hdr     = ef.elf64_file_header in
+  let sht     = ef.elf64_file_section_header_table in
+  let sects   = ef.elf64_file_interpreted_sections in
+    match List.index sects (unsafe_nat_of_natural link) with
+      | Nothing  -> fail "get_elf64_string_table_by_index: invalid index"
+      | Just sym -> return (mk_string_table (Byte_sequence.string_of_byte_sequence sym.elf64_section_body) Missing_pervasives.null_char)
+    end
+
+        
 (** [get_elf32_file_symbol_table f1] returns the ELF file [f1] symbol
   * table.  May fail.
   *)
@@ -812,7 +841,7 @@ let get_elf32_file_symbol_table f3 =
 (** [get_elf64_file_symbol_table f1] returns the ELF file [f1] symbol
   * table.  May fail.
   *)
-val get_elf64_file_symbol_table : elf64_file -> error elf64_symbol_table
+val get_elf64_file_symbol_table : elf64_file -> error (elf64_symbol_table * string_table)
 let get_elf64_file_symbol_table f3 =
   let hdr     = f3.elf64_file_header in
   let sht     = f3.elf64_file_section_header_table in
@@ -823,13 +852,16 @@ let get_elf64_file_symbol_table f3 =
     ) sht
   in
     match symtabs with
-      | [] -> return []
+      | [] -> return ([],String_table.dummy_strtab)
       | [symtab] ->
+        let lnk = natural_of_elf64_word symtab.elf64_sh_link in
+        get_elf64_string_table_by_index f3 lnk >>= fun strtab ->
         let offset = natural_of_elf64_off   symtab.elf64_sh_offset in
         let size   = natural_of_elf64_xword symtab.elf64_sh_size in
         bytes_of_elf64_file f3 >>= fun bs0 ->
         Byte_sequence.offset_and_cut offset size bs0 >>= fun relevant ->
-        read_elf64_symbol_table endian relevant
+          read_elf64_symbol_table endian relevant >>= fun symtab ->
+          return (symtab,strtab)
       | _ ->
         fail "obtain_elf64_symbol_table: an ELF file may only have one symbol table of type SHT_SYMTAB"
     end
@@ -900,20 +932,6 @@ let get_elf32_symbol_table_by_index ef link =
         read_elf32_symbol_table endian sym.elf32_section_body
     end
 
-(** [get_elf32_file_string_table_by_index f1 index] returns the ELF file [f1]
-  * string table that is pointed to by the section header table entry at index
-  * [index].  May fail if index is out of range, or otherwise.
-  *)
-val get_elf32_string_table_by_index : elf32_file -> natural -> error string_table
-let get_elf32_string_table_by_index ef link =
-  let hdr     = ef.elf32_file_header in
-  let sht     = ef.elf32_file_section_header_table in
-  let sects   = ef.elf32_file_interpreted_sections in
-    match List.index sects (unsafe_nat_of_natural link) with
-      | Nothing  -> fail "get_elf32_string_table_by_index: invalid index"
-      | Just sym -> return (mk_string_table (Byte_sequence.string_of_byte_sequence sym.elf32_section_body) Missing_pervasives.null_char)
-    end
-
 (** [get_elf64_file_symbol_table_by_index f1 index] returns the ELF file [f1]
   * symbol table that is pointed to by the section header table entry at index
   * [index].  May fail if index is out of range, or otherwise.
@@ -930,19 +948,6 @@ let get_elf64_symbol_table_by_index ef link =
         read_elf64_symbol_table endian sym.elf64_section_body
     end
 
-(** [get_elf64_file_string_table_by_index f1 index] returns the ELF file [f1]
-  * string table that is pointed to by the section header table entry at index
-  * [index].  May fail if index is out of range, or otherwise.
-  *)
-val get_elf64_string_table_by_index : elf64_file -> natural -> error string_table
-let get_elf64_string_table_by_index ef link =
-  let hdr     = ef.elf64_file_header in
-  let sht     = ef.elf64_file_section_header_table in
-  let sects   = ef.elf64_file_interpreted_sections in
-    match List.index sects (unsafe_nat_of_natural link) with
-      | Nothing  -> fail "get_elf64_string_table_by_index: invalid index"
-      | Just sym -> return (mk_string_table (Byte_sequence.string_of_byte_sequence sym.elf64_section_body) Missing_pervasives.null_char)
-    end
 
 (** [segment_provenance] records whether a segment that appears in an executable
   * process image has been derived directly from an ELF file, or was automatically
@@ -1103,8 +1108,11 @@ let get_elf64_file_global_symbol_init f3 =
   if is_elf64_executable_file f3.elf64_file_header then
     let segs   = f3.elf64_file_interpreted_segments in
     bytes_of_elf64_file f3 >>= fun bs0 ->
-    get_elf64_file_symbol_table f3 >>= fun symtab ->
-    get_elf64_file_symbol_string_table f3 >>= fun strtab ->
+    get_elf64_file_symbol_table f3 >>= fun (symtab,strtab) ->
+(* PS HACK: make this more like harness_interface.lem harness_string_of_elf64_syms' *)
+
+(* WAS *)
+(*    get_elf64_file_symbol_string_table f3 >>= fun strtab ->*)
     Elf_symbol_table.get_elf64_symbol_image_address symtab strtab >>= fun strs ->
       let mapped = mapM (fun (symbol, (typ, size, addr, bind)) ->
         if typ = Elf_symbol_table.stt_object then

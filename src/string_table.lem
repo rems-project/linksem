@@ -21,6 +21,10 @@ open import Show
 type string_table
   = Strings of (char * string)
 
+      
+val dummy_strtab : string_table
+let dummy_strtab = Strings (#'\n',"")
+      
 (** [mk_string_table base sep] constructs a string table using [base] as the
   * base string and [sep] as the delimiting character to use to split [base]
   * when trying to access the string stored in the table using the functions below.
