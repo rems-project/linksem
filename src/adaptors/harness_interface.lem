@@ -897,6 +897,7 @@ let {ocaml} harness_string_of_elf64_symbol_table_entry num os proc stbl ent =
     ; nm
     ]
 
+
 val harness_string_of_elf64_syms' : endianness -> (natural -> string) -> (natural -> string) -> elf64_file -> elf64_section_header_table -> elf64_section_header_table -> string_table -> byte_sequence -> string
 let {ocaml} harness_string_of_elf64_syms' endian os proc f1 filtered_sht sht shdr bs0 =
   let rels =
@@ -912,41 +913,22 @@ let {ocaml} harness_string_of_elf64_syms' endian os proc f1 filtered_sht sht shd
     ) filtered_sht
   >>=
     mapM (fun (syms, ent, strtab, typ) ->
-      List.map
-        (fun (sym_ent:elf64_symbol_table_entry) ->
-          let nm =
-            let idx = natural_of_elf64_word sym_ent.elf64_st_name in
-            if idx = 0 then
-              ""
-            else
-              match String_table.get_string_at idx strtab with
-              | Fail err -> err
-              | Success s -> s
-              end
-            in
-            let vlu = natural_of_elf64_addr sym_ent.elf64_st_value in
-            (nm,vlu)
-         )
-        syms)
-(*
-
       let nm  = natural_of_elf64_word ent.elf64_sh_name in
       let len = show (List.length syms) in
       String_table.get_string_at nm shdr >>= fun nm ->
-
       let hdr = "Symbol table '" ^ nm ^ "' contains " ^ len ^ " entries:\n" in
       let ttl = "   Num:    Value          Size Type    Bind   Vis      Ndx Name\n" in
       let body = concatS (intercalate "\n" (List.mapi (fun n ->
         harness_string_of_elf64_symbol_table_entry n os proc strtab) syms))
       in
       return (hdr ^ ttl ^ body))
-*)
   in
     match rels with
       | Fail err -> err
       | Success s -> concatS (intercalate "\n\n" s)
     end
 
+   
 val harness_string_of_elf64_syms : elf64_file -> (natural -> string) -> (natural -> string) -> byte_sequence -> string
 let {ocaml} harness_string_of_elf64_syms f1 os proc bs0 =
   let hdr = f1.elf64_file_header in

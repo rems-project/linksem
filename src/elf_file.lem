@@ -767,7 +767,7 @@ let get_elf64_file_symbol_string_table f3 =
   let segs    = f3.elf64_file_interpreted_segments in
   let strtabs = Missing_pervasives.mapMaybei (fun index sect ->
     if natural_of_elf64_word sect.elf64_sh_type = sht_strtab then
-      if index = natural_of_elf64_half hdr.elf64_shstrndx then
+      if false (* PS HACK *) (*index = natural_of_elf64_half hdr.elf64_shstrndx *) then
         Nothing
       else
         Just sect
