@@ -578,6 +578,7 @@ type line_number_header =
     lnh_standard_opcode_lengths: list natural;
     lnh_include_directories: list (list byte);
     lnh_file_names: list line_number_file_entry;
+    lnh_comp_dir: maybe string; (* passed down from cu DW_AT_comp_dir *)
   |>
 
 type line_number_program =
@@ -1431,7 +1432,7 @@ let tag_encode (s: string) : natural =
 let attribute_encode (s: string) : natural =
   match lookup_Abc_b s attribute_encodings with
   | Just n -> n
-  | Nothing -> Assert_extra.failwith "attribute_encode"
+  | Nothing -> Assert_extra.failwith ("attribute_encode: \""^s^"\"")
   end
 
 let attribute_form_encode (s: string) : natural =
@@ -2118,26 +2119,32 @@ let parser_of_attribute_form c cuh n =
 
 (** attribute find *)
 
-let find_name str ats : maybe string =
+let find_string_attribute_value an str ats : maybe string =
   myfindmaybe
     (fun (((at: natural), (af: natural)), ((pos: natural),(av:attribute_value))) ->
-      if attribute_encode "DW_AT_name" = at then
+      if attribute_encode an = at then
         let name =
           match av with
           | AV_string bs -> string_of_bytes bs
           | AV_strp n -> pp_debug_str_entry str n
-          | _ -> "av_name AV not understood"
+          | _ -> "find_string_attribute_value AV not understood"
           end in
         Just name
       else
         Nothing)
     ats
 
-let find_name_of_die str die : maybe string =
+let find_string_attribute_value_of_die an str die : maybe string =
   let ats = List.zip
       die.die_abbreviation_declaration.ad_attribute_specifications
       die.die_attribute_values in
-  find_name str ats
+  find_string_attribute_value an str ats
+
+let find_name str ats : maybe string =  
+  find_string_attribute_value "DW_AT_name" str ats 
+
+let find_name_of_die str die : maybe string =
+  find_string_attribute_value_of_die "DW_AT_name" str die
 
 let find_attribute_value (an: string) (die:die) : maybe attribute_value =
   let at = attribute_encode an in
@@ -3061,9 +3068,11 @@ let pp_line_number_header lnh =
 ^ "line_range =                         " ^ show lnh.lnh_line_range ^ "\n"
 ^ "opcode_base =                        " ^ show lnh.lnh_opcode_base ^ "\n"
 ^ "standard_opcode_lengths =            " ^ show lnh.lnh_standard_opcode_lengths ^ "\n"
+^ "comp_dir =                           " ^ show lnh.lnh_comp_dir ^ "\n"
 ^ "include_directories =                " ^ myconcat ", " (List.map string_of_bytes  lnh.lnh_include_directories) ^ "\n"
 ^ "file_names =                         \n\n" ^ myconcat "\n" (List.map pp_line_number_file_entry  lnh.lnh_file_names) ^ "\n"
 
+  
 let pp_line_number_operation lno =
   match lno with
   | DW_LNS_copy               -> "DW_LNS_copy"
@@ -3118,7 +3127,7 @@ let parse_line_number_file_entry : parser (maybe line_number_file_entry)
          end
       )
 
-let parse_line_number_header c : parser line_number_header =
+let parse_line_number_header c (comp_dir:maybe string) : parser line_number_header =
   (parse_dependent
      ((pr_with_pos
          (parse_unit_length c) ))
@@ -3169,7 +3178,7 @@ let parse_line_number_header c : parser line_number_header =
               )
               (fun (sols, (ids, fns)) ->
                 <|
-                  lnh_offset = pos;
+                lnh_offset = pos;
                 lnh_dwarf_format = df;
                 lnh_unit_length = ul;
                 lnh_version = v;
@@ -3183,6 +3192,7 @@ let parse_line_number_header c : parser line_number_header =
                 lnh_standard_opcode_lengths = sols;
                 lnh_include_directories = ids;
                 lnh_file_names = fns;
+                lnh_comp_dir = comp_dir;
                 |>
               )
           )
@@ -3246,9 +3256,9 @@ let parse_line_number_operations c (cuh:compilation_unit_header) (lnh:line_numbe
         (* assume operations start immediately after the header - not completely clear in DWARF whether the header_length is just an optimisation or whether it's intended to allow the operations to start later *)
         (* line number operations have no no-op and no termination operation, so we have to cut down the available bytes to the right length *)
 
-let parse_line_number_program c (cuh:compilation_unit_header) : parser line_number_program =
+let parse_line_number_program c (cuh:compilation_unit_header) (comp_dir:maybe string) : parser line_number_program =
     parse_dependent
-      (parse_line_number_header c)
+      (parse_line_number_header c comp_dir)
       (fun lnh ->
         let byte_count_of_operations =
           lnh.lnh_unit_length - (lnh.lnh_header_length + 2 + (match lnh.lnh_dwarf_format with Dwarf32 -> 4 | Dwarf64 -> 8 end)) in
@@ -3264,11 +3274,12 @@ let parse_line_number_program c (cuh:compilation_unit_header) : parser line_numb
          |>)
      )
 
-let parse_line_number_info c (d_line: list byte) (cu: compilation_unit) : line_number_program =
+let parse_line_number_info c str (d_line: list byte) (cu: compilation_unit) : line_number_program =
+  let comp_dir = find_string_attribute_value_of_die "DW_AT_comp_dir" str cu.cu_die in
   let f n =
     let d_line' = match mydrop n d_line with Just xs -> xs | Nothing -> Assert_extra.failwith "parse_line_number_info drop" end in
     let pc = <| pc_bytes = d_line'; pc_offset = n|> in
-    match parse_line_number_program c cu.cu_header pc with
+    match parse_line_number_program c cu.cu_header comp_dir pc with
     | PR_success lnp pc' ->
         (*let _ = print_endline (pp_line_number_program lnp) in*)
         lnp
@@ -3283,9 +3294,9 @@ let parse_line_number_info c (d_line: list byte) (cu: compilation_unit) : line_n
   end
 
 
-let parse_line_number_infos c debug_line_section_body compilation_units
+let parse_line_number_infos c str debug_line_section_body compilation_units
     =
-  List.map (parse_line_number_info c debug_line_section_body) compilation_units
+  List.map (parse_line_number_info c str debug_line_section_body) compilation_units
 
 let pp_line_info li
     =
@@ -3383,7 +3394,7 @@ let parse_dwarf c
     | PR_success fi pc_loc' -> fi
     end in
 
-  let li = parse_line_number_infos c debug_line_section_body compilation_units in
+  let li = parse_line_number_infos c debug_str_section_body debug_line_section_body compilation_units in
 
    <|
    d_endianness = c.endianness;
@@ -4824,7 +4835,7 @@ CU: /var/local/stephen/work/devel/rsem/ppcmem2/system/tests-adhoc/simple-malloc/
 *)
 
 
-let source_lines_of_address (ds:dwarf_static) (a: natural) : list (string * natural * line_number_registers) =
+let source_lines_of_address (ds:dwarf_static) (a: natural) : list (maybe string (*comp_dir*) * maybe string (*dir*) * string (*file*) * natural * line_number_registers) =
   List.concat
     (List.map
        (fun (lnh, lnrs) ->
@@ -4833,9 +4844,18 @@ let source_lines_of_address (ds:dwarf_static) (a: natural) : list (string * natu
              if a = lnr.lnr_address && not lnr.lnr_end_sequence then
                match mynth (lnr.lnr_file - 1) lnh.lnh_file_names with
                | Just lnfe ->
-                   Just (string_of_bytes lnfe.lnfe_path, lnr.lnr_line, lnr)
+                  let directory =
+                    if lnfe.lnfe_directory_index = 0 then
+                      Nothing 
+                    else
+                      match mynth (lnfe.lnfe_directory_index - 1) lnh.lnh_include_directories with
+                      | Just d -> Just (string_of_bytes d)
+                      | Nothing -> Just "<source_lines_of_address: directory entry not found>"
+                      end
+                  in
+                  Just (lnh.lnh_comp_dir, directory, string_of_bytes lnfe.lnfe_path, lnr.lnr_line, lnr)
                | Nothing ->
-                   Just ("<source_lines_of_address: file entry not found>", 0, lnr)
+                   Just (Nothing,Nothing,"<source_lines_of_address: file entry not found>", 0, lnr)
                end
              else
                Nothing)
