@@ -2310,13 +2310,12 @@ let rec pp_die_abbrev_var c cuh str level (pp_children:bool) parents die =
     (match find_name str ats with Just s -> s | Nothing -> "-" end)
     ^ " (" ^ pp_pos die.die_offset
     ^ ","
-    ^ match die.die_abbreviation_declaration.ad_tag with
-      | DW_TAG_variable -> "var"
-      | DW_TAG_formal_parameter -> "param"
-      | _ -> "other"
-      end
+    ^ (if die.die_abbreviation_declaration.ad_tag = tag_encode "DW_TAG_variable" then  "var"
+      else if die.die_abbreviation_declaration.ad_tag = tag_encode "DW_TAG_formal_parameter" then "param"
+      else "other")
     ^ ") "
 
+   
   (*    ^ "   :  " ^ myconcat " : " (List.map (fun die' ->  pp_tag_encoding die'.die_abbreviation_declaration.ad_tag) parents)*)
     (* ^ "\n"*)
 (*    ^ (*(myconcat "" (List.map (pp_die_abbrev_attribute c cuh str) ats))*)*)
@@ -3918,7 +3917,8 @@ let rec max_lengths xss =
 let rec pad_row xs lens =
   match (xs,lens) with
   | ([],[]) -> []
-  | (x::xs', len::lens') -> right_space_padded_to len x ::  pad_row xs' lens'
+  | ([x],[len]) -> [x]
+  | (x::((_::_) as xs'), len::((_::_) as lens')) -> right_space_padded_to len x ::  pad_row xs' lens'
   end
 
 let pad_rows (xss : list (list string)) : string =
@@ -4161,7 +4161,6 @@ let find_DW_AT_type_of_die c d cu cuh str die =
   end  
 
 
-
 (* expect the die to have a DW_AT_type, and pp it *)
 
 let rec pp_type_info_die_DW_AT_type c (d: dwarf) cu cuh str die =    
@@ -4221,18 +4220,28 @@ and pp_type_info_die c (d: dwarf) cu cuh str die =
       ^ ")"
 
   else if die.die_abbreviation_declaration.ad_tag = tag_encode "DW_TAG_array_type" then
-    "array(" ^ 
-      match find_attribute_value "DW_AT_type" die with
-      | Just die' -> pp_type_info_die_DW_AT_type c (d: dwarf) cu cuh str die
+    let ppd_count =
+      match List.filter (fun die' -> die'.die_abbreviation_declaration.ad_tag = tag_encode "DW_TAG_subrange_type") die.die_children with
+      | [] -> "no subrange"
+      | dies' -> 
+         (myconcat "," (List.map (fun die' -> "["^match find_attribute_value "DW_AT_count" die' with
+         | Just (AV_block n bs) -> (ppbytesplain c n bs)
+         | Nothing -> "?"
+         end ^ "]") dies'))
+      end in
+    "array(" 
+    ^ match find_attribute_value "DW_AT_type" die with
+      | Just _ -> pp_type_info_die_DW_AT_type c (d: dwarf) cu cuh str die
       | Nothing -> "DW_TAG_array_type without name"
       end 
-      ^ ")"
+    ^ ppd_count
+    ^ ")"
           (* TODO: display dimensions, stride, etc. *)   
 
   else if die.die_abbreviation_declaration.ad_tag = tag_encode "DW_TAG_const_type" then
     "const(" ^ 
       match find_attribute_value "DW_AT_type" die with
-      | Just die' -> pp_type_info_die_DW_AT_type c (d: dwarf) cu cuh str die
+      | Just _ -> pp_type_info_die_DW_AT_type c (d: dwarf) cu cuh str die
       | Nothing -> "DW_TAG_const_type without name"
       end 
       ^ ")"
