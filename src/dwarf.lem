@@ -4515,7 +4515,7 @@ let pp_analysed_locations3_diff c d str (als_old: analysed_location_data) (als_n
     List.concat
       (List.mapMaybe
          (fun ((removed,((name,offset,kind) as y),typ,locs) as x) ->
-           let same_name_old = (List.filter (fun (removed',(name',offset',kind'),typ',locs') -> name=name') ppd_old) in
+           let same_name_old = (List.filter (fun (removed',(name',offset',kind'),typ',locs') -> (name,offset)=(name',offset')) ppd_old) in
            match same_name_old with
            | [((removed',((name',offset',kind') as y'),typ',locs') as x')] ->
               if (y,typ,locs) = (y',typ',locs') then 
