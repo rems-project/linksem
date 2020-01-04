@@ -2298,23 +2298,21 @@ let rec pp_die_abbrev c cuh str level (pp_children:bool) parents die =
 
 
 (* condensed pp for variables *)
-val pp_die_abbrev_var : p_context -> compilation_unit_header -> list byte -> natural -> bool -> (list die) -> die -> string
-let rec pp_die_abbrev_var c cuh str level (pp_children:bool) parents die =
-  indent_level true level
+val pp_die_abbrev_var : p_context -> compilation_unit_header -> list byte -> bool -> (list die) -> die -> (string (*name*) * string (*offset*) * string (*kind*))
+let rec pp_die_abbrev_var c cuh str (pp_children:bool) parents die =
+  (*   (indent_level true level*)
   (*  ^ pp_tag_encoding die.die_abbreviation_declaration.ad_tag*)
 (*  ^ ": Abbrev Number: " ^ show die.die_abbreviation_code *)
-    ^
-    let ats = List.zip
-        die.die_abbreviation_declaration.ad_attribute_specifications
-        die.die_attribute_values in
-    (match find_name str ats with Just s -> s | Nothing -> "-" end)
-    ^ " (" ^ pp_pos die.die_offset
-    ^ ","
-    ^ (if die.die_abbreviation_declaration.ad_tag = tag_encode "DW_TAG_variable" then  "var"
-      else if die.die_abbreviation_declaration.ad_tag = tag_encode "DW_TAG_formal_parameter" then "param"
-      else "other")
-    ^ ") "
-
+  let ats = (List.zip
+               die.die_abbreviation_declaration.ad_attribute_specifications
+               die.die_attribute_values) in
+  ((match find_name str ats with Just s -> s | Nothing -> "-" end),
+   pp_pos die.die_offset,
+   (if die.die_abbreviation_declaration.ad_tag = tag_encode "DW_TAG_variable" then  "var"
+    else if die.die_abbreviation_declaration.ad_tag = tag_encode "DW_TAG_formal_parameter" then "param"
+    else "other")
+  )
+  
    
   (*    ^ "   :  " ^ myconcat " : " (List.map (fun die' ->  pp_tag_encoding die'.die_abbreviation_declaration.ad_tag) parents)*)
     (* ^ "\n"*)
@@ -3304,9 +3302,11 @@ let pp_line_info li
 
 (** all dwarf info: pp and parsing *)
 
+let p_context_of_d (d:dwarf) : p_context = <| endianness = d.d_endianness |> 
+    
 (* roughly matching objdump --dwarf=abbrev,info *)
 let pp_dwarf_like_objdump d =
-  let c : p_context = <| endianness = d.d_endianness |> in
+  let c = p_context_of_d d in
   ""
 
 (*  ^ "\n*** compilation unit abbreviation table ***\n" *)
@@ -3325,7 +3325,7 @@ let pp_dwarf_like_objdump d =
 
     
 let pp_dwarf d =
-  let c : p_context = <| endianness = d.d_endianness |> in
+  let c = p_context_of_d d in
 
 (*  "\n************** .debug_info section - abbreviated *****************\n"
   ^ pp_compilation_units_abbrev c d.d_str d.d_compilation_units
@@ -4433,7 +4433,7 @@ let cu_base_address cu =
 val analyse_locations : dwarf -> analysed_location_data
 let analyse_locations (d: dwarf) : analysed_location_data =
 
-  let c : p_context = <| endianness = d.d_endianness |> in
+  let c = p_context_of_d d in
 
   (*  let (cuh_default : compilation_unit_header) = let cu = myhead d.d_compilation_units in cu.cu_header in*)
 
@@ -4470,6 +4470,8 @@ let pp_analysed_locations2 c cuh mnnls =
   | Nothing -> "  <no locations>"
   end
 
+
+(*   
 let pp_analysed_locations3 c d str (als: analysed_location_data) : string =
   pad_rows 
     (List.map
@@ -4482,12 +4484,77 @@ let pp_analysed_locations3 c d str (als: analysed_location_data) : string =
     )
 
 let pp_analysed_location_data (d: dwarf) (als: analysed_location_data) : string =
-  let c : p_context = <| endianness = d.d_endianness |> in
+  let c = p_context_of_d d in
 (*  let cu = myhead d.d_compilation_units in 
   let (cuh_default : compilation_unit_header) = cu.cu_header in
  *)
   pp_analysed_locations3 c (*HACK*) d d.d_str als
+ *)
 
+
+let pp_analysed_locations3 c d str (removed:bool) (als: analysed_location_data) : list (bool(*removed?*) * (string(*name*) * string(*offset*) * string(*kind*)) * string(*type*) * string(*locations*)) = 
+  List.map
+    (fun ((cu,parents,die1),mnnls) ->
+      (removed,
+       pp_die_abbrev_var c cu.cu_header str false parents die1,
+       pp_type_info_die_DW_AT_type c d cu cu.cu_header str die1,
+       pp_analysed_locations2 c cu.cu_header mnnls)
+    )
+    als
+
+let pp_analysed_locations3_diff c d str (als_old: analysed_location_data) (als_new: analysed_location_data) : list (bool(*removed?*) * (string(*name*) * string(*offset*) * string(*kind*)) * string(*type*) * string(*locations*)) = 
+  (* maybe alpha sort these? *)
+  let ppd_old = pp_analysed_locations3 c d str true als_old  in
+  let ppd_new = pp_analysed_locations3 c d str false als_new in 
+
+  (* the old entries that don't have a same-name new entry *)
+  let ppd_gone = List.filter (fun (removed,(name,offset,kind),typ,locs) -> not (List.any (fun (removed',(name',offset',kind'),typ',locs') -> name=name') ppd_new)) ppd_old in
+
+  (* the new entries, each preceded by any same-name old entries (this will display strangely if there's any variable shadowing...) *)
+  let ppd_upd =
+    List.concat
+      (List.mapMaybe
+         (fun ((removed,((name,offset,kind) as y),typ,locs) as x) ->
+           let same_name_old = (List.filter (fun (removed',(name',offset',kind'),typ',locs') -> name=name') ppd_old) in
+           match same_name_old with
+           | [((removed',((name',offset',kind') as y'),typ',locs') as x')] ->
+              if (y,typ,locs) = (y',typ',locs') then 
+                Nothing
+              else
+                Just (same_name_old ++ [x])
+           | _ -> 
+              Just (same_name_old ++ [x])
+           end)
+         ppd_new) in
+
+  ppd_gone ++ ppd_upd
+
+let pp_analysed_location_format (xs : list (bool(*removed?*) * (string(*name*) * string(*offset*) * string(*kind*)) * string(*type*) * string(*locations*))) = 
+  pad_rows 
+    (List.map
+       (fun ((removed,(name,offset,kind),typ,locs) as x) ->
+         [ (if removed then "-" else " ") ^ name
+           ^ " (" ^ offset ^ "," ^ kind ^ ") "
+           ^ typ;
+           locs]
+       )
+       xs
+    )
+
+let pp_analysed_location_data (d: dwarf) (als: analysed_location_data) : string=
+  let c = p_context_of_d d in
+(*  let cu = myhead d.d_compilation_units in 
+  let (cuh_default : compilation_unit_header) = cu.cu_header in
+ *)
+  pp_analysed_location_format (pp_analysed_locations3 c (*HACK*) d d.d_str false als)
+
+let pp_analysed_location_data_diff (d: dwarf) (als_old: analysed_location_data) (als_new: analysed_location_data) : string=
+  let c = p_context_of_d d in
+(*  let cu = myhead d.d_compilation_units in 
+  let (cuh_default : compilation_unit_header) = cu.cu_header in
+ *)
+  pp_analysed_location_format (pp_analysed_locations3_diff c (*HACK*) d d.d_str als_old als_new)
+  
 
 
 let pp_analysed_location_data_at_pc (d: dwarf) (alspc: analysed_location_data_at_pc) : string =
@@ -4518,7 +4585,7 @@ let analysed_locations_at_pc
       (pc: natural)
     : analysed_location_data_at_pc
   =
-  let c : p_context = <| endianness = ds.ds_dwarf.d_endianness |> in
+  let c : p_context = (<| endianness = ds.ds_dwarf.d_endianness |>) in
   
   let xs =
     List.mapMaybe
@@ -4600,7 +4667,7 @@ let filtered_analysed_location_data ds pc =
 val analyse_subprograms : dwarf -> analysed_location_data
 let analyse_subprograms (d: dwarf) : analysed_location_data =
 
-  let c : p_context = <| endianness = d.d_endianness |> in
+  let c = p_context_of_d d in
 
   let (cuh_default : compilation_unit_header) = let cu = myhead d.d_compilation_units in cu.cu_header in
 
