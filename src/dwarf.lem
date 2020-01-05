@@ -1319,6 +1319,15 @@ let rec mynth (n:natural) xs =
 let pphexplain n = unsafe_hex_string_of_natural 0 n
 let pphex n = "0x" ^ pphexplain n
 
+val abs : integer -> natural 
+(*declare hol      target_rep function abs = `int_of_num` *)
+declare ocaml    target_rep function abs = `Nat_big_num.abs`
+(*declare isabelle target_rep function abs = `int`
+declare coq      target_rep function abs n = (`Zpred` (`Zpos` (`P_of_succ_nat` n))) (* TODO: check*)
+*)
+
+let pphex_integer n = if n<0 then "-" ^ pphex (abs n) else pphex (abs n)
+
 let ppbytes xs = show (List.map (fun x -> show x) xs)
 
 let rec ppbytes2 n xs = match xs with | [] -> "" | x::xs' -> "<"^pphex n^">  "^show x^"\n"^ppbytes2 (n+1) xs' end
@@ -1900,7 +1909,7 @@ let pp_debug_str_entry (str: list byte) (n: natural) =
 let pp_operation_argument_value (oav:operation_argument_value) : string =
   match oav with
   | OAV_natural n -> pphex n
-  | OAV_integer n -> show n
+  | OAV_integer n -> pphex_integer n (* show n*)
   | OAV_block n bs -> pphex n ^ " " ^ ppbytes bs
   end
 
