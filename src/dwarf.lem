@@ -4986,13 +4986,13 @@ let extract_dwarf_static f1 =
 (* assume 4-byte ARM instructions *)
 
 
-let rec instructions_of_byte_list (addr:natural) (bs:list byte) (acc:list (natural * natural)) : list (natural * natural) =
+let rec words_of_byte_list (addr:natural) (bs:list byte) (acc:list (natural * natural)) : list (natural * natural) =
   match bs with
   | b0::b1::b2::b3::bs' ->
      let i : natural = natural_of_byte b0 + 256*natural_of_byte b1 + 65536*natural_of_byte b2 + 65536*256*natural_of_byte b3 in
-     instructions_of_byte_list (addr+4) bs' ((addr,i)::acc)
+     words_of_byte_list (addr+4) bs' ((addr,i)::acc)
   | [] -> List.reverse acc
-  | _ -> Assert_extra.failwith ("instructions_of_byte_list given non-multiple-of-4 bytes")
+  | _ -> List.reverse acc (* discard any remaining bytes *) (*Assert_extra.failwith ("words_of_byte_list given non-multiple-of-4 bytes")*)
   end
 
 let pp_instruction ((addr:natural),(i:natural)) =
@@ -5001,7 +5001,7 @@ let pp_instruction ((addr:natural),(i:natural)) =
 val pp_text_section : elf_file -> string
 let pp_text_section f =
   let (p_context, addr, bs) = extract_text f in
-  let instructions : list (natural * natural) = instructions_of_byte_list addr bs [] in
+  let instructions : list (natural * natural) = words_of_byte_list addr bs [] in
   String.concat "" (List.map pp_instruction instructions)  
 
 (** ************************************************************ *)
