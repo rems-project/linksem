@@ -2321,8 +2321,32 @@ let rec pp_die_abbrev_var c cuh str (pp_children:bool) parents die =
     else if die.die_abbreviation_declaration.ad_tag = tag_encode "DW_TAG_formal_parameter" then "param"
     else "other")
   )
+
+(* condensed pp for variable parents *)
+val pp_die_abbrev_var_parent : p_context -> compilation_unit_header -> list byte -> die -> string 
+let pp_die_abbrev_var_parent c cuh str die =
+  (*   (indent_level true level*)
+  (*  ^ pp_tag_encoding die.die_abbreviation_declaration.ad_tag*)
+(*  ^ ": Abbrev Number: " ^ show die.die_abbreviation_code *)
+  let ats = (List.zip
+               die.die_abbreviation_declaration.ad_attribute_specifications
+               die.die_attribute_values) in
+  let name = (match find_name str ats with Just s -> s | Nothing -> "" end) in
+  let offset = pp_pos die.die_offset in 
+   (if die.die_abbreviation_declaration.ad_tag = tag_encode "DW_TAG_compile_unit" then  name
+    else if die.die_abbreviation_declaration.ad_tag = tag_encode "DW_TAG_subprogram" then name (*"subprogram"*)
+    else if die.die_abbreviation_declaration.ad_tag = tag_encode "DW_TAG_inlined_subroutine" then name ^ "(inlined)"
+    else if die.die_abbreviation_declaration.ad_tag = tag_encode "DW_TAG_lexical_block" then "block"
+    else name ^ "(" ^ pp_tag_encoding die.die_abbreviation_declaration.ad_tag ^ ")")
   
-   
+  
+
+val pp_die_abbrev_var_parents : p_context -> compilation_unit_header -> list byte -> list die -> string
+let pp_die_abbrev_var_parents c cuh str parents =
+    String.concat ":" (List.map (fun die -> pp_die_abbrev_var_parent c cuh str die) parents)
+
+
+  
   (*    ^ "   :  " ^ myconcat " : " (List.map (fun die' ->  pp_tag_encoding die'.die_abbreviation_declaration.ad_tag) parents)*)
     (* ^ "\n"*)
 (*    ^ (*(myconcat "" (List.map (pp_die_abbrev_attribute c cuh str) ats))*)*)
@@ -4501,32 +4525,33 @@ let pp_analysed_location_data (d: dwarf) (als: analysed_location_data) : string 
  *)
 
 
-let pp_analysed_locations3 c d str (removed:bool) (als: analysed_location_data) : list (bool(*removed?*) * (string(*name*) * string(*offset*) * string(*kind*)) * string(*type*) * string(*locations*)) = 
+let pp_analysed_locations3 c d str (removed:bool) (als: analysed_location_data) : list (bool(*removed?*) * (string(*name*) * string(*offset*) * string(*kind*)) * string(*type*) * string(*locations*) * string(*parents*)) = 
   List.map
     (fun ((cu,parents,die1),mnnls) ->
       (removed,
        pp_die_abbrev_var c cu.cu_header str false parents die1,
        pp_type_info_die_DW_AT_type c d cu cu.cu_header str die1,
-       pp_analysed_locations2 c cu.cu_header mnnls)
+       pp_analysed_locations2 c cu.cu_header mnnls,
+       pp_die_abbrev_var_parents c cu.cu_header str parents)
     )
     als
 
-let pp_analysed_locations3_diff c d str (als_old: analysed_location_data) (als_new: analysed_location_data) : list (bool(*removed?*) * (string(*name*) * string(*offset*) * string(*kind*)) * string(*type*) * string(*locations*)) = 
+let pp_analysed_locations3_diff c d str (als_old: analysed_location_data) (als_new: analysed_location_data) : list (bool(*removed?*) * (string(*name*) * string(*offset*) * string(*kind*)) * string(*type*) * string(*locations*) *string(*parents*)) = 
   (* maybe alpha sort these? *)
   let ppd_old = pp_analysed_locations3 c d str true als_old  in
   let ppd_new = pp_analysed_locations3 c d str false als_new in 
 
   (* the old entries that don't have a same-name new entry *)
-  let ppd_gone = List.filter (fun (removed,(name,offset,kind),typ,locs) -> not (List.any (fun (removed',(name',offset',kind'),typ',locs') -> name=name') ppd_new)) ppd_old in
+  let ppd_gone = List.filter (fun (removed,(name,offset,kind),typ,locs,parents) -> not (List.any (fun (removed',(name',offset',kind'),typ',locs',parents') -> name=name') ppd_new)) ppd_old in
 
   (* the new entries, each preceded by any same-name old entries (this will display strangely if there's any variable shadowing...) *)
   let ppd_upd =
     List.concat
       (List.mapMaybe
-         (fun ((removed,((name,offset,kind) as y),typ,locs) as x) ->
-           let same_name_old = (List.filter (fun (removed',(name',offset',kind'),typ',locs') -> (name,offset)=(name',offset')) ppd_old) in
+         (fun ((removed,((name,offset,kind) as y),typ,locs,parents) as x) ->
+           let same_name_old = (List.filter (fun (removed',(name',offset',kind'),typ',locs',parents') -> (name,offset)=(name',offset')) ppd_old) in
            match same_name_old with
-           | [((removed',((name',offset',kind') as y'),typ',locs') as x')] ->
+           | [((removed',((name',offset',kind') as y'),typ',locs',parents') as x')] ->
               if (y,typ,locs) = (y',typ',locs') then 
                 Nothing
               else
@@ -4538,14 +4563,15 @@ let pp_analysed_locations3_diff c d str (als_old: analysed_location_data) (als_n
 
   ppd_gone ++ ppd_upd
 
-let pp_analysed_location_format (xs : list (bool(*removed?*) * (string(*name*) * string(*offset*) * string(*kind*)) * string(*type*) * string(*locations*))) = 
+let pp_analysed_location_format (xs : list (bool(*removed?*) * (string(*name*) * string(*offset*) * string(*kind*)) * string(*type*) * string(*locations*) * string(*parents*))) = 
   pad_rows 
     (List.map
-       (fun ((removed,(name,offset,kind),typ,locs) as x) ->
+       (fun ((removed,(name,offset,kind),typ,locs,parents) as x) ->
          [ (if removed then "-" else " ") ^ name
            ^ " (" ^ offset ^ "," ^ kind ^ ") "
            ^ typ;
-           locs]
+           locs;
+           parents]
        )
        xs
     )
