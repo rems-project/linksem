@@ -1,0 +1,123 @@
+open import Basic_classes
+open import Bool
+open import Function
+open import Maybe
+open import Num
+open import String
+
+open import List (* TODO: check why this is not imported in ELF *)
+
+(* these are Lem types of C source type names, based on Cerberus
+frontend/model/ctype.lem (see the types "ctype_" and "tag_definition")
+and pointer arithmetic, based on
+frontend/model/defacto_memory_types.lem (see "shift_path_element").
+
+They will need to be adapted significantly to exactly match the DWARF
+notion of C source types, at least for those we use.  *)
+
+
+(* (C) Justus Matthiesen
+ *     Kayvan Memarian
+ *     Victor Gomes
+ *)
+
+
+
+  
+type sym = string (* in cerberus this is Symbol.sym; here we maight want a unique die tag *)  
+
+type cabs_identifier = string (* in cerberus this is Cabs.cabs_identifier *)
+
+type integer_value_base = int (* in cerberus this is more complex...*)
+
+      
+type integerBaseType [name = "^\\(\\|\\([a-z A-Z]+_\\)\\)ibty[0-9]*'?$"] =
+ | Ichar
+ | Short
+ | Int_
+ | Long
+ | LongLong
+   (* Things defined in the standard libraries *)
+ | IntN_t of nat
+ | Int_leastN_t of nat
+ | Int_fastN_t of nat
+ | Intmax_t
+ | Intptr_t
+
+(* STD §6.2.5#17, sentence 1 *)
+type integerType (* [name = "^\\(\\|\\([a-z A-Z]+_\\)\\)ity[0-9]*'?$"] *) =
+ | Char
+ | Bool
+ | Signed of integerBaseType
+ | Unsigned of integerBaseType
+ | Enum of sym
+   (* Things defined in the standard libraries *)
+ | Wchar_t
+ | Wint_t
+ | Size_t
+ | Ptrdiff_t
+
+(* STD §6.2.5#10, sentence 1 *)
+type realFloatingType =
+  | Float
+  | Double
+  | LongDouble
+
+(* STD §6.2.5#11, sentence 2 *)
+type floatingType =
+  | RealFloating of realFloatingType
+(*  | Complex of floatingType (* STD §6.2.5#11, sentence 1 *) *)
+
+(* STD §6.2.5#14, sentence 1 *)
+type basicType [name = "^\\(\\|\\([a-z A-Z]+_\\)\\)bty[0-9]*'?$"] =
+ | Integer of integerType
+ | Floating of floatingType
+
+(* STD §6.2.5#26, sentence 1-2 *)
+type qualifiers (*[name = "^\\(\\|\\([a-z A-Z]+_\\)\\)qs[0-9]*'?$"]*) = <|
+  const    : bool;
+  restrict : bool;
+  volatile : bool;
+  (* NOTE: the desugaring collapse _Atomic qualifiers and specifiers *)
+|>
+
+type ctype_ (*[name = "^\\([a-z A-Z]*_\\)?ty[0-9]*'?$"]*) =
+ | Void
+ | Basic of basicType
+   (* INVARIANT if the element ctype is an array, the qualifiers must be empty *)
+   (* the qualifiers are that of the element type (§6.7.3#9) *)
+   (* STD §6.2.5#20, bullet 1 *)
+ | Array of ctype * (maybe integer)
+   (* NOTE: the qualifiers associated to a ctype in the
+            list of parameters is that of the parameter lvalue. For example if
+            we have a parameter with type "restrict pointer to a const char",
+            the qualifiers in the tuple will be:
+              {no_qualifiers with restrict=true} *)
+   (* STD §6.2.5#20, bullet 4 *)
+ | Function of (* has_proto *)bool * (qualifiers * ctype)
+             * list (qualifiers * ctype * (* is_register *)bool)
+             * (* is_variadic *)bool
+   (* STD §6.2.5#20, bullet 5 *)
+   (* NOTE: the qualifiers are that of the referenced type *)
+ | Pointer of qualifiers * ctype
+   (* STD §6.2.5#20, bullet 6 *)
+ | Atomic of ctype
+ | Struct of sym
+ | Union of sym
+and ctype =
+  Ctype of list ctype_
+
+type struct_tag = sym
+type union_tag  = sym
+type member_id  = sym
+
+
+type tag_definition =
+  | StructDef of list (cabs_identifier * (qualifiers * ctype))
+  | UnionDef of list (cabs_identifier * (qualifiers * ctype))
+
+
+type shift_path_element =
+  | SPE_array of ctype * integer_value_base
+  | SPE_member of sym (*struct/union tag*) * cabs_identifier (*member*) 
+ 
