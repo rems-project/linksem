@@ -2166,7 +2166,6 @@ let find_attribute_value (an: string) (die:die) : maybe attribute_value =
     ats
 
 
-  
 (** compilation unit header: pp and parsing *)
 
 let pp_dwarf_format df = match df with Dwarf32 -> "(32-bit)" | Dwarf64 -> "(64-bit)" end
@@ -2251,6 +2250,64 @@ let parse_type_unit_header c : parser type_unit_header =
 
 let pp_pos pos = "<" ^ pphexplain pos ^">"
 
+
+(** ************************************************************ *)
+(** **  finding things in the die tree                           *)
+(** ************************************************************ *)
+
+val find_maybe : forall 'a 'b. ('a -> maybe 'b) -> list 'a -> maybe 'b 
+let rec find_maybe f l =
+  match l with 
+  | []      -> Nothing
+  | x :: xs ->
+     match f x with
+     | Just y -> Just y
+     | Nothing -> find_maybe f xs
+     end
+  end
+
+let rec find_die_by_offset_in_die offset cu die : maybe (compilation_unit * die) =
+  if die.die_offset = offset then Just (cu,die) else
+    find_maybe (find_die_by_offset_in_die offset cu) die.die_children
+
+let find_die_by_offset_in_all offset d : maybe (compilation_unit * die) =
+  find_maybe
+    (fun cu -> find_die_by_offset_in_die offset cu cu.cu_die) 
+    d.d_compilation_units
+
+  
+let find_DW_an_reference_of_die c d cu str an die : error (compilation_unit * die) =
+  let ppd () = pp_pos die.die_offset (*pp_die c cuh str true 0 false die ^ "\n"*) in
+  match find_attribute_value an die with
+  | Nothing -> Fail ("find_DW_an_reference_of_die found no " ^ an ^ "\n" ^ ppd())
+  | Just av ->
+      match av with
+      (* "offset from the first byte of the compilation header for the compilation unit containing the reference" *)
+      | AV_ref n ->
+         let n' = n+cu.cu_header.cuh_offset in
+         match find_die_by_offset_in_all n' d (*cu.cu_die*) with
+         | Just (cu',die') -> Success (cu',die')
+         | Nothing -> Fail ("find_DW_an_reference_of_die AV_ref failed (cuh="^pphex cu.cu_header.cuh_offset ^" n'="^pphex n'^")"^"\n"^ppd())
+         end
+      (* offset in .debug_info *)
+      | AV_ref_addr n ->
+        match find_die_by_offset_in_all n d with
+        | Just (cu',die') -> Success (cu',die')
+        | Nothing -> Fail ("find_DW_an_reference_of_die AV_ref_addr failed\n"^ppd())
+        end
+      | _ -> Fail ("find_DW_an_reference_of_die AV ("^pp_attribute_value c cu.cu_header str (attribute_encode an) av^") not supported\n"^ppd() )
+      (* TODO: handle the AV_ref_sig8 case for type signature references *)
+      end
+  end  
+
+let find_DW_AT_type_of_die c d cu str die =
+  find_DW_an_reference_of_die c d cu str "DW_AT_type" die
+
+
+  
+               
+(** debugging information entries: pp and parsing *)
+               
 let indent_level (indent: bool) (level: natural) =
   if indent then
     (toString (replicate (3 * level) #' '))
@@ -2307,15 +2364,25 @@ let rec pp_die_abbrev c cuh str level (pp_children:bool) parents die =
 
 
 (* condensed pp for variables *)
-val pp_die_abbrev_var : p_context -> compilation_unit_header -> list byte -> bool -> (list die) -> die -> (string (*name*) * string (*offset*) * string (*kind*))
-let rec pp_die_abbrev_var c cuh str (pp_children:bool) parents die =
+val pp_die_abbrev_var : p_context -> dwarf -> compilation_unit -> list byte -> bool -> (list die) -> die -> (string (*name*) * string (*offset*) * string (*kind*))
+let rec pp_die_abbrev_var c d cu str (pp_children:bool) parents die =
   (*   (indent_level true level*)
   (*  ^ pp_tag_encoding die.die_abbreviation_declaration.ad_tag*)
 (*  ^ ": Abbrev Number: " ^ show die.die_abbreviation_code *)
-  let ats = (List.zip
-               die.die_abbreviation_declaration.ad_attribute_specifications
-               die.die_attribute_values) in
-  ((match find_name str ats with Just s -> s | Nothing -> "-" end),
+  ((match find_name_of_die str die with
+    | Just s -> s
+    | Nothing ->
+       match find_DW_an_reference_of_die c d cu str "DW_AT_abstract_origin" die with
+       | Fail s -> "? s"
+       | Success (cuh',die') -> 
+          match find_name_of_die str die' with
+          | Just s -> s ^ "(via abstract origin)"
+          | Nothing ->
+             "?"
+          end
+       end
+     end)
+   ,
    pp_pos die.die_offset,
    (if die.die_abbreviation_declaration.ad_tag = tag_encode "DW_TAG_variable" then  "var"
     else if die.die_abbreviation_declaration.ad_tag = tag_encode "DW_TAG_formal_parameter" then "param"
@@ -4148,63 +4215,27 @@ let pp_evaluated_frame_info (efi: evaluated_frame_info) =
 
 (* partial pp of type info - incomplete, but enough for some C code *)
 
-  
-val find_maybe : forall 'a 'b. ('a -> maybe 'b) -> list 'a -> maybe 'b 
-let rec find_maybe f l =
-  match l with 
-  | []      -> Nothing
-  | x :: xs ->
-     match f x with
-     | Just y -> Just y
-     | Nothing -> find_maybe f xs
-     end
-  end
-
-let rec find_die_by_offset_in_die offset cuh die : maybe (compilation_unit_header * die) =
-  if die.die_offset = offset then Just (cuh,die) else
-    find_maybe (find_die_by_offset_in_die offset cuh) die.die_children
-
-let find_die_by_offset_in_all offset d : maybe (compilation_unit_header * die) =
-  find_maybe
-    (fun cu -> find_die_by_offset_in_die offset cu.cu_header cu.cu_die) 
-    d.d_compilation_units
-
-  
-let find_DW_AT_type_of_die c d cu cuh str die =
-  let ppd () = pp_die c cuh str true 0 false die ^ "\n" in
-  match find_attribute_value "DW_AT_type" die with
-  | Nothing -> Fail ("find_DW_AT_type_of_die found no DW_AT_type\n" ^ ppd())
-  | Just av ->
-      match av with
-      (* "offset from the first byte of the compilation header for the compilation unit containing the reference" *)
-      | AV_ref n ->
-         let n' = n+cuh.cuh_offset in
-         match find_die_by_offset_in_all n' d (*cu.cu_die*) with
-         | Just (cuh',die') -> Success (cuh',die')
-         | Nothing -> Fail ("find_DW_AT_type_of_die AV_ref failed (cuh="^pphex cuh.cuh_offset ^" n'="^pphex n'^")"^"\n"^ppd())
-         end
-      (* offset in .debug_info *)
-      | AV_ref_addr n ->
-        match find_die_by_offset_in_all n d with
-        | Just (cuh',die') -> Success (cuh',die')
-        | Nothing -> Fail ("find_DW_AT_type_of_die AV_ref_addr failed\n"^ppd())
-        end
-      | _ -> Fail ("find_DW_AT_type_of_die AV ("^pp_attribute_value c cuh str (attribute_encode "DW_AT_type") av^") not supported\n"^ppd() )
-      end
-  end  
-
-
 (* expect the die to have a DW_AT_type, and pp it *)
 
-let rec pp_type_info_die_DW_AT_type c (d: dwarf) cu cuh str die =    
-  match find_DW_AT_type_of_die c d cu cuh str die with
-  | Fail s -> s
-  | Success (cuh',die') -> pp_type_info_die c (d: dwarf) cu cuh' str die'
+let rec pp_type_info_die_DW_AT_type c (d: dwarf) cu str die =    
+  match find_DW_AT_type_of_die c d cu str die with
+  | Success (cu',die') -> pp_type_info_die c (d: dwarf) cu' str die'
+  | Fail s ->
+     match find_DW_an_reference_of_die c d cu str "DW_AT_abstract_origin" die with
+       | Fail s -> s ^ " and no DW_AT_abstract_origin"
+       | Success (cu',die') -> 
+          match find_DW_AT_type_of_die c d cu' str die' with
+          | Success (cu'',die'') -> pp_type_info_die c (d: dwarf) cu'' str die''
+          | Fail s ->
+             "DW_AT_abstract origin failed find_DW_AT_type_of_die (" ^ s  ^ ")"
+          end
+       end
+
   end 
 
-and pp_type_info_die c (d: dwarf) cu cuh str die = 
+and pp_type_info_die c (d: dwarf) cu str die = 
 
-  let ppd () = "pp_type_info_die on:\n" ^ pp_die c cuh str true 0 false die ^ "\n" in 
+  let ppd () = "pp_type_info_die on:\n" ^ pp_die c cu.cu_header str true 0 false die ^ "\n" in 
 
   if die.die_abbreviation_declaration.ad_tag = tag_encode "DW_TAG_base_type" then
     match find_name_of_die str die with
@@ -4217,13 +4248,13 @@ and pp_type_info_die c (d: dwarf) cu cuh str die =
     match find_name_of_die str die with
     | Nothing -> "DW_TAG_typedef without name"
     | Just name -> 
-       name ^ "=" ^  pp_type_info_die_DW_AT_type c (d: dwarf) cu cuh str die
+       name ^ "=" ^  pp_type_info_die_DW_AT_type c (d: dwarf) cu str die
     end
     ^ ")"
 
   else if die.die_abbreviation_declaration.ad_tag = tag_encode "DW_TAG_enumeration_type" then
     "enumeration(" ^ 
-      pp_type_info_die_DW_AT_type c (d: dwarf) cu cuh str die
+      pp_type_info_die_DW_AT_type c (d: dwarf) cu str die
       ^ ")"
 
   else if die.die_abbreviation_declaration.ad_tag = tag_encode "DW_TAG_structure_type" then
@@ -4237,13 +4268,13 @@ and pp_type_info_die c (d: dwarf) cu cuh str die =
 
   else if die.die_abbreviation_declaration.ad_tag = tag_encode "DW_TAG_volatile_type" then
     "volatile(" ^ 
-      pp_type_info_die_DW_AT_type c (d: dwarf) cu cuh str die
+      pp_type_info_die_DW_AT_type c (d: dwarf) cu str die
       ^ ")"
 
   else if die.die_abbreviation_declaration.ad_tag = tag_encode "DW_TAG_pointer_type" then
     "pointer(" ^ 
       match find_attribute_value "DW_AT_type" die with
-      | Just die' -> pp_type_info_die_DW_AT_type c (d: dwarf) cu cuh str die
+      | Just die' -> pp_type_info_die_DW_AT_type c (d: dwarf) cu str die
       | Nothing -> 
         match find_attribute_value "DW_AT_byte_size" die with
         | Just (AV_block n bs) -> ppbytes bs
@@ -4264,7 +4295,7 @@ and pp_type_info_die c (d: dwarf) cu cuh str die =
       end in
     "array(" 
     ^ match find_attribute_value "DW_AT_type" die with
-      | Just _ -> pp_type_info_die_DW_AT_type c (d: dwarf) cu cuh str die
+      | Just _ -> pp_type_info_die_DW_AT_type c (d: dwarf) cu str die
       | Nothing -> "DW_TAG_array_type without name"
       end 
     ^ ppd_count
@@ -4274,7 +4305,7 @@ and pp_type_info_die c (d: dwarf) cu cuh str die =
   else if die.die_abbreviation_declaration.ad_tag = tag_encode "DW_TAG_const_type" then
     "const(" ^ 
       match find_attribute_value "DW_AT_type" die with
-      | Just _ -> pp_type_info_die_DW_AT_type c (d: dwarf) cu cuh str die
+      | Just _ -> pp_type_info_die_DW_AT_type c (d: dwarf) cu str die
       | Nothing -> "DW_TAG_const_type without name"
       end 
       ^ ")"
@@ -4470,13 +4501,14 @@ let analyse_locations (d: dwarf) : analysed_location_data =
 
   (*  let (cuh_default : compilation_unit_header) = let cu = myhead d.d_compilation_units in cu.cu_header in*)
 
-  (* find all DW_TAG_variable and DW_TAG_formal_parameter dies with a DW_AT_name and DW_AT_location attribute *)
+  (* find all DW_TAG_variable and DW_TAG_formal_parameter dies with a DW_AT_location attribute and either a DW_AT_name or a DW_abstract_origin *)
+  (* (leaving formal parameters of inlined routines with a DW_AT_const_value to the future) *)
   let tags = List.map tag_encode ["DW_TAG_variable"; "DW_TAG_formal_parameter"] in
   let dies : list (compilation_unit * (list die) * die) =
     find_dies
       (fun die ->
         List.elem die.die_abbreviation_declaration.ad_tag tags
-          && has_attribute "DW_AT_name" die
+          && (has_attribute "DW_AT_name" die || has_attribute "DW_AT_abstract_origin" die)
           && has_attribute "DW_AT_location" die)
       d in
 
@@ -4529,8 +4561,8 @@ let pp_analysed_locations3 c d str (removed:bool) (als: analysed_location_data) 
   List.map
     (fun ((cu,parents,die1),mnnls) ->
       (removed,
-       pp_die_abbrev_var c cu.cu_header str false parents die1,
-       pp_type_info_die_DW_AT_type c d cu cu.cu_header str die1,
+       pp_die_abbrev_var c d cu str false parents die1,
+       pp_type_info_die_DW_AT_type c d cu str die1,
        pp_analysed_locations2 c cu.cu_header mnnls,
        pp_die_abbrev_var_parents c cu.cu_header str parents)
     )
