@@ -652,31 +652,149 @@ type p_context =
   |>
 
 
-(* aggregate type descriptions *)
+(* type descriptions *)
+(* NB these do not cover all the DWARF-expressible types; only some common C cases *)
+(* unclear whether this should actually be recursive or whether we should just reference subterms by their dies *)
+(*    
+type base_type =  (* ignore DW_endianity and DW_bitsize for now *)
+  <| 
+  bt_die: (compilation_unit * die);
+  bt_name: string;
+  bt_encoding: natural; (* must be one of the DW_ATE_* encodings *)
+  |>
+
+type pointer_type 't =
+  <|
+  pt_die: (compilation_unit * die);
+  pt_type: 't;
+  |>
+
+type const_type 't =
+  <|
+  ct_die: (compilation_unit * die);
+  ct_type: 't;
+  |>
+
+type volatile_type 't =
+  <|
+  vt_die: (compilation_unit * die);
+  vt_type: 't;
+  |>
+
+type restrict_type 't =
+  <|
+  rt_die: (compilation_unit * die);
+  rt_type: 't;
+  |>
+    
+type typedef_type 't = 
+  <|
+  tt_die: (compilation_unit * die);
+  tt_name: string;
+  tt_type: 't; 
+  tt_decl_file: maybe string;
+  tt_decl_line: maybe natural;
+  |>
+
+type array_dimension 't = natural(*count*) * 't(*subrange type*)
+    
+type array_type 't =
+  <|
+  at_die: (compilation_unit * die);
+  at_name: string;
+  at_type: 't ;
+  at_dims: list (array_dimension 't);
+  |>
 
 type aggregate_type_kind =
   | Atk_structure
   | Atk_union
 
-type aggregate_member = 
+type aggregate_member 't = 
   <|
   am_die: (compilation_unit * die);
   am_name: maybe string;
-  am_type: (compilation_unit * die);
+  am_type: 't;
   am_data_member_location: natural
 |>
   
-type aggregate_type = 
+type aggregate_type 't = 
   <|
-  at_die: (compilation_unit * die);
-  at_kind: aggregate_type_kind;
-  at_name: maybe string;
-  at_byte_size: maybe natural;
-  at_decl_file: maybe string;
-  at_decl_line: maybe natural;
-  at_members: list aggregate_member;
-|>
+  ag_die: (compilation_unit * die);
+  ag_kind: aggregate_type_kind;
+  ag_name: maybe string;
+  ag_byte_size: maybe natural;
+  ag_decl_file: maybe string;
+  ag_decl_line: maybe natural;
+  ag_members: list (aggregate_member 't);
+  |>
 
+type enumeration_member = 
+  <|
+  em_die: (compilation_unit * die);
+  em_name: maybe string;
+  em_const_value: natural;
+|>
+  
+type enumeration_type 't = 
+  <|
+  et_die: (compilation_unit * die);
+  et_type: maybe 't;
+  et_name: maybe string;
+  et_byte_size: maybe natural;
+  et_decl_file: maybe string;
+  et_decl_line: maybe natural;
+  et_members: list (enumeration_member);
+  |>
+
+type pre_c_type 't = 
+  | CT_base of base_type
+  | CT_pointer of (pointer_type 't)
+  | CT_const of (const_type 't)
+  | CT_volatile of (volatile_type 't)
+  | CT_restrict of (restrict_type 't)
+  | CT_typedef of (typedef_type 't)
+  | CT_array of (array_type 't)
+  | CT_aggregate of (aggregate_type 't)
+  | CT_enumeration of (enumeration_type 't)
+
+type c_type =
+  | CT of (pre_c_type c_type)
+ *)
+type cudie = compilation_unit * die        
+
+type decl =
+  <|
+  decl_file: maybe string;
+  decl_line: maybe natural;
+  |>
+
+type array_dimension 't = maybe natural(*count*) * 't(*subrange type*)
+
+type aggregate_member 't = cudie * (maybe string)(*mname*) * 't * natural(*data_member_location*)
+                         
+type aggregate_type_kind =
+  | Atk_structure
+  | Atk_union
+
+type enumeration_member = cudie * (maybe string)(*mname*) * natural(*const_value*)
+  
+type c_type_top 't = 
+  | CT_base of cudie * string(*name*) * natural(*encoding*)
+  | CT_pointer of cudie * maybe 't
+  | CT_const of cudie * maybe 't
+  | CT_volatile of cudie * 't
+  | CT_restrict of cudie * 't
+  | CT_typedef of cudie * string(*name*) * 't * decl
+  | CT_array of cudie * 't * list (array_dimension 't)
+  | CT_aggregate of cudie * aggregate_type_kind * (maybe string)(*mname*) * (maybe natural)(*byte_size*) * decl * list (aggregate_member 't)(*members*)
+  | CT_enumeration of cudie * (maybe string)(*mname*) * (maybe 't)(*mtyp*) * (maybe natural)(*byte_size*) * decl * list (enumeration_member)(*members*)
+
+type c_type =
+  | CT of (c_type_top c_type)
+        
+
+  
 (** ************************************************************ *)
 (** **  missing pervasives  ************************************ *)
 (** ************************************************************ *)
@@ -1203,7 +1321,28 @@ let line_number_extended_encodings = [
 
 (* booleans encoded as a single byte containing the value 0 for “false,” and a non-zero value for “true.” *)
 
-
+(* base type attribute encoding *)
+let base_type_attribute_encodings = [
+  ("DW_ATE_address"         , natural_of_hex "0x01");
+  ("DW_ATE_boolean"         , natural_of_hex "0x02");
+  ("DW_ATE_complex_float"   , natural_of_hex "0x03");
+  ("DW_ATE_float"           , natural_of_hex "0x04");
+  ("DW_ATE_signed"          , natural_of_hex "0x05");
+  ("DW_ATE_signed_char"     , natural_of_hex "0x06");
+  ("DW_ATE_unsigned"        , natural_of_hex "0x07");
+  ("DW_ATE_unsigned_char"   , natural_of_hex "0x08");
+  ("DW_ATE_imaginary_float" , natural_of_hex "0x09");
+  ("DW_ATE_packed_decimal"  , natural_of_hex "0x0a");
+  ("DW_ATE_numeric_string"  , natural_of_hex "0x0b");
+  ("DW_ATE_edited"          , natural_of_hex "0x0c");
+  ("DW_ATE_signed_fixed"    , natural_of_hex "0x0d");
+  ("DW_ATE_unsigned_fixed"  , natural_of_hex "0x0e");
+  ("DW_ATE_decimal_float"   , natural_of_hex "0x0f");
+  ("DW_ATE_UTF"             , natural_of_hex "0x10");
+  ("DW_ATE_lo_user"         , natural_of_hex "0x80");
+  ("DW_ATE_hi_user"         , natural_of_hex "0xff")
+  ]
+                                  
 (** ************************************************************ *)
 (** ** more missing pervasives and bits  *********************** *)
 (** ************************************************************ *)
@@ -1460,9 +1599,8 @@ let pp_operation_encoding n = pp_maybe (fun n -> lookup_aBcd_a n operation_encod
 let tag_encode (s: string) : natural =
   match lookup_Ab_b s tag_encodings with
   | Just n -> n
-  | Nothing -> Assert_extra.failwith "tag_encode"
+  | Nothing -> Assert_extra.failwith ("tag_encode: \""^s^"\"")
   end
-
 
 let attribute_encode (s: string) : natural =
   match lookup_Abc_b s attribute_encodings with
@@ -1476,6 +1614,12 @@ let attribute_form_encode (s: string) : natural =
   | Nothing -> Assert_extra.failwith "attribute_form_encode"
   end
 
+let base_type_attribute_encode (s: string) : natural =
+  match lookup_Ab_b s base_type_attribute_encodings with
+  | Just n -> n
+  | Nothing -> Assert_extra.failwith "base_type_attribute_encode"
+  end
+   
 
 
 (** ************************************************************ *)
@@ -4294,158 +4438,168 @@ let pp_evaluated_frame_info (efi: evaluated_frame_info) =
 (** **  pp of type info                                          *)
 (** ************************************************************ *)
 
-(* partial pp of type info - incomplete, but enough for some C code *)
+(* partial analysis and pp of type info - incomplete, but enough for some C code *)
 
-  
-(* expect the die to have a DW_AT_type, and pp it *)
-
-let rec pp_type_info_die_DW_AT_type c (d: dwarf) cu str die =    
-  match find_DW_AT_type_of_die_using_abstract_origin c d cu str die with
-  | Just (cu',die') -> pp_type_info_die c (d: dwarf) cu' str die'
-  | Nothing -> "DW_AT_abstract origin failed"
+(* analyse top level of C type structure, without recursing into type subterms *)
+let strict s x =
+  match x with
+  | Just y -> y
+  | Nothing ->
+     Assert_extra.failwith ("analyse_type_info_die strict failure on \n" ^ s () 
+                            ^ "\n")
   end 
 
-and pp_type_info_die c (d: dwarf) cu str die = 
 
-  let ppd () = "pp_type_info_die on:\n" ^ pp_die c cu.cu_header str true 0 false die ^ "\n" in 
-
+let analyse_type_info_top c (d: dwarf) (cudie: cudie) : c_type_top cudie = 
+  let (cu,die) = cudie in
+  let mname = find_name_of_die d.d_str die in
+  let mtyp = find_DW_AT_type_of_die c d cu d.d_str die in
+  let s () = pp_die c cu.cu_header d.d_str true 0 false die in
+  
   if die.die_abbreviation_declaration.ad_tag = tag_encode "DW_TAG_base_type" then
-    match find_name_of_die str die with
-    | Just name -> (*"base type: " ^*) name
-    | Nothing -> "DW_TAG_base_type without name"
-    end 
-
-  else if die.die_abbreviation_declaration.ad_tag = tag_encode "DW_TAG_typedef" then
-    "typedef(" ^ 
-    match find_name_of_die str die with
-    | Nothing -> "DW_TAG_typedef without name"
-    | Just name -> 
-       name ^ "=" ^  pp_type_info_die_DW_AT_type c (d: dwarf) cu str die
-    end
-    ^ ")"
-
-  else if die.die_abbreviation_declaration.ad_tag = tag_encode "DW_TAG_enumeration_type" then
-    "enumeration(" ^ 
-      pp_type_info_die_DW_AT_type c (d: dwarf) cu str die
-      ^ ")"
-
-  else if die.die_abbreviation_declaration.ad_tag = tag_encode "DW_TAG_structure_type" then
-    "structure(" ^ 
-    match find_name_of_die str die with
-    | Nothing -> "DW_TAG_structure_type without name"
-    | Just name -> 
-       name 
-    end
-    ^ ")"
-
-  else if die.die_abbreviation_declaration.ad_tag = tag_encode "DW_TAG_volatile_type" then
-    "volatile(" ^ 
-      pp_type_info_die_DW_AT_type c (d: dwarf) cu str die
-      ^ ")"
+    let encoding =
+      let n = strict s (find_natural_attribute_value_of_die c "DW_AT_encoding" die) in
+      if not(List.any (fun (s,n')->n=n') base_type_attribute_encodings) then strict s Nothing else n in
+      (* TODO: handle user encodings correctly *)
+    CT_base cudie (strict s mname) encoding
 
   else if die.die_abbreviation_declaration.ad_tag = tag_encode "DW_TAG_pointer_type" then
-    "pointer(" ^ 
-      match find_attribute_value "DW_AT_type" die with
-      | Just die' -> pp_type_info_die_DW_AT_type c (d: dwarf) cu str die
-      | Nothing -> 
-        match find_attribute_value "DW_AT_byte_size" die with
-        | Just (AV_block n bs) -> ppbytes bs
-        | Nothing -> "not handled"
-        end 
-      end 
-      ^ ")"
-
-  else if die.die_abbreviation_declaration.ad_tag = tag_encode "DW_TAG_array_type" then
-    let ppd_count =
-      match List.filter (fun die' -> die'.die_abbreviation_declaration.ad_tag = tag_encode "DW_TAG_subrange_type") die.die_children with
-      | [] -> "no subrange"
-      | dies' -> 
-         (myconcat "," (List.map (fun die' -> "["^match find_attribute_value "DW_AT_count" die' with
-         | Just (AV_block n bs) -> (ppbytesplain c n bs)
-         | Nothing -> "?"
-         end ^ "]") dies'))
-      end in
-    "array(" 
-    ^ match find_attribute_value "DW_AT_type" die with
-      | Just _ -> pp_type_info_die_DW_AT_type c (d: dwarf) cu str die
-      | Nothing -> "DW_TAG_array_type without name"
-      end 
-    ^ ppd_count
-    ^ ")"
-          (* TODO: display dimensions, stride, etc. *)   
+    CT_pointer cudie  mtyp
 
   else if die.die_abbreviation_declaration.ad_tag = tag_encode "DW_TAG_const_type" then
-    "const(" ^ 
-      match find_attribute_value "DW_AT_type" die with
-      | Just _ -> pp_type_info_die_DW_AT_type c (d: dwarf) cu str die
-      | Nothing -> "DW_TAG_const_type without name"
-      end 
-      ^ ")"
-   
-  else
-     "non-handled-type" ^ ppd ()
+    CT_const cudie mtyp
 
+  else if die.die_abbreviation_declaration.ad_tag = tag_encode "DW_TAG_volatile_type" then
+    CT_volatile cudie (strict s mtyp)
 
-let analyse_aggregate_type_member c d cu die =
-  <|
-  am_die = (cu,die);
-  am_name = 
-    find_name_of_die d.d_str die;
-  am_type =
-    match find_DW_AT_type_of_die c d cu d.d_str die with
-    | Just (cu',die') -> (cu',die')
-    | Nothing -> Assert_extra.failwith ("analyse_aggregate_type_member: couldn't find_DW_AT_type_of_die")
-    end;
-  am_data_member_location =
-    match find_natural_attribute_value_of_die c "DW_AT_data_member_location" die with
-    | Just n -> n
-    | Nothing -> Assert_extra.failwith ("analyse_aggregate_type_member: no DW_AT_data_member_location")
-    end;
-|>
+  else if die.die_abbreviation_declaration.ad_tag = tag_encode "DW_TAG_restrict_type" then
+    CT_restrict cudie  (strict s mtyp)
+      
+  else if die.die_abbreviation_declaration.ad_tag = tag_encode "DW_TAG_typedef" then
+    let decl =
+      <|
+      decl_file = Nothing; (* TODO *)
+      decl_line = Nothing; (* TODO *)
+      |> in 
+    CT_typedef cudie (strict s mname) (strict s mtyp) decl
 
-let analyse_aggregate_type c d (cu,parents,die) =
-  <|
-  at_die = (cu,die);
-  at_kind =
-    if die.die_abbreviation_declaration.ad_tag = tag_encode "DW_TAG_structure_type" then Atk_structure
-    else if die.die_abbreviation_declaration.ad_tag = tag_encode "DW_TAG_union_type" then Atk_union
-    else Assert_extra.failwith "analyse_aggregate_type bad tag";
-  at_name = 
-    find_name_of_die d.d_str die;
-  at_byte_size =
-    find_natural_attribute_value_of_die c "DW_AT_byte_size" die;
-  at_decl_file = 
-    Nothing;
-  at_decl_line =
-    find_natural_attribute_value_of_die c "DW_AT_decl_line" die;
-  at_members=
-    List.map (analyse_aggregate_type_member c d cu) (List.filter (fun die' -> die'.die_abbreviation_declaration.ad_tag = tag_encode "DW_TAG_member") die.die_children);
-   |>
+  else if die.die_abbreviation_declaration.ad_tag = tag_encode "DW_TAG_array_type" then
+    let dims =
+      let subranges = List.filter (fun die' -> die'.die_abbreviation_declaration.ad_tag = tag_encode "DW_TAG_subrange_type") die.die_children in
+      List.map
+        (fun die' ->
+          let mcount = find_natural_attribute_value_of_die c "DW_AT_count" die' in
+          let msubrange_type = find_DW_AT_type_of_die c d cu d.d_str die' in
+          (mcount, strict s msubrange_type))
+        subranges in 
+    CT_array cudie (strict s mtyp) dims
 
+  else if die.die_abbreviation_declaration.ad_tag = tag_encode "DW_TAG_structure_type" || die.die_abbreviation_declaration.ad_tag = tag_encode "DW_TAG_union_type" then
+    let atk = if die.die_abbreviation_declaration.ad_tag = tag_encode "DW_TAG_structure_type" then Atk_structure else Atk_union in
+    let mbyte_size = find_natural_attribute_value_of_die c "DW_AT_byte_size" die in
+    let decl =
+      (<|
+      decl_file = Nothing; (* TODO *)
+      decl_line = Nothing; (* TODO *)
+      |>) in 
+
+    let members_raw = List.filter (fun die' -> die'.die_abbreviation_declaration.ad_tag = tag_encode "DW_TAG_member") die.die_children in
+    let members =
+      List.map
+        (fun die' ->
+          let cudie' = (cu,die') in
+          let mname' = find_name_of_die d.d_str die' in
+          let typ' = strict s (find_DW_AT_type_of_die c d cu d.d_str die') in
+          let data_member_location' = strict s (find_natural_attribute_value_of_die c "DW_AT_data_member_location" die') in
+          (cudie',mname',typ',data_member_location'))
+        members_raw in
+
+    CT_aggregate cudie atk mname mbyte_size decl members
+
+  else if die.die_abbreviation_declaration.ad_tag = tag_encode "DW_TAG_enumeration_type" then
+    let mbyte_size = find_natural_attribute_value_of_die c "DW_AT_byte_size" die in
+    let decl =
+      <|
+      decl_file = Nothing; (* TODO *)
+      decl_line = Nothing; (* TODO *)
+      |> in 
+    let members_raw = List.filter (fun die' -> die'.die_abbreviation_declaration.ad_tag = tag_encode "DW_TAG_enumerator") die.die_children in
+    let members =
+      List.map
+        (fun die' ->
+          let cudie' = (cu,die') in
+          let mname' = find_name_of_die d.d_str die' in
+          let const_value = strict s (find_natural_attribute_value_of_die c "DW_AT_const_value" die') in
+          (cudie',mname',const_value))
+        members_raw in
+    
+    CT_enumeration cudie mname mtyp mbyte_size decl members
+
+  else 
+    
+    Assert_extra.failwith "analyse_type_info_top didn't recognise tag"
+    
+(* analyse and pp C type structure, but without going into the definitions of aggregate or enumeration types *)
 let pp_aggregate_type_kind atk =
   match atk with
   | Atk_structure -> "structure"
   | Atk_union -> "union"
   end
-   
-let pp_aggregate_type_member c d cu am =
-  let (cu,die)=am.am_die in
-  let (cu',die')=am.am_type in
-  (match am.am_name with | Just s -> s | Nothing -> "?" end) 
-  ^ " @ " ^ show am.am_data_member_location
-  ^ " : " ^ pp_type_info_die c d cu' d.d_str die'
 
-let pp_aggregate_type c d at =
-  let (cu,die)=at.at_die in
-  (match at.at_name with | Just s -> s | Nothing -> "?" end) 
-  ^ " size " ^ match at.at_byte_size with | Just n -> show n | Nothing -> "?" end ^ "\n"
-  ^ String.concat "\n" (List.map (fun am -> "  "^pp_aggregate_type_member c d cu am) at.at_members)
+let pp_cudie (cu,die) = pp_pos cu.cu_header.cuh_offset ^ "/" ^ pp_pos die.die_offset
+   
+let rec pp_type_info_die c (d: dwarf) cudie : string = 
+  let (cu,die) = cudie in
+  let (typ:c_type_top cudie) = analyse_type_info_top c (d: dwarf) cudie in
+  match typ with
+  | CT_base cudie name encoding  -> 
+     name ^ " (base type, " ^ match lookup_aB_a encoding base_type_attribute_encodings with Just s -> s | Nothing -> show encoding end ^ ")"
+  | CT_pointer cudie mtyp'  -> "pointer("  ^ match mtyp' with | Just typ' -> pp_type_info_die c d typ' | Nothing -> "no type" end ^ ")"
+  | CT_const cudie mtyp'    -> "const("    ^ match mtyp' with Just typ'->pp_type_info_die c d typ' | Nothing -> "no type" end ^ ")"
+  | CT_volatile cudie typ' -> "volatile(" ^ pp_type_info_die c d typ' ^ ")"
+  | CT_restrict cudie typ' -> "restrict(" ^ pp_type_info_die c d typ' ^ ")"
+  | CT_typedef cudie name typ' decl -> "typedef("^name^"="^pp_type_info_die c d typ' ^ ")"
+  | CT_array cudie typ' dims ->
+     pp_type_info_die c d typ' ^ String.concat "" (List.map (fun (mcount,subrange_typ) -> "["^match mcount with | Just count -> show count | Nothing -> "no count" end ^"]") dims)
+  | CT_aggregate cudie atk mname mbyte_size decl members -> pp_aggregate_type_kind atk ^ " " ^ (match mname with | Just s -> s | Nothing -> "noname" end) ^ pp_cudie cudie
+  | CT_enumeration cudie mname mtyp' mbyte_size decl members -> "enum" ^ " " ^ (match mname with | Just s -> s | Nothing -> "noname" end) ^ pp_cudie cudie
+  end
+   
+    
+(* expect the die to have a DW_AT_type, and pp it *)
+
+let pp_type_info_die_DW_AT_type c (d: dwarf) cu str die =    
+  match find_DW_AT_type_of_die_using_abstract_origin c d cu str die with
+  | Just (cu',die') -> pp_type_info_die c (d: dwarf) (cu',die')
+  | Nothing -> "DW_AT_abstract origin failed"
+  end 
+
   
+let pp_aggregate_type_member c d (am:aggregate_member cudie) : list string = 
+  let (cudie,mname,typ,data_member_location) = am in 
+      [ "  ";
+        (match mname with | Just s -> s | Nothing -> "noname" end);
+        " @ " ^ show data_member_location;
+        " : " ^ pp_type_info_die c d typ
+      ]
+
+let pp_aggregate_type_defn c d cudie =
+  let (typ:c_type_top cudie) = analyse_type_info_top c (d: dwarf) cudie in
+  match typ with 
+  | CT_aggregate cudie atk mname mbyte_size decl members -> 
+     (match mname with | Just s -> s | Nothing -> "noname" end) 
+     ^ " " ^ pp_cudie cudie
+     ^ " size:" ^ match mbyte_size with | Just n -> show n | Nothing -> "?" end ^ "\n"
+     ^ pad_rows (List.map (pp_aggregate_type_member c d) members)
+  | _ ->
+    Assert_extra.failwith "pp_aggregate_type_defn called on non-aggregate"
+  end
+                 
 let aggregate_type_dies (d:dwarf) : list (compilation_unit * (list die) * die) =
   find_dies (fun die -> die.die_abbreviation_declaration.ad_tag = tag_encode "DW_TAG_structure_type" || die.die_abbreviation_declaration.ad_tag = tag_encode "DW_TAG_union_type") d
 
 let pp_all_aggregate_types c d : string =
-  String.concat "\n\n" (List.map (pp_aggregate_type c d) (List.map (analyse_aggregate_type c d) (aggregate_type_dies d)))
+  String.concat "\n\n" (List.map ((fun (cu,parents,die) -> pp_aggregate_type_defn c d (cu,die))) (aggregate_type_dies d))
   
 
    
