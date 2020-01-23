@@ -780,7 +780,7 @@ type aggregate_type_kind =
 type enumeration_member = cudie * (maybe string)(*mname*) * natural(*const_value*)
   
 type c_type_top 't = 
-  | CT_base of cudie * string(*name*) * natural(*encoding*)
+  | CT_base of cudie * string(*name*) * natural(*encoding*) * (maybe natural)(*byte_size*)
   | CT_pointer of cudie * maybe 't
   | CT_const of cudie * maybe 't
   | CT_volatile of cudie * 't
@@ -4461,7 +4461,8 @@ let analyse_type_info_top c (d: dwarf) (cudie: cudie) : c_type_top cudie =
       let n = strict s (find_natural_attribute_value_of_die c "DW_AT_encoding" die) in
       if not(List.any (fun (s,n')->n=n') base_type_attribute_encodings) then strict s Nothing else n in
       (* TODO: handle user encodings correctly *)
-    CT_base cudie (strict s mname) encoding
+    let mbyte_size = find_natural_attribute_value_of_die c "DW_AT_byte_size" die in
+    CT_base cudie (strict s mname) encoding mbyte_size
 
   else if die.die_abbreviation_declaration.ad_tag = tag_encode "DW_TAG_pointer_type" then
     CT_pointer cudie  mtyp
@@ -4547,13 +4548,15 @@ let pp_aggregate_type_kind atk =
   end
 
 let pp_cudie (cu,die) = pp_pos cu.cu_header.cuh_offset ^ "/" ^ pp_pos die.die_offset
-   
+
+let pp_mbyte_size mbyte_size = "size:" ^ match mbyte_size with | Just n -> show n | Nothing -> "?" end
+                      
 let rec pp_type_info_die c (d: dwarf) cudie : string = 
   let (cu,die) = cudie in
   let (typ:c_type_top cudie) = analyse_type_info_top c (d: dwarf) cudie in
   match typ with
-  | CT_base cudie name encoding  -> 
-     name ^ " (base type, " ^ match lookup_aB_a encoding base_type_attribute_encodings with Just s -> s | Nothing -> show encoding end ^ ")"
+  | CT_base cudie name encoding mbyte_size -> 
+     name ^ " (base type, " ^ match lookup_aB_a encoding base_type_attribute_encodings with Just s -> s | Nothing -> show encoding end ^ " " ^ pp_mbyte_size mbyte_size ^ ")"
   | CT_pointer cudie mtyp'  -> "pointer("  ^ match mtyp' with | Just typ' -> pp_type_info_die c d typ' | Nothing -> "no type" end ^ ")"
   | CT_const cudie mtyp'    -> "const("    ^ match mtyp' with Just typ'->pp_type_info_die c d typ' | Nothing -> "no type" end ^ ")"
   | CT_volatile cudie typ' -> "volatile(" ^ pp_type_info_die c d typ' ^ ")"
@@ -4589,7 +4592,7 @@ let pp_aggregate_type_defn c d cudie =
   | CT_aggregate cudie atk mname mbyte_size decl members -> 
      (match mname with | Just s -> s | Nothing -> "noname" end) 
      ^ " " ^ pp_cudie cudie
-     ^ " size:" ^ match mbyte_size with | Just n -> show n | Nothing -> "?" end ^ "\n"
+     ^ " " ^ pp_mbyte_size mbyte_size ^ "\n"
      ^ pad_rows (List.map (pp_aggregate_type_member c d) members)
   | _ ->
     Assert_extra.failwith "pp_aggregate_type_defn called on non-aggregate"
