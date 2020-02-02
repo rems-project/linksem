@@ -674,6 +674,8 @@ type inlined_subroutine =
   
 type inlined_subroutine_data       = list inlined_subroutine
 
+type inlined_subroutine_data_by_range = list ( (natural*natural)(*range*) * (natural*natural) (*range m-of-n*) * inlined_subroutine)                                   
+                                   
 (*type inlined_subroutine_data_at_pc = list ((compilation_unit * (list die) * die) *             (natural * natural * single_location_description * error single_location))*)
 
 
@@ -5147,33 +5149,59 @@ let analyse_inlined_subroutines (d: dwarf) : inlined_subroutine_data =
     )
     inlined_subroutines
 
-let pp_inlined_subroutine d is =
-  let c = p_context_of_d d in
+let analyse_inlined_subroutine_by_range (is:inlined_subroutine) : inlined_subroutine_data_by_range =
+  let n_ranges = List.length is.is_pc_ranges in 
+  List.mapi (fun i -> fun (n1,n2) -> ((n1,n2),(naturalFromNat i, naturalFromNat n_ranges),is)) is.is_pc_ranges
+
+
+let is_lt ((n1,n2),(m,n),is) ((n1',n2'),(m',n'),is') = n1 < n1' || (n1 = n1' && n2 > n2')
+  
+let analyse_inlined_subroutines_by_range (iss:inlined_subroutine_data) : inlined_subroutine_data_by_range =
+  Sorting.sortBy is_lt (List.concat (List.map analyse_inlined_subroutine_by_range iss))
+
+
+let pp_inlined_subroutine_header is = 
   is.is_name
-  ^ " inlined from " ^ is.is_call_file ^ ":" ^ show is.is_call_line ^ "\n"
+  ^ " inlined from " ^ is.is_call_file ^ ":" ^ show is.is_call_line 
+
+let pp_inlined_subroutine_const_params d is =
+  let c = p_context_of_d d in
+  match is.is_const_params with
+  | [] -> ""
+  | _ ->
+     String.concat ""
+       (List.map
+          (fun iscp ->
+            let fake_als : analysed_location_data = [(iscp.iscp_abstract_origin,Nothing)] in
+            let fake_diff = pp_analysed_locations3_diff c (*HACK*) d d.d_str [] fake_als in
+            let const_in_place_of_locs = 
+              List.map
+                (fun (removed,(name,offset,kind),typ,locs,parents) ->
+                  (removed,(name,offset,kind),typ,"const="^show iscp.iscp_value,parents))
+                fake_diff in
+            pp_analysed_location_format const_in_place_of_locs
+          )
+          is.is_const_params)
+  end
+  
+let pp_inlined_subroutine d is =
+  pp_inlined_subroutine_header is ^ "\n"
   ^ String.concat "" (List.map (fun (n1,n2) -> "  " ^ pphex n1 ^ " " ^ pphex n2 ^ "\n") is.is_pc_ranges)
-  ^ match is.is_const_params with
-    | [] -> ""
-    | _ ->
-       String.concat ""
-         (List.map
-            (fun iscp ->
-              let fake_als : analysed_location_data = [(iscp.iscp_abstract_origin,Nothing)] in
-              let fake_diff = pp_analysed_locations3_diff c (*HACK*) d d.d_str [] fake_als in
-              let const_in_place_of_locs = 
-                List.map
-                  (fun (removed,(name,offset,kind),typ,locs,parents) ->
-                        (removed,(name,offset,kind),typ,"const="^show iscp.iscp_value,parents))
-                  fake_diff in
-              pp_analysed_location_format const_in_place_of_locs
-            )
-            is.is_const_params)
-    end
+  ^ pp_inlined_subroutine_const_params d is 
 
 let pp_inlined_subroutines d iss =
   String.concat "" (List.map (pp_inlined_subroutine d) iss)           
 
 
+let pp_inlined_subroutine_by_range d ((n1,n2),((m:natural),(n:natural)),is) =
+  pphex n1 ^ " " ^ pphex n2 ^ " "
+  ^ (if n<>1 then "("^show m^" of "^show n^") " else "")
+  ^  pp_inlined_subroutine_header is
+  ^"\n"
+  ^ (if m=0 then pp_inlined_subroutine_const_params d is else "")
+
+let pp_inlined_subroutines_by_range d iss =
+  String.concat "" (List.map (pp_inlined_subroutine_by_range d) iss)           
   
 
 (** ************************************************************ *)
@@ -5542,7 +5570,10 @@ let harness_string_of_elf f1 bs =
    ^ "************** line info *************************\n"
    ^ pp_evaluated_line_info ds.ds_evaluated_line_info
    ^ "************** inlined subroutine info *************************\n"
-   ^ pp_inlined_subroutines ds.ds_dwarf (analyse_inlined_subroutines ds.ds_dwarf)
+   ^ let iss = analyse_inlined_subroutines ds.ds_dwarf in
+     pp_inlined_subroutines ds.ds_dwarf iss 
+     ^ "************** inlined subroutine info by range *************************\n"
+     ^ pp_inlined_subroutines_by_range ds.ds_dwarf (analyse_inlined_subroutines_by_range iss)
   end
 
 
