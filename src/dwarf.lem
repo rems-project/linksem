@@ -4913,7 +4913,7 @@ let pp_analysed_location_data (d: dwarf) (als: analysed_location_data) : string 
 let pp_analysed_locations3 c d str (removed:bool) (als: analysed_location_data) : list (bool(*removed?*) * (string(*name*) * string(*offset*) * string(*kind*)) * (unit->string)(*string*)(*type*) * string(*locations*) * (unit->string)(*parents*)) = 
   List.map
     (fun ((cu,parents,die1),mnnls) ->
-      (removed,
+      (remqoved,
        pp_die_abbrev_var c d cu str false parents die1, (*4.5s for only this*)
        (fun () -> pp_type_info_die_DW_AT_type c d cu str die1), (*12.2s for this and above*)
        pp_analysed_locations2 c cu.cu_header mnnls, (*12.4s for this and above*)
@@ -5159,11 +5159,24 @@ let is_lt ((n1,n2),(m,n),is) ((n1',n2'),(m',n'),is') = n1 < n1' || (n1 = n1' && 
 let analyse_inlined_subroutines_by_range (iss:inlined_subroutine_data) : inlined_subroutine_data_by_range =
   Sorting.sortBy is_lt (List.concat (List.map analyse_inlined_subroutine_by_range iss))
 
-
+(* pp the inlined_subroutine tree structure.  Technically these die offsets each also need the compilation-unit offset to be globally unique, but that's locally constant *)
+let rec pp_inlined_subroutine_parents (ds:list die) : string =
+  match ds with
+  | [] -> ""
+  | die::ds' ->
+     if die.die_abbreviation_declaration.ad_tag = tag_encode "DW_TAG_inlined_subroutine" then
+       pp_pos die.die_offset ^ ":" ^ pp_inlined_subroutine_parents ds'
+     else if die.die_abbreviation_declaration.ad_tag = tag_encode "DW_TAG_lexical_block" then "<lexical_block>:" ^ pp_inlined_subroutine_parents ds'
+     else if die.die_abbreviation_declaration.ad_tag = tag_encode "DW_TAG_subprogram" then ""
+     else "<surprising ad_tag in " ^ pp_pos die.die_offset ^ ": " ^ pphex die.die_abbreviation_declaration.ad_tag ^ ">"
+  end 
+       
+  
 let pp_inlined_subroutine_header is = 
   is.is_name
   ^ " inlined from " ^ is.is_call_file ^ ":" ^ show is.is_call_line 
-
+  ^ " " ^ let (cu,parents,die) = is.is_inlined_subroutine in pp_inlined_subroutine_parents (die::parents)
+  
 let pp_inlined_subroutine_const_params d is =
   let c = p_context_of_d d in
   match is.is_const_params with
