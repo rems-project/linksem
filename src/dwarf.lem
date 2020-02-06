@@ -1394,7 +1394,7 @@ let rec myconcat sep ss =
       | _ -> s ^ sep ^ myconcat sep ss'
       end
   end
-
+  
 val myhead : forall 'a. list 'a -> 'a
 let myhead l = match l with | x::xs -> x | [] -> Assert_extra.failwith "myhead of empty list" end
 
@@ -2029,7 +2029,7 @@ let pp_abbreviation_declaration (x:abbreviation_declaration) =
   ^ (if x.ad_has_children then "[has children]" else "[no children]")
   ^ "\n"
 (*  ^ " "^show (List.length x.ad_attribute_specifications) ^ " attributes\n"*)
-  ^ myconcat ""
+  ^ String.concat ""
       (List.map
          (fun (n1,n2) ->
            "    " ^ right_space_padded_to 18 (pp_attribute_encoding n1) ^ " " ^ pp_attribute_form_encoding n2 ^ "\n")
@@ -2038,7 +2038,7 @@ let pp_abbreviation_declaration (x:abbreviation_declaration) =
 
       
 let pp_abbreviations_table (x:abbreviations_table) =
-  myconcat "" (List.map (pp_abbreviation_declaration) x)
+  String.concat "" (List.map (pp_abbreviation_declaration) x)
 
 (* print the distinct abbreviation tables used by all compilation units *)
 let rec remove_duplicates xys xys_acc =
@@ -2057,7 +2057,7 @@ let pp_abbreviations_tables (d:dwarf) =
       (fun cu -> (cu.cu_header.cuh_debug_abbrev_offset, cu.cu_abbreviations_table)) 
       d.d_compilation_units in
   let ys = remove_duplicates xs [] in
-  myconcat "*********************\n" (List.map (fun (x,y)->pp_abbreviations_table y) ys)
+  String.concat "*********************\n" (List.map (fun (x,y)->pp_abbreviations_table y) ys)
   
 
 
@@ -2141,10 +2141,10 @@ let pp_operation_semantics (os: operation_semantics) : string =
   end
 
 let pp_operation (op: operation) : string =
-  op.op_string ^ " " ^ myconcat " " (List.map pp_operation_argument_value op.op_argument_values) ^ " (" ^ pp_operation_semantics op.op_semantics ^ ")"
+  op.op_string ^ " " ^ String.concat " " (List.map pp_operation_argument_value op.op_argument_values) ^ " (" ^ pp_operation_semantics op.op_semantics ^ ")"
 
 let pp_operations (ops: list operation) : string =
-  myconcat "; " (List.map pp_operation ops)
+  String.concat "; " (List.map pp_operation ops)
 
 val parser_of_operation_argument_type : p_context -> compilation_unit_header -> operation_argument_type -> (parser operation_argument_value)
 let parser_of_operation_argument_type c cuh oat =
@@ -2635,9 +2635,9 @@ let rec pp_die c cuh str indent level (pp_children:bool) die =
     let ats = List.zip
         die.die_abbreviation_declaration.ad_attribute_specifications
         die.die_attribute_values in
-    (myconcat "" (List.map (pp_die_attribute c cuh str indent level) ats))
+    (String.concat "" (List.map (pp_die_attribute c cuh str indent level) ats))
     ^
-      if pp_children then myconcat "" (List.map (pp_die c cuh str indent (level +1) pp_children) die.die_children) else ""
+      if pp_children then String.concat "" (List.map (pp_die c cuh str indent (level +1) pp_children) die.die_children) else ""
 
 val pp_die_abbrev : p_context -> compilation_unit_header -> list byte -> natural -> bool -> (list die) -> die -> string
 let rec pp_die_abbrev c cuh str level (pp_children:bool) parents die =
@@ -2647,11 +2647,11 @@ let rec pp_die_abbrev c cuh str level (pp_children:bool) parents die =
 (*  ^ ": Abbrev Number: " ^ show die.die_abbreviation_code *)
   ^
     (match find_name_of_die str die with Just s -> s | Nothing -> "-" end)
-    ^ "   :  " ^ myconcat " : " (List.map (fun die' ->  pp_tag_encoding die'.die_abbreviation_declaration.ad_tag) parents)
+    ^ "   :  " ^ String.concat " : " (List.map (fun die' ->  pp_tag_encoding die'.die_abbreviation_declaration.ad_tag) parents)
     ^ "\n"
-    ^ (*(myconcat "" (List.map (pp_die_abbrev_attribute c cuh str) ats))*)
+    ^ (*(String.concat "" (List.map (pp_die_abbrev_attribute c cuh str) ats))*)
 
-      if pp_children then myconcat "" (List.map (pp_die_abbrev c cuh str (level +1) pp_children (die::parents)) die.die_children) else ""
+      if pp_children then String.concat "" (List.map (pp_die_abbrev c cuh str (level +1) pp_children (die::parents)) die.die_children) else ""
 
 
 (* condensed pp for variables *)
@@ -2693,11 +2693,11 @@ let pp_die_abbrev_var_parents c d cu str parents =
 
 
   
-  (*    ^ "   :  " ^ myconcat " : " (List.map (fun die' ->  pp_tag_encoding die'.die_abbreviation_declaration.ad_tag) parents)*)
+  (*    ^ "   :  " ^ String.concat " : " (List.map (fun die' ->  pp_tag_encoding die'.die_abbreviation_declaration.ad_tag) parents)*)
     (* ^ "\n"*)
-(*    ^ (*(myconcat "" (List.map (pp_die_abbrev_attribute c cuh str) ats))*)*)
+(*    ^ (*(String.concat "" (List.map (pp_die_abbrev_attribute c cuh str) ats))*)*)
 
-(*      if pp_children then myconcat "" (List.map (pp_die_abbrev c cuh str (level +1) pp_children (die::parents)) die.die_children) else ""*)
+(*      if pp_children then String.concat "" (List.map (pp_die_abbrev c cuh str (level +1) pp_children (die::parents)) die.die_children) else ""*)
     
 
 
@@ -2756,7 +2756,7 @@ let pp_compilation_unit c (indent:bool) (debug_str_section_body: list byte) cu =
   ^ "\n"
 
 let pp_compilation_units c (indent:bool) debug_string_section_body (compilation_units: list compilation_unit) : string =
-  myconcat "" (List.map (pp_compilation_unit c indent debug_string_section_body) compilation_units)
+  String.concat "" (List.map (pp_compilation_unit c indent debug_string_section_body) compilation_units)
 
 
 let pp_compilation_unit_abbrev c (debug_str_section_body: list byte) cu =
@@ -2765,7 +2765,7 @@ let pp_compilation_unit_abbrev c (debug_str_section_body: list byte) cu =
   ^ pp_die_abbrev c cu.cu_header debug_str_section_body 0 true [] cu.cu_die
 
 let pp_compilation_units_abbrev c debug_string_section_body (compilation_units: list compilation_unit) : string =
-  myconcat "" (List.map (pp_compilation_unit_abbrev c debug_string_section_body) compilation_units)
+  String.concat "" (List.map (pp_compilation_unit_abbrev c debug_string_section_body) compilation_units)
 
 
 let parse_compilation_unit c (debug_str_section_body: list byte) (debug_abbrev_section_body: list byte) : parser (maybe compilation_unit) =
@@ -2824,7 +2824,7 @@ let pp_type_unit c (debug_str_section_body: list byte) tu =
   ^ pp_die c tu.tu_header.tuh_cuh debug_str_section_body true 0 true tu.tu_die
 
 let pp_type_units c debug_string_section_body (type_units: list type_unit) : string =
-  myconcat "" (List.map (pp_type_unit c debug_string_section_body) type_units)
+  String.concat "" (List.map (pp_type_unit c debug_string_section_body) type_units)
 
 
 let parse_type_unit c (debug_str_section_body: list byte) (debug_abbrev_section_body: list byte) : parser (maybe type_unit) =
@@ -2904,12 +2904,12 @@ let pp_location_list_item c (cuh: compilation_unit_header) (offset: natural) (x:
   end
 
 let pp_location_list c (cuh: compilation_unit_header) ((offset:natural), (llis: list location_list_item)) =
-  myconcat "" (List.map (pp_location_list_item c cuh offset) llis)
+  String.concat "" (List.map (pp_location_list_item c cuh offset) llis)
 (*  ^ "    " ^ pphex offset  ^ " <End of list>\n"*)
 
 let pp_loc c (cuh: compilation_unit_header) (lls: list location_list) =
   "    Offset   Begin    End      Expression\n"
-  ^  myconcat "" (List.map (pp_location_list c cuh) lls)
+  ^  String.concat "" (List.map (pp_location_list c cuh) lls)
 
 (* Note that this is just pp'ing the raw location list data - Section
 3.1.1 says: The applicable base address of a location list entry is
@@ -3010,12 +3010,12 @@ let pp_range_list_item c (cuh: compilation_unit_header) (offset: natural) (x:ran
   end
 
 let pp_range_list c (cuh: compilation_unit_header) ((offset:natural), (rlis: list range_list_item)) =
-  myconcat "" (List.map (pp_range_list_item c cuh offset) rlis)
+  String.concat "" (List.map (pp_range_list_item c cuh offset) rlis)
 (*  ^ "    " ^ pphex offset  ^ " <End of list>\n"*)
 
 let pp_ranges c (cuh: compilation_unit_header) (rls: list range_list) =
   "    Offset   Begin    End      Expression\n"
-  ^  myconcat "" (List.map (pp_range_list c cuh) rls)
+  ^  String.concat "" (List.map (pp_range_list c cuh) rls)
 
 (* Note that this is just pp'ing the raw range list data - see also
 the interpret_range_list below *)
@@ -3173,7 +3173,7 @@ let pp_call_frame_instruction i =
   | DW_CFA_unknown bt             -> "DW_CFA_unknown" ^ " " ^ show bt
   end
 
-let pp_call_frame_instructions is = myconcat "" (List.map (fun i -> "  " ^ pp_call_frame_instruction i ^ "\n") is)
+let pp_call_frame_instructions is = String.concat "" (List.map (fun i -> "  " ^ pp_call_frame_instruction i ^ "\n") is)
 
 
 let parser_of_call_frame_argument_type c cuh (cfat: call_frame_argument_type) : parser call_frame_argument_value =
@@ -3289,7 +3289,7 @@ let pp_frame_info_element c cuh fie =
 
 let pp_frame_info c cuh fi =
   "Contents of the .debug_frame section:\n\n"
-  ^ myconcat "\n" (List.map (pp_frame_info_element c cuh) fi)
+  ^ String.concat "\n" (List.map (pp_frame_info_element c cuh) fi)
   ^ "\n"
 
 
@@ -3445,8 +3445,8 @@ let pp_line_number_header lnh =
 ^ "opcode_base =                        " ^ show lnh.lnh_opcode_base ^ "\n"
 ^ "standard_opcode_lengths =            " ^ show lnh.lnh_standard_opcode_lengths ^ "\n"
 ^ "comp_dir =                           " ^ show lnh.lnh_comp_dir ^ "\n"
-^ "include_directories =                " ^ myconcat ", " (List.map string_of_bytes  lnh.lnh_include_directories) ^ "\n"
-^ "file_names =                         \n\n" ^ myconcat "\n" (List.map pp_line_number_file_entry  lnh.lnh_file_names) ^ "\n"
+^ "include_directories =                " ^ String.concat ", " (List.map string_of_bytes  lnh.lnh_include_directories) ^ "\n"
+^ "file_names =                         \n\n" ^ String.concat "\n" (List.map pp_line_number_file_entry  lnh.lnh_file_names) ^ "\n"
 
   
 let pp_line_number_operation lno =
@@ -3472,7 +3472,7 @@ let pp_line_number_operation lno =
 
 let pp_line_number_program lnp =
   pp_line_number_header lnp.lnp_header
-  ^ "[" ^ myconcat ", " (List.map pp_line_number_operation lnp.lnp_operations) ^ "]\n"
+  ^ "[" ^ String.concat ", " (List.map pp_line_number_operation lnp.lnp_operations) ^ "]\n"
 
 
 
@@ -3696,7 +3696,7 @@ let parse_line_number_infos c str debug_line_section_body compilation_units
 
 let pp_line_info li
     =
-  myconcat "\n" (List.map (pp_line_number_program) li)
+  String.concat "\n" (List.map (pp_line_number_program) li)
 
 
 (** all dwarf info: pp and parsing *)
@@ -3899,7 +3899,7 @@ val pp_single_location: single_location -> string
 let pp_single_location sl =
   match sl with
   | SL_simple sl -> pp_simple_location sl
-  | SL_composite clps -> "composite: " ^ myconcat ", " (List.map pp_composite_location_piece clps)
+  | SL_composite clps -> "composite: " ^ String.concat ", " (List.map pp_composite_location_piece clps)
   end
 
 
@@ -4177,7 +4177,7 @@ let rec evaluate_operation_list (c:p_context) (dloc: location_list_list) (evalua
                   (* TODO: restrict allowed OpSem_* in that recursive call *)
             end
         | (_, _) ->
-            Fail ("bad OpSem invocation: op=" ^ pp_operation op ^ " arguments=" ^ myconcat "" (List.map pp_operation_argument_value op.op_argument_values))
+            Fail ("bad OpSem invocation: op=" ^ pp_operation op ^ " arguments=" ^ String.concat "" (List.map pp_operation_argument_value op.op_argument_values))
         end
       in
       match es' with
@@ -4323,7 +4323,7 @@ let pad_rows (xss : list (list string)) : string =
   | [] -> ""
   | _ ->
      let lens = max_lengths xss in
-     myconcat "" (List.map (fun xs -> myconcat " " (pad_row xs lens) ^ "\n") xss)
+     String.concat "" (List.map (fun xs -> String.concat " " (pad_row xs lens) ^ "\n") xss)
   end
 
 let pp_evaluated_fde (fde, (rows: list cfa_table_row)) : string =
@@ -4501,7 +4501,7 @@ let evaluate_frame_info (d: dwarf) : evaluated_frame_info =
   List.mapMaybe (fun fie -> match fie with FIE_fde fde -> Just (fde, (evaluate_fde d.d_frame_info fde)) | FIE_cie _ -> Nothing end) d.d_frame_info
 
 let pp_evaluated_frame_info (efi: evaluated_frame_info) =
-  myconcat "\n" (List.map pp_evaluated_fde efi)
+  String.concat "\n" (List.map pp_evaluated_fde efi)
 
 
   
@@ -4699,7 +4699,7 @@ let analyse_locations_raw c (d: dwarf) =
           && has_attribute "DW_AT_name" die)
       d in
 
-  myconcat ""
+  String.concat ""
     (List.map
        (fun (cu,parents,die) ->
 
@@ -4877,7 +4877,7 @@ let analyse_locations (d: dwarf) : analysed_location_data =
 
 
 let pp_analysed_locations1 c cuh (nnls: list (natural * natural * single_location_description)) : string =
-  myconcat ""
+  String.concat ""
     (List.map
        (fun (n1,n2,bs) -> "  " ^ pphex n1 ^ "  " ^ pphex n2 ^ " " ^ parse_and_pp_operations c cuh bs)
        nnls)
@@ -4914,10 +4914,10 @@ let pp_analysed_locations3 c d str (removed:bool) (als: analysed_location_data) 
   List.map
     (fun ((cu,parents,die1),mnnls) ->
       (removed,
-       pp_die_abbrev_var c d cu str false parents die1,
-       pp_type_info_die_DW_AT_type c d cu str die1,
-       pp_analysed_locations2 c cu.cu_header mnnls,
-       pp_die_abbrev_var_parents c d cu str parents)
+       pp_die_abbrev_var c d cu str false parents die1, (*4.5s for only this*)
+       pp_type_info_die_DW_AT_type c d cu str die1, (*12.2s for this and above*)
+       pp_analysed_locations2 c cu.cu_header mnnls, (*12.4s for this and above*)
+       pp_die_abbrev_var_parents c d cu str parents) (*14.4s for this and above*)
     )
     als
 
@@ -4978,7 +4978,7 @@ let pp_analysed_location_data_diff (d: dwarf) (als_old: analysed_location_data) 
 
 
 let pp_analysed_location_data_at_pc (d: dwarf) (alspc: analysed_location_data_at_pc) : string =
-  myconcat "" (List.map
+  String.concat "" (List.map
     (fun ((cu,parents,die),(n1,n2,sld,esl)) ->
       "          " ^
       let name =
@@ -5426,7 +5426,7 @@ let pp_line_number_registerss lnrs =
     )
 
 let pp_evaluated_line_info (eli: evaluated_line_info) : string =
-  myconcat "\n" (List.map (fun (lnh,lnrs) -> pp_line_number_header lnh ^ "\n" ^ pp_line_number_registerss lnrs) eli)
+  String.concat "\n" (List.map (fun (lnh,lnrs) -> pp_line_number_header lnh ^ "\n" ^ pp_line_number_registerss lnrs) eli)
 
 (* readef example:
 Decoded dump of debug contents of section .debug_line:
