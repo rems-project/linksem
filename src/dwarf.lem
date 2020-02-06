@@ -4910,18 +4910,18 @@ let pp_analysed_location_data (d: dwarf) (als: analysed_location_data) : string 
  *)
 
 
-let pp_analysed_locations3 c d str (removed:bool) (als: analysed_location_data) : list (bool(*removed?*) * (string(*name*) * string(*offset*) * string(*kind*)) * string(*type*) * string(*locations*) * string(*parents*)) = 
+let pp_analysed_locations3 c d str (removed:bool) (als: analysed_location_data) : list (bool(*removed?*) * (string(*name*) * string(*offset*) * string(*kind*)) * (unit->string)(*string*)(*type*) * string(*locations*) * (unit->string)(*parents*)) = 
   List.map
     (fun ((cu,parents,die1),mnnls) ->
       (removed,
        pp_die_abbrev_var c d cu str false parents die1, (*4.5s for only this*)
-       pp_type_info_die_DW_AT_type c d cu str die1, (*12.2s for this and above*)
+       (fun () -> pp_type_info_die_DW_AT_type c d cu str die1), (*12.2s for this and above*)
        pp_analysed_locations2 c cu.cu_header mnnls, (*12.4s for this and above*)
-       pp_die_abbrev_var_parents c d cu str parents) (*14.4s for this and above*)
+       (fun () -> pp_die_abbrev_var_parents c d cu str parents)) (*14.4s for this and above*)
     )
     als
 
-let pp_analysed_locations3_diff c d str (als_old: analysed_location_data) (als_new: analysed_location_data) : list (bool(*removed?*) * (string(*name*) * string(*offset*) * string(*kind*)) * string(*type*) * string(*locations*) *string(*parents*)) = 
+let pp_analysed_locations3_diff c d str (als_old: analysed_location_data) (als_new: analysed_location_data) : list (bool(*removed?*) * (string(*name*) * string(*offset*) * string(*kind*)) * (unit->string)(*type*) * string(*locations*) *(unit->string)(*parents*)) = 
   (* maybe alpha sort these? *)
   let ppd_old = pp_analysed_locations3 c d str true als_old  in
   let ppd_new = pp_analysed_locations3 c d str false als_new in 
@@ -4937,7 +4937,7 @@ let pp_analysed_locations3_diff c d str (als_old: analysed_location_data) (als_n
            let same_name_old = (List.filter (fun (removed',(name',offset',kind'),typ',locs',parents') -> (name,offset)=(name',offset')) ppd_old) in
            match same_name_old with
            | [((removed',((name',offset',kind') as y'),typ',locs',parents') as x')] ->
-              if (y,typ,locs) = (y',typ',locs') then 
+              if (y,(*typ,*)locs) = (y',(*typ',*)locs') then 
                 Nothing
               else
                 Just (same_name_old ++ [x])
@@ -4948,15 +4948,15 @@ let pp_analysed_locations3_diff c d str (als_old: analysed_location_data) (als_n
 
   ppd_gone ++ ppd_upd
 
-let pp_analysed_location_format (xs : list (bool(*removed?*) * (string(*name*) * string(*offset*) * string(*kind*)) * string(*type*) * string(*locations*) * string(*parents*))) = 
+let pp_analysed_location_format (xs : list (bool(*removed?*) * (string(*name*) * string(*offset*) * string(*kind*)) * (unit->string)(*string*)(*type*) * string(*locations*) * (unit->string)(*parents*))) = 
   pad_rows 
     (List.map
        (fun ((removed,(name,offset,kind),typ,locs,parents) as x) ->
          [ (if removed then "-" else " ") ^ name
            ^ " (" ^ offset ^ "," ^ kind ^ ") "
-           ^ typ;
+           ^ typ ();
            locs;
-           parents]
+           parents ()]
        )
        xs
     )
