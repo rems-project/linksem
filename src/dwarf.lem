@@ -577,7 +577,7 @@ type line_number_header =
     lnh_opcode_base: natural;
     lnh_standard_opcode_lengths: list natural;
     lnh_include_directories: list (list byte);
-    lnh_file_names: list line_number_file_entry;
+    lnh_file_entries: list line_number_file_entry;
     lnh_comp_dir: maybe string; (* passed down from cu DW_AT_comp_dir *)
   |>
 
@@ -605,6 +605,8 @@ type line_number_registers =
     lnr_discriminator: natural;
   |>
 
+type unpacked_file_entry = (maybe string (*comp_dir*)) * (maybe string (*dir*)) * string (*file*)    
+    
 
 
 
@@ -659,13 +661,13 @@ type inlined_subroutine_const_param =
   iscp_abstract_origin: compilation_unit * (list die) * die;
   iscp_value: integer;
   |>
-    
+
 type inlined_subroutine =
   <|
   is_inlined_subroutine: compilation_unit * (list die) * die;
   is_abstract_origin: compilation_unit * (list die) * die;
   is_name : string;
-  is_call_file: string;
+  is_call_file: unpacked_file_entry;
   is_call_line: natural;
   is_pc_ranges: list (natural * natural);
   is_const_params : list inlined_subroutine_const_param;
@@ -3446,7 +3448,7 @@ let pp_line_number_header lnh =
 ^ "standard_opcode_lengths =            " ^ show lnh.lnh_standard_opcode_lengths ^ "\n"
 ^ "comp_dir =                           " ^ show lnh.lnh_comp_dir ^ "\n"
 ^ "include_directories =                " ^ String.concat ", " (List.map string_of_bytes  lnh.lnh_include_directories) ^ "\n"
-^ "file_names =                         \n\n" ^ String.concat "\n" (List.map pp_line_number_file_entry  lnh.lnh_file_names) ^ "\n"
+^ "file_entries =                   \n\n" ^ String.concat "\n" (List.map pp_line_number_file_entry  lnh.lnh_file_entries) ^ "\n"
 
   
 let pp_line_number_operation lno =
@@ -3567,7 +3569,7 @@ let parse_line_number_header c (comp_dir:maybe string) : parser line_number_head
                 lnh_opcode_base = ob;
                 lnh_standard_opcode_lengths = sols;
                 lnh_include_directories = ids;
-                lnh_file_names = fns;
+                lnh_file_entries = fns;
                 lnh_comp_dir = comp_dir;
                 |>
               )
@@ -3650,6 +3652,7 @@ let parse_line_number_program c (cuh:compilation_unit_header) (comp_dir:maybe st
          |>)
      )
 
+(*TODO: this should use find_natural_attribute_value_of_die *)  
 let line_number_offset_of_compilation_unit c cu =
   match find_attribute_value "DW_AT_stmt_list" cu.cu_die with
   | Just (AV_sec_offset n) -> n
@@ -3670,12 +3673,42 @@ let line_number_program_of_compilation_unit d cu =
 let filename d cu n =
   let lnp = line_number_program_of_compilation_unit d cu in
   if n=0 then Nothing else
-    match mynth (n - 1) lnp.lnp_header.lnh_file_names with
+    match mynth (n - 1) lnp.lnp_header.lnh_file_entries with
     | Just lnfe ->
        Just (string_of_bytes lnfe.lnfe_path)
     | Nothing ->
        Assert_extra.failwith ("line number file entry not found")
     end
+
+let unpack_file_entry lnh file : unpacked_file_entry = 
+  match mynth (file - 1) lnh.lnh_file_entries with
+  | Just lnfe ->
+     let directory =
+       if lnfe.lnfe_directory_index = 0 then
+         Nothing 
+       else
+         match mynth (lnfe.lnfe_directory_index - 1) lnh.lnh_include_directories with
+         | Just d -> Just (string_of_bytes d)
+         | Nothing -> Just "<unpack_file_entry: directory entry not found>"
+         end
+     in
+     (lnh.lnh_comp_dir, directory, string_of_bytes lnfe.lnfe_path)
+   | Nothing ->
+     (Nothing,Nothing,"<unpack_file_entry: file entry not found>")
+   end
+
+
+let pp_ufe (((mcomp_dir,mdir,file) as ufe) : unpacked_file_entry) : string = 
+  file
+  ^ " dir=" ^ match mdir with | Just s->s|Nothing->"<none>" end
+  ^ " comp_dir=" ^ match mcomp_dir with | Just s->s|Nothing->"<none>" end
+
+let pp_ufe_brief (((mcomp_dir,mdir,file) as ufe) : unpacked_file_entry) : string = 
+  file
+  (*
+  ^ " dir=" ^ match mdir with | Just s->s|Nothing->"<none>" end
+  ^ " comp_dir=" ^ match mcomp_dir with | Just s->s|Nothing->"<none>" end
+   *)
    
 let parse_line_number_info c str (d_line: list byte) (cu: compilation_unit) : line_number_program =
   let comp_dir = find_string_attribute_value_of_die "DW_AT_comp_dir" str cu.cu_die in
@@ -5079,6 +5112,121 @@ let filtered_analysed_location_data ds pc =
      end)
     ds.ds_analysed_location_data
 
+(** ********************************************************************** *)
+(** **  estimate source-file line extents of each (non-inlined) subprogram *)
+(** ********************************************************************** *)
+
+(* The line number info associates source-file line numbers to
+   instruction addresses, but doesn't identify which subprogram those
+   line numbers come from.  To recover that, we can use the
+   DW_TAG_subprogram die DW_AT_decl_file and DW_AT_decl_line info,
+   which gives the start of each subprogram.  For C, function
+   definitions cannot be nested, so we can estimate their line-number
+   extents as from their start to the start of the next.  Note that
+   this might be wrong if there are (eg) macro definitions between C
+   functions. Because of the lack of nesting, for C, just taking the
+   top-level DW_TAG_subprogram dies of each compilation unit should be
+   basically ok, and seems also to exclude inlined instances of
+   subprograms (which otherwise we could exclude by discarding any
+   with an abstract origin). However, those top-level subprograms are
+   not necessarily all from the "primary" file of the subprogram, and
+   conceivably some functions in the file might not be included in
+   that compilation unit but appear in another.  We'll therefore take
+   all top-level subprograms from all compilation units, partition by
+   file (up to equality of (compilation directory, include directory,
+   and path)), and then sort.  This assumes that the directory and
+   path strings from the line number info for different compilation
+   units are nicely comparable.
+
+   We also have to identify the compilation unit referred to by a line
+   number file entry that's been reported from the line-number
+   info. The DW_TAG_compile_unit DW_AT_name appears to be the path
+   concatentation (inserting a "/", not just the string concatenation)
+   of the lnfe_directory_index's string and the lnfe_path of one the
+   lnfe's of the line number header pointed to by the compilation
+   unit's DW_AT_stmt_list, but not necessarily any particular such
+   lnfe.*)
+
+
+  
+let subprogram_line_extents_compilation_unit d cu : list (string * unpacked_file_entry * natural) =
+  let c = p_context_of_d d in
+  let subprogram_dies = List.filter (fun die' -> die'.die_abbreviation_declaration.ad_tag = tag_encode "DW_TAG_subprogram") cu.cu_die.die_children in
+
+  let lnp = line_number_program_of_compilation_unit d cu in
+  let lnh = lnp.lnp_header in
+
+  List.mapMaybe
+    (fun die -> 
+      match (find_name_of_die d.d_str die,
+             find_natural_attribute_value_of_die c "DW_AT_decl_file" die, 
+             find_natural_attribute_value_of_die c "DW_AT_decl_line" die) with
+      | (Just name, Just file, Just line) -> 
+         Just (name, unpack_file_entry lnh file, line)
+      | (_,_,_) ->
+         Nothing
+      end)
+    subprogram_dies
+
+(* lookup in an association list and also return the list with that entry (if any) removed *)
+val extract : forall 'b 'c. Eq 'b => 'b -> list ('b * 'c) -> (maybe 'c) * list ('b * 'c)
+let rec extract y yzs =
+  match yzs with
+  | [] -> (Nothing, [])
+  | (y',z')::yzs' ->
+     if y'=y then
+       (Just z', yzs')
+     else
+       let (result,yzs'') = extract y yzs' in
+       (result, (y',z')::yzs'')
+  end
+
+(* partition a list by the result of f, removing duplicates and sorting each partition by lt *)   
+val partitionby: forall 'a 'b. Eq 'a , Eq 'b => ('a -> 'b) -> ('a -> 'a -> bool) -> list 'a -> list ('b * list 'a) -> list ('b * list 'a)
+let rec partitionby f lt xs acc =
+  match xs with
+  | [] -> acc
+  | x::xs' ->
+     let y = f x in 
+     let (result, acc') = extract y acc in
+     let acc'' = 
+       match result with
+       | Just xs'' ->
+          if List.elem x xs'' then acc else ((y, Sorting.insertBy lt x xs'')::acc')
+       | Nothing ->
+          (y,[x])::acc
+       end in
+     partitionby f lt xs' acc''
+   end     
+  
+let subprogram_line_extents d : list (unpacked_file_entry * list (string * unpacked_file_entry * natural) ) =
+  let subprograms : list (string * unpacked_file_entry * natural) = 
+    List.concatMap (subprogram_line_extents_compilation_unit d) d.d_compilation_units in
+  partitionby (fun (name, ufe, line) -> ufe) (fun (name,ufe,line) -> fun (name',ufe',line') -> line < line') subprograms []
+
+let pp_subprograms sles = 
+  String.concat "\n"
+    (List.map 
+       (fun (ufe,sles') ->
+         pp_ufe ufe ^ "\n"
+         ^ String.concat "" (List.map (fun (name, ufe, line) -> "  " ^ show line ^ "  " ^ name  ^ "\n") sles'))
+       sles)
+
+let rec find_by_line line sles line_last name_last =
+  match sles with
+  | [] -> name_last
+  | (name',ufe',line') :: sles' ->
+     if line >= line_last && line < line' then name_last else find_by_line line sles' line' name'
+  end
+
+let subprogram_at_line sld (*subprogram_line_data*) (ufe:unpacked_file_entry) (line:natural) : string =
+  match List.lookup ufe sld with
+  | Nothing -> "no matching unpacked_file_entry"
+  | Just sles -> find_by_line line sles 0 "file preamble"
+  end
+     
+  
+  
 (** ************************************************************ *)
 (** **  analysis of inlined_subroutine data                      *)
 (** ************************************************************ *)
@@ -5112,9 +5260,10 @@ let analyse_inlined_subroutines (d: dwarf) : inlined_subroutine_data =
       let name : string =
         strict_ais (find_name_of_die d.d_str die')
           "no abstract origin name" s abstract_origin in
-      let call_file : string = 
+      let call_file : unpacked_file_entry = 
         let file_index = strict_ais (find_natural_attribute_value_of_die c "DW_AT_call_file" die) "no DW_AT_call_file" s inlined_subroutine in
-        match filename d cu file_index with | Just s -> s | Nothing -> "none" end in
+        unpack_file_entry (line_number_program_of_compilation_unit d cu).lnp_header file_index in
+        (*        match filename d cu file_index with | Just s -> s | Nothing -> "none" end in*)
       let call_line : natural = strict_ais (find_natural_attribute_value_of_die c "DW_AT_call_line" die) "no DW_AT_call_line" s inlined_subroutine  in
       let pc_ranges : list (natural*natural) = 
         strict_ais (closest_enclosing_range c d.d_ranges (cu_base_address cu) [die](*deliberately ignore parents*))
@@ -5172,10 +5321,12 @@ let rec pp_inlined_subroutine_parents (ds:list die) : string =
   end 
        
   
-let pp_inlined_subroutine_header is = 
+let pp_inlined_subroutine_header sld is = 
   is.is_name
-  ^ " inlined from " ^ is.is_call_file ^ ":" ^ show is.is_call_line 
-  ^ " " ^ let (cu,parents,die) = is.is_inlined_subroutine in pp_inlined_subroutine_parents (die::parents)
+  ^ " inlined from " ^ pp_ufe_brief is.is_call_file ^ ":" ^ show is.is_call_line ^ " (" ^ subprogram_at_line sld is.is_call_file is.is_call_line ^ ")" 
+  ^ " "
+  ^ let (cu,parents,die) = is.is_inlined_subroutine in
+    pp_inlined_subroutine_parents (die::parents)
   
 let pp_inlined_subroutine_const_params d is =
   let c = p_context_of_d d in
@@ -5197,24 +5348,24 @@ let pp_inlined_subroutine_const_params d is =
           is.is_const_params)
   end
   
-let pp_inlined_subroutine d is =
-  pp_inlined_subroutine_header is ^ "\n"
+let pp_inlined_subroutine d sld is =
+  pp_inlined_subroutine_header sld is ^ "\n"
   ^ String.concat "" (List.map (fun (n1,n2) -> "  " ^ pphex n1 ^ " " ^ pphex n2 ^ "\n") is.is_pc_ranges)
   ^ pp_inlined_subroutine_const_params d is 
 
-let pp_inlined_subroutines d iss =
-  String.concat "" (List.map (pp_inlined_subroutine d) iss)           
+let pp_inlined_subroutines d sld iss =
+  String.concat "" (List.map (pp_inlined_subroutine d sld) iss)           
 
 
-let pp_inlined_subroutine_by_range d ((n1,n2),((m:natural),(n:natural)),is) =
+let pp_inlined_subroutine_by_range d sld ((n1,n2),((m:natural),(n:natural)),is) =
   pphex n1 ^ " " ^ pphex n2 ^ " "
   ^ (if n<>1 then "("^show m^" of "^show n^") " else "")
-  ^  pp_inlined_subroutine_header is
+  ^  pp_inlined_subroutine_header sld is 
   ^"\n"
   ^ (if m=0 then pp_inlined_subroutine_const_params d is else "")
 
-let pp_inlined_subroutines_by_range d iss =
-  String.concat "" (List.map (pp_inlined_subroutine_by_range d) iss)           
+let pp_inlined_subroutines_by_range d sld iss =
+  String.concat "" (List.map (pp_inlined_subroutine_by_range d sld) iss)           
   
 
 (** ************************************************************ *)
@@ -5468,28 +5619,15 @@ CU: /var/local/stephen/work/devel/rsem/ppcmem2/system/tests-adhoc/simple-malloc/
 *)
 
 
-let source_lines_of_address (ds:dwarf_static) (a: natural) : list (maybe string (*comp_dir*) * maybe string (*dir*) * string (*file*) * natural * line_number_registers) =
+
+let source_lines_of_address (ds:dwarf_static) (a: natural) : list ( unpacked_file_entry * natural * line_number_registers) =
   List.concat
     (List.map
        (fun (lnh, lnrs) ->
          myfiltermaybe
            (fun lnr ->
              if a = lnr.lnr_address && not lnr.lnr_end_sequence then
-               match mynth (lnr.lnr_file - 1) lnh.lnh_file_names with
-               | Just lnfe ->
-                  let directory =
-                    if lnfe.lnfe_directory_index = 0 then
-                      Nothing 
-                    else
-                      match mynth (lnfe.lnfe_directory_index - 1) lnh.lnh_include_directories with
-                      | Just d -> Just (string_of_bytes d)
-                      | Nothing -> Just "<source_lines_of_address: directory entry not found>"
-                      end
-                  in
-                  Just (lnh.lnh_comp_dir, directory, string_of_bytes lnfe.lnfe_path, lnr.lnr_line, lnr)
-               | Nothing ->
-                   Just (Nothing,Nothing,"<source_lines_of_address: file entry not found>", 0, lnr)
-               end
+               Just (unpack_file_entry lnh lnr.lnr_file, lnr.lnr_line, lnr)
              else
                Nothing)
            lnrs
@@ -5583,10 +5721,13 @@ let harness_string_of_elf f1 bs =
    ^ "************** line info *************************\n"
    ^ pp_evaluated_line_info ds.ds_evaluated_line_info
    ^ "************** inlined subroutine info *************************\n"
-   ^ let iss = analyse_inlined_subroutines ds.ds_dwarf in
-     pp_inlined_subroutines ds.ds_dwarf iss 
+   ^ let sld = subprogram_line_extents ds.ds_dwarf in
+     let iss = analyse_inlined_subroutines ds.ds_dwarf in
+     pp_inlined_subroutines ds.ds_dwarf sld iss 
      ^ "************** inlined subroutine info by range *************************\n"
-     ^ pp_inlined_subroutines_by_range ds.ds_dwarf (analyse_inlined_subroutines_by_range iss)
+     ^ pp_inlined_subroutines_by_range ds.ds_dwarf sld (analyse_inlined_subroutines_by_range iss)
+   ^ "************** subprograms info *************************\n"
+   ^ pp_subprograms sld
   end
 
 
