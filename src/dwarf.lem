@@ -642,7 +642,8 @@ type dwarf_static =
     ds_analysed_location_data: analysed_location_data;
     ds_evaluated_frame_info: evaluated_frame_info;
     ds_evaluated_line_info: evaluated_line_info;
-  |>
+    ds_subprogram_line_extents: list (unpacked_file_entry * list (string * unpacked_file_entry * natural) );
+    |>
 
 type dwarf_dynamic_at_pc = analysed_location_data_at_pc
 
@@ -5219,8 +5220,8 @@ let rec find_by_line line sles line_last name_last =
      if line >= line_last && line < line' then name_last else find_by_line line sles' line' name'
   end
 
-let subprogram_at_line sld (*subprogram_line_data*) (ufe:unpacked_file_entry) (line:natural) : string =
-  match List.lookup ufe sld with
+let subprogram_at_line d (*subprogram_line_data*) (ufe:unpacked_file_entry) (line:natural) : string =
+  match List.lookup ufe d.ds_subprogram_line_extents with
   | Nothing -> "no matching unpacked_file_entry"
   | Just sles -> find_by_line line sles 0 "file preamble"
   end
@@ -5321,9 +5322,9 @@ let rec pp_inlined_subroutine_parents (ds:list die) : string =
   end 
        
   
-let pp_inlined_subroutine_header sld is = 
+let pp_inlined_subroutine_header ds is = 
   is.is_name
-  ^ " inlined from " ^ pp_ufe_brief is.is_call_file ^ ":" ^ show is.is_call_line ^ " (" ^ subprogram_at_line sld is.is_call_file is.is_call_line ^ ")" 
+  ^ " inlined from " ^ pp_ufe_brief is.is_call_file ^ ":" ^ show is.is_call_line ^ " (" ^ subprogram_at_line ds is.is_call_file is.is_call_line ^ ")" 
   ^ " "
   ^ let (cu,parents,die) = is.is_inlined_subroutine in
     pp_inlined_subroutine_parents (die::parents)
@@ -5348,24 +5349,24 @@ let pp_inlined_subroutine_const_params d is =
           is.is_const_params)
   end
   
-let pp_inlined_subroutine d sld is =
-  pp_inlined_subroutine_header sld is ^ "\n"
+let pp_inlined_subroutine ds is =
+  pp_inlined_subroutine_header ds is ^ "\n"
   ^ String.concat "" (List.map (fun (n1,n2) -> "  " ^ pphex n1 ^ " " ^ pphex n2 ^ "\n") is.is_pc_ranges)
-  ^ pp_inlined_subroutine_const_params d is 
+  ^ pp_inlined_subroutine_const_params ds.ds_dwarf is 
 
-let pp_inlined_subroutines d sld iss =
-  String.concat "" (List.map (pp_inlined_subroutine d sld) iss)           
+let pp_inlined_subroutines ds iss =
+  String.concat "" (List.map (pp_inlined_subroutine ds) iss)           
 
 
-let pp_inlined_subroutine_by_range d sld ((n1,n2),((m:natural),(n:natural)),is) =
+let pp_inlined_subroutine_by_range ds ((n1,n2),((m:natural),(n:natural)),is) =
   pphex n1 ^ " " ^ pphex n2 ^ " "
   ^ (if n<>1 then "("^show m^" of "^show n^") " else "")
-  ^  pp_inlined_subroutine_header sld is 
+  ^  pp_inlined_subroutine_header ds is 
   ^"\n"
-  ^ (if m=0 then pp_inlined_subroutine_const_params d is else "")
+  ^ (if m=0 then pp_inlined_subroutine_const_params ds.ds_dwarf is else "")
 
-let pp_inlined_subroutines_by_range d sld iss =
-  String.concat "" (List.map (pp_inlined_subroutine_by_range d sld) iss)           
+let pp_inlined_subroutines_by_range ds iss =
+  String.concat "" (List.map (pp_inlined_subroutine_by_range ds) iss)           
   
 
 (** ************************************************************ *)
@@ -5620,14 +5621,14 @@ CU: /var/local/stephen/work/devel/rsem/ppcmem2/system/tests-adhoc/simple-malloc/
 
 
 
-let source_lines_of_address (ds:dwarf_static) sld (a: natural) : list ( unpacked_file_entry * natural * line_number_registers * string (*function*)) =
+let source_lines_of_address (ds:dwarf_static) (a: natural) : list ( unpacked_file_entry * natural * line_number_registers * string (*function*)) =
   List.concat
     (List.map
        (fun (lnh, lnrs) ->
          myfiltermaybe
            (fun lnr ->
              if a = lnr.lnr_address && not lnr.lnr_end_sequence then
-               Just (unpack_file_entry lnh lnr.lnr_file, lnr.lnr_line, lnr, subprogram_at_line sld (unpack_file_entry lnh lnr.lnr_file) lnr.lnr_line)
+               Just (unpack_file_entry lnh lnr.lnr_file, lnr.lnr_line, lnr, subprogram_at_line ds (unpack_file_entry lnh lnr.lnr_file) lnr.lnr_line)
              else
                Nothing)
            lnrs
@@ -5653,13 +5654,15 @@ let extract_dwarf_static f1 =
         evaluate_frame_info dwarf in
       let eli : evaluated_line_info =
         List.map (fun lnp -> (lnp.lnp_header, evaluate_line_number_program lnp)) dwarf.d_line_info in
+      let sle = subprogram_line_extents dwarf in
       let ds =
         <|
         ds_dwarf = dwarf;
         ds_analysed_location_data = ald;
         ds_evaluated_frame_info = efi;
         ds_evaluated_line_info = eli;
-      |> in
+        ds_subprogram_line_extents = sle;
+        |> in
       Just ds
   end
 
@@ -5721,13 +5724,12 @@ let harness_string_of_elf f1 bs =
    ^ "************** line info *************************\n"
    ^ pp_evaluated_line_info ds.ds_evaluated_line_info
    ^ "************** inlined subroutine info *************************\n"
-   ^ let sld = subprogram_line_extents ds.ds_dwarf in
-     let iss = analyse_inlined_subroutines ds.ds_dwarf in
-     pp_inlined_subroutines ds.ds_dwarf sld iss 
+   ^ let iss = analyse_inlined_subroutines ds.ds_dwarf in
+     pp_inlined_subroutines ds iss 
      ^ "************** inlined subroutine info by range *************************\n"
-     ^ pp_inlined_subroutines_by_range ds.ds_dwarf sld (analyse_inlined_subroutines_by_range iss)
+     ^ pp_inlined_subroutines_by_range ds (analyse_inlined_subroutines_by_range iss)
    ^ "************** subprograms info *************************\n"
-   ^ pp_subprograms sld
+   ^ pp_subprograms ds.ds_subprogram_line_extents
   end
 
 
