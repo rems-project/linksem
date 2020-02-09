@@ -5620,14 +5620,14 @@ CU: /var/local/stephen/work/devel/rsem/ppcmem2/system/tests-adhoc/simple-malloc/
 
 
 
-let source_lines_of_address (ds:dwarf_static) (a: natural) : list ( unpacked_file_entry * natural * line_number_registers) =
+let source_lines_of_address (ds:dwarf_static) sld (a: natural) : list ( unpacked_file_entry * natural * line_number_registers * string (*function*)) =
   List.concat
     (List.map
        (fun (lnh, lnrs) ->
          myfiltermaybe
            (fun lnr ->
              if a = lnr.lnr_address && not lnr.lnr_end_sequence then
-               Just (unpack_file_entry lnh lnr.lnr_file, lnr.lnr_line, lnr)
+               Just (unpack_file_entry lnh lnr.lnr_file, lnr.lnr_line, lnr, subprogram_at_line sld (unpack_file_entry lnh lnr.lnr_file) lnr.lnr_line)
              else
                Nothing)
            lnrs
