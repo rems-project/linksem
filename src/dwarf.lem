@@ -607,7 +607,7 @@ type line_number_registers =
 
 type unpacked_file_entry = (maybe string (*comp_dir*)) * (maybe string (*dir*)) * string (*file*)    
     
-
+type unpacked_decl = maybe (unpacked_file_entry * nat(*line*))
 
 
 (* top-level collection of dwarf data *)
@@ -685,113 +685,7 @@ type inlined_subroutine_data_by_range = list ( (natural*natural)(*range*) * (nat
     
 (* type descriptions *)
 (* NB these do not cover all the DWARF-expressible types; only some common C cases *)
-(* unclear whether this should actually be recursive or whether we should just reference subterms by their dies *)
-(*    
-type base_type =  (* ignore DW_endianity and DW_bitsize for now *)
-  <| 
-  bt_die: (compilation_unit * die);
-  bt_name: string;
-  bt_encoding: natural; (* must be one of the DW_ATE_* encodings *)
-  |>
-
-type pointer_type 't =
-  <|
-  pt_die: (compilation_unit * die);
-  pt_type: 't;
-  |>
-
-type const_type 't =
-  <|
-  ct_die: (compilation_unit * die);
-  ct_type: 't;
-  |>
-
-type volatile_type 't =
-  <|
-  vt_die: (compilation_unit * die);
-  vt_type: 't;
-  |>
-
-type restrict_type 't =
-  <|
-  rt_die: (compilation_unit * die);
-  rt_type: 't;
-  |>
-    
-type typedef_type 't = 
-  <|
-  tt_die: (compilation_unit * die);
-  tt_name: string;
-  tt_type: 't; 
-  tt_decl_file: maybe string;
-  tt_decl_line: maybe natural;
-  |>
-
-type array_dimension 't = natural(*count*) * 't(*subrange type*)
-    
-type array_type 't =
-  <|
-  at_die: (compilation_unit * die);
-  at_name: string;
-  at_type: 't ;
-  at_dims: list (array_dimension 't);
-  |>
-
-type aggregate_type_kind =
-  | Atk_structure
-  | Atk_union
-
-type aggregate_member 't = 
-  <|
-  am_die: (compilation_unit * die);
-  am_name: maybe string;
-  am_type: 't;
-  am_data_member_location: natural
-|>
-  
-type aggregate_type 't = 
-  <|
-  ag_die: (compilation_unit * die);
-  ag_kind: aggregate_type_kind;
-  ag_name: maybe string;
-  ag_byte_size: maybe natural;
-  ag_decl_file: maybe string;
-  ag_decl_line: maybe natural;
-  ag_members: list (aggregate_member 't);
-  |>
-
-type enumeration_member = 
-  <|
-  em_die: (compilation_unit * die);
-  em_name: maybe string;
-  em_const_value: natural;
-|>
-  
-type enumeration_type 't = 
-  <|
-  et_die: (compilation_unit * die);
-  et_type: maybe 't;
-  et_name: maybe string;
-  et_byte_size: maybe natural;
-  et_decl_file: maybe string;
-  et_decl_line: maybe natural;
-  et_members: list (enumeration_member);
-  |>
-
-type pre_c_type 't = 
-  | CT_base of base_type
-  | CT_pointer of (pointer_type 't)
-  | CT_const of (const_type 't)
-  | CT_volatile of (volatile_type 't)
-  | CT_restrict of (restrict_type 't)
-  | CT_typedef of (typedef_type 't)
-  | CT_array of (array_type 't)
-  | CT_aggregate of (aggregate_type 't)
-  | CT_enumeration of (enumeration_type 't)
-
-type c_type =
-  | CT of (pre_c_type c_type)
- *)
+(* ignore base type DW_endianity and DW_bitsize for now *)
 type cupdie = compilation_unit * (list die) * die        
 
 type decl =
@@ -824,7 +718,73 @@ type c_type_top 't =
 type c_type =
   | CT of (c_type_top c_type)
         
+(* simple die tree *)
 
+(* this unifies variables and formal parameters, and also subprograms
+   and inlined_subroutines (but not lexical_blocks).  Debatable what's
+   best *)
+(* not including DW_AT_low_pc/DW_AT_high_pc or DW_AT_ranges - might want that*)
+(* also not including per-instruction line number info *)
+        
+type variable_or_formal_parameter_kind =
+  | SVPK_var
+  | SVPK_param of maybe inlined_subroutine_const_param
+
+type sdt_unspecified_parameter = unit
+
+type sdt_variable_or_formal_parameter =
+  <|
+  svfp_cupdie : cupdie;
+  svfp_kind : variable_or_formal_parameter_kind;
+  svfp_c_type : c_type;
+  svfp_external : bool;
+  svfp_locations : maybe (list (natural * natural * single_location_description));
+  svfp_decl : maybe unpacked_decl;
+|>
+  
+type sdt_subroutine_kind =
+  | SSK_subprogram
+  | SSK_inlined_subroutine of inlined_subroutine
+        
+type sdt_subroutine = (* subprogram or inlined subroutine *)
+  <|
+  ss_cupdie : cupdie;
+  ss_name : string;
+  ss_kind : sdt_subroutine_kind;
+  ss_vars : list sdt_variable_or_formal_parameter;
+  ss_unspecified_parameters : list sdt_unspecified_parameter;
+  ss_subroutines : list sdt_subroutine;  (* invariant: all inlined*)
+  ss_lexical_blocks : list sdt_lexical_block;
+  ss_decl : maybe unpacked_decl;
+  ss_noreturn : bool;
+  ss_external : bool;
+  |>
+
+and sdt_lexical_block =
+  <|
+  slb_cupdie : cupdie;
+  slb_variables : list sdt_variable_or_formal_parameter; (* invariant: all variables *)
+  slb_subroutines : list sdt_subroutine; (* invariant: all inlined*)
+  slb_lexical_blocks : list sdt_lexical_block;
+  |>
+    
+type sdt_compilation_unit =
+  <|
+  scu_cupdie : cupdie;
+  scu_subroutine : list sdt_subroutine;   (* invariant: none inlined(?) *)
+  scu_vars : list sdt_variable_or_formal_parameter;
+  |>
+
+type sdt_dwarf =
+  <| sd_compilation_units : list sdt_compilation_unit;
+  |>
+
+
+  
+
+        
+
+        
   
 (** ************************************************************ *)
 (** **  missing pervasives  ************************************ *)
