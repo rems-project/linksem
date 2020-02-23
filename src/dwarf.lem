@@ -122,8 +122,9 @@ probably be better for execution but not for theorem-prover use.
 
 (* workaround debug.lem linking *)
 val print_endline : string -> unit
-declare ocaml target_rep function print_endline = `print_endline`
+declare ocaml target_rep function print_endline = `(function s -> print_endline s; flush stdout)`
 
+                                                    
 let my_debug s = () (*print_endline s*)
 let my_debug2 s = () (*print_endline s*)
 let my_debug3 s = () (*print_endline s*)
@@ -607,7 +608,7 @@ type line_number_registers =
 
 type unpacked_file_entry = (maybe string (*comp_dir*)) * (maybe string (*dir*)) * string (*file*)    
     
-type unpacked_decl = maybe (unpacked_file_entry * nat(*line*))
+type unpacked_decl = unpacked_file_entry * nat(*line*)
 
 
 (* top-level collection of dwarf data *)
@@ -728,29 +729,33 @@ type c_type =
         
 type variable_or_formal_parameter_kind =
   | SVPK_var
-  | SVPK_param of maybe inlined_subroutine_const_param
+  | SVPK_param
 
 type sdt_unspecified_parameter = unit
 
 type sdt_variable_or_formal_parameter =
   <|
   svfp_cupdie : cupdie;
+  svfp_name : string;
   svfp_kind : variable_or_formal_parameter_kind;
-  svfp_c_type : c_type;
+  svfp_type : c_type;
+  svfp_const_value : maybe integer;
   svfp_external : bool;
-  svfp_locations : maybe (list (natural * natural * single_location_description));
+  svfp_declaration : bool;
+  svfp_locations : maybe (list (natural * natural * list operation (*the parsed single_location_description*)));
   svfp_decl : maybe unpacked_decl;
 |>
   
 type sdt_subroutine_kind =
   | SSK_subprogram
-  | SSK_inlined_subroutine of inlined_subroutine
+  | SSK_inlined_subroutine
         
 type sdt_subroutine = (* subprogram or inlined subroutine *)
   <|
   ss_cupdie : cupdie;
-  ss_name : string;
+  ss_name : maybe string;
   ss_kind : sdt_subroutine_kind;
+  ss_type : maybe c_type;
   ss_vars : list sdt_variable_or_formal_parameter;
   ss_unspecified_parameters : list sdt_unspecified_parameter;
   ss_subroutines : list sdt_subroutine;  (* invariant: all inlined*)
@@ -763,7 +768,7 @@ type sdt_subroutine = (* subprogram or inlined subroutine *)
 and sdt_lexical_block =
   <|
   slb_cupdie : cupdie;
-  slb_variables : list sdt_variable_or_formal_parameter; (* invariant: all variables *)
+  slb_vars : list sdt_variable_or_formal_parameter; (* invariant: all variables *)
   slb_subroutines : list sdt_subroutine; (* invariant: all inlined*)
   slb_lexical_blocks : list sdt_lexical_block;
   |>
@@ -771,7 +776,8 @@ and sdt_lexical_block =
 type sdt_compilation_unit =
   <|
   scu_cupdie : cupdie;
-  scu_subroutine : list sdt_subroutine;   (* invariant: none inlined(?) *)
+  scu_name : string;
+  scu_subroutines : list sdt_subroutine;   (* invariant: none inlined(?) *)
   scu_vars : list sdt_variable_or_formal_parameter;
   |>
 
@@ -2152,6 +2158,17 @@ val parse_operations : p_context -> compilation_unit_header -> parser (list oper
 let parse_operations c cuh =
   parse_list (parse_operation c cuh)
 
+let parse_operations_bs c cuh bs : list operation =
+  let pc = <|pc_bytes = bs; pc_offset = 0  |> in
+  match parse_operations c cuh pc with
+  | PR_fail s pc' -> Assert_extra.failwith ("parse_operations_bs fail: " ^ pp_parse_fail s pc')
+  | PR_success ops pc' -> 
+     let _ = if pc'.pc_bytes <> [] then Assert_extra.failwith ("parse_operations_bs extra non-parsed bytes") else () in
+     ops
+  end
+
+
+  
 val parse_and_pp_operations : p_context -> compilation_unit_header -> list byte -> string
 let parse_and_pp_operations c cuh bs =
   let pc = <|pc_bytes = bs; pc_offset = 0  |> in
@@ -2362,6 +2379,11 @@ let integer_of_constant_attribute_value c av : integer =
   | _ -> Assert_extra.failwith ("natural_of_constant_attribute_value fail")
   end
 
+let bool_of_flag_attribute_value av : bool =
+  match av with
+  | AV_flag b -> b
+  | _ -> Assert_extra.failwith ("bool_of_maybe_flag_attribute_value fail")
+  end
    
 let reference_of_reference_attribute_value c d cu str av : maybe (compilation_unit * (list die) * die) =
   match av with
@@ -2423,6 +2445,9 @@ let find_integer_attribute_value_of_die c (an: string) (die:die) : maybe integer
       Nothing
   end 
 
+let find_flag_attribute_value_of_die (an: string) (die:die) : maybe bool =  
+  Maybe.map bool_of_flag_attribute_value (find_attribute_value an die)
+
   
 let find_name_of_die str die : maybe string =
   find_string_attribute_value_of_die "DW_AT_name" str die
@@ -2474,6 +2499,14 @@ let find_reference_attribute_using_abstract_origin c d cu str an die : maybe (co
 let find_DW_AT_type_of_die_using_abstract_origin c d cu str die : maybe (compilation_unit * (list die) * die) =
   find_reference_attribute_using_abstract_origin c d cu str "DW_AT_type" die
 
+let find_flag_attribute_value_of_die_using_abstract_origin d (an: string) ((cu,parents,die):cupdie) : maybe bool =  
+  let c = p_context_of_d d in
+  match find_attribute_value_using_abstract_origin c d cu d.d_str an die with
+  | Nothing -> Nothing
+  | Just (cu',av) ->
+     Just (bool_of_flag_attribute_value av)
+  end
+  
 
 (** compilation unit header: pp and parsing *)
 
@@ -2848,6 +2881,9 @@ Contents of the .debug_loc section:
     00000039 000000000040017c 0000000000400180 (DW_OP_lit1; DW_OP_stack_value)
 *)
 
+  
+
+      
 let pp_location_list_entry c (cuh:compilation_unit_header) (offset:natural) (x:location_list_entry) : string =
   "    " ^ pphex offset
   ^ " " ^ pphex x.lle_beginning_address_offset
@@ -4605,7 +4641,46 @@ let analyse_type_info_top c (d: dwarf) (cupdie: cupdie) : c_type_top cupdie =
   else 
     
     Assert_extra.failwith "analyse_type_info_top didn't recognise tag"
-    
+
+
+let rec analyse_type_info_deep (d: dwarf) cupdie : c_type = 
+  let c = p_context_of_d d in
+  let (cu,parents,die) = cupdie in
+  let (typ:c_type_top cupdie) = analyse_type_info_top c (d: dwarf) cupdie in
+  match typ with
+  | CT_base cupdie name encoding mbyte_size -> CT (CT_base cupdie name encoding mbyte_size) 
+  | CT_pointer cupdie mtyp'  -> CT (CT_pointer cupdie (Maybe.map (analyse_type_info_deep d) mtyp'))
+  | CT_const cupdie mtyp'    -> CT (CT_const cupdie (Maybe.map (analyse_type_info_deep d) mtyp'))
+  | CT_volatile cupdie typ' ->  CT (CT_volatile cupdie (analyse_type_info_deep d typ'))
+  | CT_restrict cupdie typ' -> CT (CT_restrict cupdie (analyse_type_info_deep d typ'))
+  | CT_typedef cupdie name typ' decl -> CT (CT_typedef cupdie name (analyse_type_info_deep d typ') decl)
+  | CT_array cupdie typ' dims -> CT (CT_array cupdie (analyse_type_info_deep d typ') 
+     (List.map (fun (mcount,subrange_typ) -> (mcount, (analyse_type_info_deep d subrange_typ))) dims))
+  | CT_aggregate cupdie atk mname mbyte_size decl members ->
+     CT (CT_aggregate cupdie atk mname mbyte_size decl [](*(List.map (fun ((cupdie,mname,typ,data_member_location) as am) -> (cupdie,mname,(analyse_type_info_deep d typ),data_member_location))members)*))
+  | CT_enumeration cupdie mname mtyp' mbyte_size decl members ->
+     CT(CT_enumeration cupdie mname (Maybe.map (analyse_type_info_deep d) mtyp') mbyte_size decl members)
+  end
+
+let find_DW_AT_type_of_die_deep d cupdie : maybe c_type =
+  let c = p_context_of_d d in
+  let (cu,parents,die) = cupdie in
+  match find_reference_attribute_of_die c d cu d.d_str "DW_AT_type" die with
+  | Nothing -> Nothing
+  | Just cupdie' ->
+     Just (analyse_type_info_deep d cupdie')
+  end
+
+let find_DW_AT_type_of_die_deep_using_abstract_origin d cupdie : maybe c_type =
+  let c = p_context_of_d d in
+  let (cu,parents,die) = cupdie in
+  match find_reference_attribute_using_abstract_origin c d cu d.d_str "DW_AT_type" die with
+  | Nothing -> Nothing
+  | Just cupdie' ->
+     Just (analyse_type_info_deep d cupdie')
+  end
+   
+  
 (* analyse and pp C type structure, but without going into the definitions of aggregate or enumeration types *)
 let pp_aggregate_type_kind atk =
   match atk with
@@ -4615,11 +4690,39 @@ let pp_aggregate_type_kind atk =
 
 let pp_cupdie (cu,parents,die) = pp_pos cu.cu_header.cuh_offset ^ "/" ^ pp_pos die.die_offset
 
+let pp_cupdie3 (cu,parents,die) = pp_pos cu.cu_header.cuh_offset ^ "/" ^ String.concat "/" (List.map (fun p -> pp_pos p.die_offset) parents) ^ "/" ^ pp_pos die.die_offset
+                                                              
 let pp_mbyte_size mbyte_size = "size:" ^ match mbyte_size with | Just n -> show n | Nothing -> "?" end
-                      
+
+(* pp the top-level structure of a C type, omitting aggregate-type and enum member definitions*)   
+let pp_type_info_top (ppa:'a->string) (typ:c_type_top 'a) : string = 
+  match typ with
+  | CT_base cupdie name encoding mbyte_size -> 
+     name ^ " (base type, " ^ match lookup_aB_a encoding base_type_attribute_encodings with Just s -> s | Nothing -> show encoding end ^ " " ^ pp_mbyte_size mbyte_size ^ ")"
+  | CT_pointer cupdie mtyp'  -> "pointer("  ^ match mtyp' with | Just typ' -> ppa typ' | Nothing -> "no type" end ^ ")"
+  | CT_const cupdie mtyp'    -> "const("    ^ match mtyp' with Just typ'->ppa typ' | Nothing -> "no type" end ^ ")"
+  | CT_volatile cupdie typ' -> "volatile(" ^ ppa typ' ^ ")"
+  | CT_restrict cupdie typ' -> "restrict(" ^ ppa typ' ^ ")"
+  | CT_typedef cupdie name typ' decl -> "typedef("^name^"="^ppa typ' ^ ")"
+  | CT_array cupdie typ' dims ->
+     ppa typ' ^ String.concat "" (List.map (fun (mcount,subrange_typ) -> "["^match mcount with | Just count -> show count | Nothing -> "no count" end ^"]") dims)
+  | CT_aggregate cupdie atk mname mbyte_size decl members -> pp_aggregate_type_kind atk ^ " " ^ (match mname with | Just s -> s | Nothing -> "noname" end) ^ pp_cupdie cupdie
+  | CT_enumeration cupdie mname mtyp' mbyte_size decl members -> "enum" ^ " " ^ (match mname with | Just s -> s | Nothing -> "noname" end) ^ pp_cupdie cupdie
+  end
+
+
+let rec pp_type_info_deep (ctyp:c_type) : string = 
+  let ppa = pp_type_info_deep in
+  match ctyp with
+  | CT typ -> 
+     pp_type_info_top ppa typ
+  end
+   
 let rec pp_type_info_die c (d: dwarf) cupdie : string = 
-  let (cu,parents,die) = cupdie in
   let (typ:c_type_top cupdie) = analyse_type_info_top c (d: dwarf) cupdie in
+  let ppa = pp_type_info_die c d in
+  pp_type_info_top ppa typ
+(*
   match typ with
   | CT_base cupdie name encoding mbyte_size -> 
      name ^ " (base type, " ^ match lookup_aB_a encoding base_type_attribute_encodings with Just s -> s | Nothing -> show encoding end ^ " " ^ pp_mbyte_size mbyte_size ^ ")"
@@ -4633,6 +4736,7 @@ let rec pp_type_info_die c (d: dwarf) cupdie : string =
   | CT_aggregate cupdie atk mname mbyte_size decl members -> pp_aggregate_type_kind atk ^ " " ^ (match mname with | Just s -> s | Nothing -> "noname" end) ^ pp_cupdie cupdie
   | CT_enumeration cupdie mname mtyp' mbyte_size decl members -> "enum" ^ " " ^ (match mname with | Just s -> s | Nothing -> "noname" end) ^ pp_cupdie cupdie
   end
+ *)
    
     
 (* expect the die to have a DW_AT_type, and pp it *)
@@ -5597,6 +5701,8 @@ let source_lines_of_address (ds:dwarf_static) (a: natural) : list ( unpacked_fil
     )
 
 
+
+  
 (** ************************************************************ *)
 (** **  collecting all the statically calculated analysis info   *)
 (** ************************************************************ *)
@@ -5627,6 +5733,204 @@ let extract_dwarf_static f1 =
   end
 
 
+
+(** ************************************************************ *)
+(** **  collect simple die tree view                             *)
+(** ************************************************************ *)
+
+let decl_of_die d cu die : maybe (unpacked_file_entry * nat (*line*)) = 
+  let c = p_context_of_d d in
+  let lnp = line_number_program_of_compilation_unit d cu in
+  let lnh = lnp.lnp_header in
+  match (find_natural_attribute_value_of_die c "DW_AT_decl_file" die, 
+            find_natural_attribute_value_of_die c "DW_AT_decl_line" die) with
+  | (Just file, Just line) -> 
+     Just (unpack_file_entry lnh file, natFromNatural line)
+  | (_,_) ->
+     Nothing
+  end
+
+let mk_sdt_unspecified_parameter (d:dwarf) cu parents die : maybe sdt_unspecified_parameter =
+  if not(List.elem die.die_abbreviation_declaration.ad_tag [tag_encode "DW_TAG_unspecified_parameters"])
+  then Nothing
+  else Just ()
+
+   
+
+let strict_msvfp x e s z =
+  match x with
+  | Just y -> y
+  | Nothing ->
+     Assert_extra.failwith ("mk_sdt_variable_or_formal_parameter strict failure " ^ e ^ " on \n" ^ s z ^ "\n")
+  end
+
+let mk_sdt_variable_or_formal_parameter (d:dwarf) cu parents die : maybe sdt_variable_or_formal_parameter =
+  if not(List.elem die.die_abbreviation_declaration.ad_tag [tag_encode "DW_TAG_variable"; tag_encode "DW_TAG_formal_parameter"])
+  then Nothing
+  else
+
+    let c = p_context_of_d d in
+    let s (cu,parents,die) = pp_die c cu.cu_header d.d_str true 0 false die in
+
+    let cupdie = (cu,parents,die) in
+    let kind = if die.die_abbreviation_declaration.ad_tag = tag_encode "DW_TAG_variable" then  SVPK_var else if die.die_abbreviation_declaration.ad_tag = tag_encode "DW_TAG_formal_parameter" then SVPK_param else Assert_extra.failwith ("unreachable bad kind") in
+
+    Just (
+    <|
+    svfp_cupdie = cupdie;
+    svfp_kind = kind;
+    svfp_name = strict_msvfp (find_name_of_die_using_abstract_origin c d cu d.d_str die) "no name" s cupdie;
+    svfp_type =  strict_msvfp (find_DW_AT_type_of_die_deep_using_abstract_origin d cupdie) "no type" s cupdie;
+    svfp_const_value = find_integer_attribute_value_of_die c "DW_AT_const_value" die;
+    svfp_external = match find_flag_attribute_value_of_die_using_abstract_origin d "DW_AT_external" cupdie with Just b -> b | Nothing -> false end;
+    svfp_declaration = match find_flag_attribute_value_of_die_using_abstract_origin d "DW_AT_declaration" cupdie with Just b -> b | Nothing -> false end;
+    svfp_locations =
+      let base_address = cu_base_address cu in
+      let interpreted_locations : maybe (list (natural * natural * single_location_description)) =
+        interpreted_location_of_die c cu.cu_header d.d_loc d.d_ranges base_address parents die in
+      Maybe.map (fun nnbss -> List.map (fun (n1,n2,bs) -> (n1,n2,parse_operations_bs c cu.cu_header bs)) nnbss) interpreted_locations;
+    svfp_decl = decl_of_die d cu die;
+    |> )
+   
+let strict_mss x e s z =
+  match x with
+  | Just y -> y
+  | Nothing ->
+     Assert_extra.failwith ("mk_sdt_subroutine strict failure " ^ e ^ " on \n" ^ s z ^ "\n")
+  end
+   
+let rec mk_sdt_subroutine (d:dwarf) (cu:compilation_unit) parents (die:die) : maybe sdt_subroutine =
+  if not(List.elem die.die_abbreviation_declaration.ad_tag [tag_encode "DW_TAG_subprogram"; tag_encode "DW_TAG_inlined_subroutine"])
+  then Nothing
+  else
+    let c = p_context_of_d d in
+    (* let s (cu,parents,die) : string = pp_die c cu.cu_header d.d_str true 0 false die in*)
+    
+    let cupdie = (cu, parents, die) in
+    let parents' = die::parents in
+    let kind = if die.die_abbreviation_declaration.ad_tag = tag_encode "DW_TAG_subprogram" then SSK_subprogram else if die.die_abbreviation_declaration.ad_tag = tag_encode "DW_TAG_inlined_subroutine" then SSK_inlined_subroutine else Assert_extra.failwith ("unreachable bad kind") in
+    Just (
+        <|
+        ss_cupdie = cupdie;
+        ss_name = (*strict_mss ( *)find_name_of_die_using_abstract_origin c d cu d.d_str die(* ) "no name" s cupdie;*);
+        ss_kind = kind;
+        ss_type = find_DW_AT_type_of_die_deep(*_using_abstract_origin*) d cupdie;
+        ss_vars = List.mapMaybe (mk_sdt_variable_or_formal_parameter d cu parents') die.die_children; 
+        ss_unspecified_parameters = List.mapMaybe (mk_sdt_unspecified_parameter d cu parents') die.die_children; 
+        ss_subroutines  = List.mapMaybe (mk_sdt_subroutine d cu parents') die.die_children; 
+        ss_lexical_blocks = List.mapMaybe (mk_sdt_lexical_block d cu parents') die.die_children; 
+        ss_decl = decl_of_die d cu die; 
+        ss_noreturn = match find_flag_attribute_value_of_die_using_abstract_origin d "DW_AT_noreturn" cupdie with Just b -> b | Nothing -> false end;
+        ss_external = match find_flag_attribute_value_of_die_using_abstract_origin d "DW_AT_external" cupdie with Just b -> b | Nothing -> false end;
+        |> )
+
+  and mk_sdt_lexical_block (d:dwarf) (cu:compilation_unit) parents (die:die) : maybe sdt_lexical_block =
+  if not (die.die_abbreviation_declaration.ad_tag = tag_encode "DW_TAG_lexical_block")
+  then Nothing
+  else
+    let c = p_context_of_d d in
+    (*let s (cu,parents,die) : string = pp_die c cu.cu_header d.d_str true 0 false die in*)
+    
+    let cupdie = (cu, parents, die) in
+    let parents' = die::parents in
+    Just (
+        <|
+        slb_cupdie = cupdie;
+        slb_vars = List.mapMaybe (mk_sdt_variable_or_formal_parameter d cu parents') die.die_children; 
+        slb_subroutines  = List.mapMaybe (mk_sdt_subroutine d cu parents') die.die_children; 
+        slb_lexical_blocks = List.mapMaybe (mk_sdt_lexical_block d cu parents') die.die_children; 
+        |> )
+
+   
+let strict_mscu x e s z =
+  match x with
+  | Just y -> y
+  | Nothing ->
+     Assert_extra.failwith ("mk_sdt_compilation_unit strict failure " ^ e ^ " on \n" ^ s z ^ "\n")
+  end
+
+let mk_sdt_compilation_unit (d:dwarf) (cu:compilation_unit) : sdt_compilation_unit =
+    let c = p_context_of_d d in
+    let s (cu,(parents:list die),die) : string = pp_die c cu.cu_header d.d_str true 0 false die in
+    let cupdie = (cu, [], cu.cu_die) in
+    
+    let parents' = [cu.cu_die] in
+    <|
+    scu_cupdie = (cu, [], cu.cu_die);
+    scu_name = strict_mscu (find_name_of_die d.d_str cu.cu_die) "no name" s cupdie;
+    scu_subroutines = List.mapMaybe (mk_sdt_subroutine d cu parents') cu.cu_die.die_children; 
+    scu_vars = List.mapMaybe (mk_sdt_variable_or_formal_parameter d cu parents') cu.cu_die.die_children;
+    |>
+
+   
+let mk_sdt_dwarf (d:dwarf) : sdt_dwarf =
+  <| sd_compilation_units = List.map (mk_sdt_compilation_unit d) d.d_compilation_units;
+|>
+
+  (* ******************* *)
+
+let pp_sdt_unspecified_parameter (level:natural) (sup:sdt_unspecified_parameter) : string =
+  indent_level true level ^ "unspecified parameters" ^ "\n"
+
+let pp_parsed_single_location_description (level:natural) ((n1:natural), (n2:natural), (ops:list operation)) : string = 
+  let indent = indent_level true level in
+  indent
+  ^ pphex n1 
+  ^ " " ^ pphex n2
+  ^ " (" ^ pp_operations ops ^")"
+    
+let pp_sdt_variable_or_formal_parameter (level:natural) (svfp: sdt_variable_or_formal_parameter) : string =
+  let indent = indent_level true level in
+  ""
+  ^ indent ^ "cupdie:" ^  pp_cupdie3 svfp.svfp_cupdie ^ "\n"
+  ^ indent ^ "name:" ^  svfp.svfp_name ^ "\n"
+  ^ indent ^ "kind:" ^  (match svfp.svfp_kind with SVPK_var -> "var" | SVPK_param -> "param" end) ^ "\n" 
+  ^ indent ^ "type:" ^  pp_type_info_deep svfp.svfp_type ^ "\n"
+  ^ indent ^ "const_value:" ^  show svfp.svfp_const_value ^ "\n"
+  ^ indent ^ "external:" ^  show svfp.svfp_external ^ "\n"
+  ^ indent ^ "declaration:" ^  show svfp.svfp_declaration ^ "\n"
+  ^ indent ^ "locations:" ^ (match svfp.svfp_locations with Nothing -> "none\n" | Just locs -> "\n" ^ String.concat "" (List.map (pp_parsed_single_location_description (level+1)) locs) end)
+  ^ indent ^ "decl:" ^ (match svfp.svfp_decl with Nothing -> "none\n" | Just ((ufe,line) as ud) -> "\n" ^ indent_level true (level+1) ^ pp_ufe ufe ^ " " ^ show line ^ "\n" end)
+   
+let rec pp_sdt_subroutine (level:natural) (ss:sdt_subroutine) : string = 
+  let indent = indent_level true level in
+  ""
+  ^ indent ^ "cupdie:" ^  pp_cupdie3 ss.ss_cupdie ^ "\n"
+  ^ indent ^ "name:" ^  (match ss.ss_name with Nothing -> "none\n" | Just name -> name ^ "\n" end)
+  ^ indent ^ "kind:" ^  (match ss.ss_kind with SSK_subprogram -> "subprogram" | SSK_inlined_subroutine -> "inlined subroutine" end) ^ "\n" 
+  ^ indent ^ "type:" ^  (match ss.ss_type with Nothing -> "none\n" | Just typ -> pp_type_info_deep typ end) ^ "\n"
+  ^ indent ^ "vars:" ^  "\n" ^ String.concat "" (List.map (pp_sdt_variable_or_formal_parameter (level+1)) ss.ss_vars)
+  ^ indent ^ "unspecified_parameters:" ^ (match ss.ss_unspecified_parameters with | [] -> "none" | ups -> String.concat "" (List.map  (pp_sdt_unspecified_parameter (level+1)) ups) end)
+  ^ indent ^ "subroutines :" ^  (match ss.ss_subroutines with | [] -> "none" | sus -> String.concat "" (List.map  (pp_sdt_subroutine (level+1)) sus) end)
+  ^ indent ^ "lexical_blocks:" ^  (match ss.ss_lexical_blocks with | [] -> "none" | lbs -> String.concat "" (List.map  (pp_sdt_lexical_block (level+1)) lbs) end) 
+  ^ indent ^ "decl:" ^  (match ss.ss_decl with Nothing -> "none\n" | Just ((ufe,line) as ud) -> "\n" ^ indent_level true (level+1) ^ pp_ufe ufe ^ " " ^ show line ^ "\n" end)
+  ^ indent ^ "noreturn:" ^ show ss.ss_noreturn 
+  ^ indent ^ "external:" ^  show ss.ss_external
+
+and pp_sdt_lexical_block (level:natural) (lb:sdt_lexical_block) : string = 
+  let indent = indent_level true level in
+  ""
+  ^ indent ^ "cupdie:" ^  pp_cupdie3 lb.slb_cupdie ^ "\n"
+  ^ indent ^ "vars:" ^  "\n" ^ String.concat "" (List.map (pp_sdt_variable_or_formal_parameter (level+1)) lb.slb_vars)
+  ^ indent ^ "subroutines :" ^  (match lb.slb_subroutines with | [] -> "none" | sus -> String.concat "" (List.map  (pp_sdt_subroutine (level+1)) sus) end) 
+  ^ indent ^ "lexical_blocks:" ^  (match lb.slb_lexical_blocks with | [] -> "none" | lbs -> String.concat "" (List.map  (pp_sdt_lexical_block (level+1)) lbs) end) 
+
+let pp_sdt_compilation_unit (level:natural) (cu:sdt_compilation_unit) : string = 
+  let indent = indent_level true level in
+  ""
+  ^ indent ^ "cupdie:" ^  pp_cupdie3 cu.scu_cupdie ^ "\n"
+  ^ indent ^ "name:" ^  cu.scu_name ^ "\n"
+  ^ indent ^ "vars:" ^  "\n" ^ String.concat "" (List.map (pp_sdt_variable_or_formal_parameter (level+1)) cu.scu_vars)
+  ^ indent ^ "subroutines :" ^  (match cu.scu_subroutines with | [] -> "none" | sus -> String.concat "" (List.map  (pp_sdt_subroutine (level+1)) sus) end) 
+
+let pp_sdt_dwarf (sdt_d:sdt_dwarf) : string =
+  let indent_level = 0 in 
+  String.concat "" (List.map (pp_sdt_compilation_unit indent_level) sdt_d.sd_compilation_units)
+
+
+  
+
+   
 
 (** ************************************************************ *)
 (** **  pp of text section                                       *)
@@ -5674,7 +5978,7 @@ let harness_string_of_elf f1 bs =
   match mds with
   | Nothing -> "<no dwarf information extracted>"
   | Just ds ->
-   "" (*pp_text_section f1*)
+     "" (*pp_text_section f1*)
    ^ pp_dwarf ds.ds_dwarf
       (*   ^ analyse_locations_raw c d    *)
    ^ "************** evaluation of frame data *************************\n"
@@ -5690,7 +5994,13 @@ let harness_string_of_elf f1 bs =
      ^ pp_inlined_subroutines_by_range ds (analyse_inlined_subroutines_by_range iss)
    ^ "************** subprograms info *************************\n"
    ^ pp_subprograms ds.ds_subprogram_line_extents
-  end
+   ^ "************** simple die tree *************************\n"
+   ^  "************** simple die tree *************************\n"
+   ^  let sdt_d = mk_sdt_dwarf ds.ds_dwarf in 
+      pp_sdt_dwarf sdt_d
+
+
+end
 
 
 val harness_string_of_elf64_debug_info_section : elf64_file -> byte_sequence -> (*(natural -> string) -> (natural -> string) -> (natural -> string) -> elf64_header -> elf64_section_header_table -> string_table -> *) string
