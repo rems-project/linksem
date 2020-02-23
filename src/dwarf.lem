@@ -5878,7 +5878,8 @@ let pp_parsed_single_location_description (level:natural) ((n1:natural), (n2:nat
   ^ pphex n1 
   ^ " " ^ pphex n2
   ^ " (" ^ pp_operations ops ^")"
-    
+  ^"\n"
+  
 let pp_sdt_variable_or_formal_parameter (level:natural) (svfp: sdt_variable_or_formal_parameter) : string =
   let indent = indent_level true level in
   ""
@@ -5898,11 +5899,11 @@ let rec pp_sdt_subroutine (level:natural) (ss:sdt_subroutine) : string =
   ^ indent ^ "cupdie:" ^  pp_cupdie3 ss.ss_cupdie ^ "\n"
   ^ indent ^ "name:" ^  (match ss.ss_name with Nothing -> "none\n" | Just name -> name ^ "\n" end)
   ^ indent ^ "kind:" ^  (match ss.ss_kind with SSK_subprogram -> "subprogram" | SSK_inlined_subroutine -> "inlined subroutine" end) ^ "\n" 
-  ^ indent ^ "type:" ^  (match ss.ss_type with Nothing -> "none\n" | Just typ -> pp_type_info_deep typ end) ^ "\n"
-  ^ indent ^ "vars:" ^  "\n" ^ String.concat "" (List.map (pp_sdt_variable_or_formal_parameter (level+1)) ss.ss_vars)
-  ^ indent ^ "unspecified_parameters:" ^ (match ss.ss_unspecified_parameters with | [] -> "none" | ups -> String.concat "" (List.map  (pp_sdt_unspecified_parameter (level+1)) ups) end)
-  ^ indent ^ "subroutines :" ^  (match ss.ss_subroutines with | [] -> "none" | sus -> String.concat "" (List.map  (pp_sdt_subroutine (level+1)) sus) end)
-  ^ indent ^ "lexical_blocks:" ^  (match ss.ss_lexical_blocks with | [] -> "none" | lbs -> String.concat "" (List.map  (pp_sdt_lexical_block (level+1)) lbs) end) 
+  ^ indent ^ "type:" ^  (match ss.ss_type with Nothing -> "none\n" | Just typ -> pp_type_info_deep typ ^"\n" end) 
+  ^ indent ^ "vars:" ^  "\n" ^ String.concat "\n" (List.map (pp_sdt_variable_or_formal_parameter (level+1)) ss.ss_vars)
+  ^ indent ^ "unspecified_parameters:" ^ (match ss.ss_unspecified_parameters with | [] -> "none\n" | ups -> String.concat "" (List.map  (pp_sdt_unspecified_parameter (level+1)) ups) end)
+  ^ indent ^ "subroutines :" ^  (match ss.ss_subroutines with | [] -> "none\n" | sus -> String.concat "\n" (List.map  (pp_sdt_subroutine (level+1)) sus) end)
+  ^ indent ^ "lexical_blocks:" ^  (match ss.ss_lexical_blocks with | [] -> "none\n" | lbs -> String.concat "\n" (List.map  (pp_sdt_lexical_block (level+1)) lbs) end) 
   ^ indent ^ "decl:" ^  (match ss.ss_decl with Nothing -> "none\n" | Just ((ufe,line) as ud) -> "\n" ^ indent_level true (level+1) ^ pp_ufe ufe ^ " " ^ show line ^ "\n" end)
   ^ indent ^ "noreturn:" ^ show ss.ss_noreturn 
   ^ indent ^ "external:" ^  show ss.ss_external
@@ -5911,17 +5912,17 @@ and pp_sdt_lexical_block (level:natural) (lb:sdt_lexical_block) : string =
   let indent = indent_level true level in
   ""
   ^ indent ^ "cupdie:" ^  pp_cupdie3 lb.slb_cupdie ^ "\n"
-  ^ indent ^ "vars:" ^  "\n" ^ String.concat "" (List.map (pp_sdt_variable_or_formal_parameter (level+1)) lb.slb_vars)
-  ^ indent ^ "subroutines :" ^  (match lb.slb_subroutines with | [] -> "none" | sus -> String.concat "" (List.map  (pp_sdt_subroutine (level+1)) sus) end) 
-  ^ indent ^ "lexical_blocks:" ^  (match lb.slb_lexical_blocks with | [] -> "none" | lbs -> String.concat "" (List.map  (pp_sdt_lexical_block (level+1)) lbs) end) 
+  ^ indent ^ "vars:" ^  "\n" ^ String.concat "\n" (List.map (pp_sdt_variable_or_formal_parameter (level+1)) lb.slb_vars)
+  ^ indent ^ "subroutines :" ^  (match lb.slb_subroutines with | [] -> "none\n" | sus -> String.concat "\n" (List.map  (pp_sdt_subroutine (level+1)) sus) end) 
+  ^ indent ^ "lexical_blocks:" ^  (match lb.slb_lexical_blocks with | [] -> "none\n" | lbs -> String.concat "\n" (List.map  (pp_sdt_lexical_block (level+1)) lbs) end) 
 
 let pp_sdt_compilation_unit (level:natural) (cu:sdt_compilation_unit) : string = 
   let indent = indent_level true level in
   ""
   ^ indent ^ "cupdie:" ^  pp_cupdie3 cu.scu_cupdie ^ "\n"
   ^ indent ^ "name:" ^  cu.scu_name ^ "\n"
-  ^ indent ^ "vars:" ^  "\n" ^ String.concat "" (List.map (pp_sdt_variable_or_formal_parameter (level+1)) cu.scu_vars)
-  ^ indent ^ "subroutines :" ^  (match cu.scu_subroutines with | [] -> "none" | sus -> String.concat "" (List.map  (pp_sdt_subroutine (level+1)) sus) end) 
+  ^ indent ^ "vars:" ^  "\n" ^ String.concat "\n" (List.map (pp_sdt_variable_or_formal_parameter (level+1)) cu.scu_vars)
+  ^ indent ^ "subroutines :" ^  (match cu.scu_subroutines with | [] -> "none\n" | sus -> String.concat "\n" (List.map  (pp_sdt_subroutine (level+1)) sus) end) 
 
 let pp_sdt_dwarf (sdt_d:sdt_dwarf) : string =
   let indent_level = 0 in 
