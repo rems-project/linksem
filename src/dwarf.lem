@@ -6003,19 +6003,21 @@ let harness_string_of_elf_like_objdump f1 bs =
     
 val harness_string_of_elf : elf_file -> byte_sequence -> string
 let harness_string_of_elf f1 bs =
-  let mds = extract_dwarf_static f1 in
+let mds = extract_dwarf_static f1 in
   match mds with
   | Nothing -> "<no dwarf information extracted>"
   | Just ds ->
      "" (*pp_text_section f1*)
-   ^ pp_dwarf ds.ds_dwarf
+        ^ pp_dwarf ds.ds_dwarf
       (*   ^ analyse_locations_raw c d    *)
+
    ^ "************** evaluation of frame data *************************\n"
    ^ pp_evaluated_frame_info ds.ds_evaluated_frame_info
    ^ "************** analysis of location data *************************\n"
    ^ pp_analysed_location_data ds.ds_dwarf ds.ds_analysed_location_data
    ^ "************** line info *************************\n"
    ^ pp_evaluated_line_info ds.ds_evaluated_line_info
+
    ^ "************** inlined subroutine info *************************\n"
    ^ let iss = analyse_inlined_subroutines ds.ds_dwarf in
      pp_inlined_subroutines ds iss 
