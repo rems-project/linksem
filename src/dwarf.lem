@@ -733,6 +733,8 @@ type variable_or_formal_parameter_kind =
 
 type sdt_unspecified_parameter = unit
 
+
+      
 type sdt_variable_or_formal_parameter =
   <|
   svfp_cupdie : cupdie;
@@ -755,8 +757,10 @@ type sdt_subroutine = (* subprogram or inlined subroutine *)
   ss_cupdie : cupdie;
   ss_name : maybe string;
   ss_kind : sdt_subroutine_kind;
+(*  ss_abstract_origin : maybe cupdie;  (* invariant: non-Nothing iff inlined *)*)
   ss_type : maybe c_type;
   ss_vars : list sdt_variable_or_formal_parameter;
+  ss_pc_ranges : maybe (list (natural*natural));
   ss_unspecified_parameters : list sdt_unspecified_parameter;
   ss_subroutines : list sdt_subroutine;  (* invariant: all inlined*)
   ss_lexical_blocks : list sdt_lexical_block;
@@ -769,6 +773,7 @@ and sdt_lexical_block =
   <|
   slb_cupdie : cupdie;
   slb_vars : list sdt_variable_or_formal_parameter; (* invariant: all variables *)
+  slb_pc_ranges : maybe (list (natural*natural));
   slb_subroutines : list sdt_subroutine; (* invariant: all inlined*)
   slb_lexical_blocks : list sdt_lexical_block;
   |>
@@ -4690,7 +4695,7 @@ let pp_aggregate_type_kind atk =
 
 let pp_cupdie (cu,parents,die) = pp_pos cu.cu_header.cuh_offset ^ "/" ^ pp_pos die.die_offset
 
-let pp_cupdie3 (cu,parents,die) = pp_pos cu.cu_header.cuh_offset ^ "/" ^ String.concat "/" (List.map (fun p -> pp_pos p.die_offset) parents) ^ "/" ^ pp_pos die.die_offset
+let pp_cupdie3 (cu,parents,die) = pp_pos die.die_offset ^ "/" ^ String.concat "/" (List.map (fun p -> pp_pos p.die_offset) parents) ^ "/" ^ pp_pos cu.cu_header.cuh_offset
                                                               
 let pp_mbyte_size mbyte_size = "size:" ^ match mbyte_size with | Just n -> show n | Nothing -> "?" end
 
@@ -4867,27 +4872,44 @@ don't cover where we are?)
 
 For each variable and formal parameter that has a DW_AT_name, we'll calculate a list of pairs of a concrete (low,high) range and a location expression.
 *)
+let cu_base_address cu =
+  match find_attribute_value "DW_AT_low_pc" cu.cu_die with
+  | Just (AV_addr n) -> n
+  | _ -> 0 (*Nothing*) (*Assert_extra.failwith "no cu DW_AT_low_pc"*)
+  end
 
+
+    
+let range_of_die c (dranges: range_list_list) (cu_base_address: natural) (die: die) : maybe (list (natural * natural)) =
+  match (find_attribute_value "DW_AT_low_pc" die, find_attribute_value "DW_AT_high_pc" die, find_attribute_value "DW_AT_ranges" die) with
+  | (Just (AV_addr n),  Nothing,                       Nothing               ) -> Just [(n,n+1)]   (* unclear if this case is used? *)
+  | (Just (AV_addr n1), Just (AV_addr n2),             Nothing               ) -> Just [(n1,n2)]
+  | (Just (AV_addr n1), Just (AV_constant_ULEB128 n2), Nothing               ) -> Just [(n1, n1+n2)] (* should be mod all? *)
+  | (Just (AV_addr n1), Just (AV_constant_SLEB128 i2), Nothing               ) -> Just [(n1, naturalFromInteger (integerFromNatural n1 + i2))] (* should be mod all? *)
+  | (Just (AV_addr n1), Just (AV_constantN _ _),       Nothing               ) -> Assert_extra.failwith "AV_constantN in range_of_die"
+        
+  | (Just (AV_addr n1), Just (AV_block n bs),          Nothing               ) -> let n2 = natural_of_bytes c.endianness bs in Just [(n1, n1+n2)] (* should be mod all? *) (* signed or unsigned interp? *)
+  | (_,                 Nothing,                       Just (AV_sec_offset n)) ->
+      let rlis = Tuple.snd (find_range_list dranges n) in
+      let nns = interpret_range_list cu_base_address rlis in
+      Just nns
+  | (Nothing,           Nothing,                       Nothing               ) -> Nothing
+  | (_,                 _,                             _                     ) -> Just [] (*Assert_extra.failwith "unexpected attribute values in closest_enclosing_range"*)
+end
+
+let range_of_die_d (d:dwarf) cu (die: die) : maybe (list (natural * natural)) =
+  let c = p_context_of_d d in
+  range_of_die c d.d_ranges (cu_base_address cu) die     
+
+  
 let rec closest_enclosing_range c (dranges: range_list_list) (cu_base_address: natural) (parents: list die) : maybe (list (natural * natural)) =
   match parents with
   | [] -> Nothing
   | die::parents' ->
-      match (find_attribute_value "DW_AT_low_pc" die, find_attribute_value "DW_AT_high_pc" die, find_attribute_value "DW_AT_ranges" die) with
-      | (Just (AV_addr n),  Nothing,                       Nothing               ) -> Just [(n,n+1)]   (* unclear if this case is used? *)
-      | (Just (AV_addr n1), Just (AV_addr n2),             Nothing               ) -> Just [(n1,n2)]
-      | (Just (AV_addr n1), Just (AV_constant_ULEB128 n2), Nothing               ) -> Just [(n1, n1+n2)] (* should be mod all? *)
-      | (Just (AV_addr n1), Just (AV_constant_SLEB128 i2), Nothing               ) -> Just [(n1, naturalFromInteger (integerFromNatural n1 + i2))] (* should
- be mod all? *)
-      | (Just (AV_addr n1), Just (AV_constantN _ _),       Nothing               ) -> Assert_extra.failwith "AV_constantN in closest_enclosing_range"
-
-      | (Just (AV_addr n1), Just (AV_block n bs),          Nothing               ) -> let n2 = natural_of_bytes c.endianness bs in Just [(n1, n1+n2)] (* should be mod all? *) (* signed or unsigned interp? *)
-
-      | (_,                 Nothing,                       Just (AV_sec_offset n)) ->
-          let rlis = Tuple.snd (find_range_list dranges n) in
-          let nns = interpret_range_list cu_base_address rlis in
-          Just nns
-      | (Nothing,           Nothing,                       Nothing               ) -> closest_enclosing_range c dranges cu_base_address parents'
-      | (_,                 _,                             _                     ) -> Just [] (*Assert_extra.failwith "unexpected attribute values in closest_enclosing_range"*)
+      match range_of_die c dranges cu_base_address die with
+      | ((Just x) as y) -> y
+      | Nothing ->
+          closest_enclosing_range c dranges cu_base_address parents'        
       end
   end
 
@@ -4937,12 +4959,6 @@ let interpreted_location_of_die c cuh (dloc: location_list_list) (dranges: range
   | Nothing -> Nothing
   end
 
-
-let cu_base_address cu =
-  match find_attribute_value "DW_AT_low_pc" cu.cu_die with
-  | Just (AV_addr n) -> n
-  | _ -> 0 (*Nothing*) (*Assert_extra.failwith "no cu DW_AT_low_pc"*)
-  end
 
 
 val analyse_locations : dwarf -> analysed_location_data
@@ -5817,6 +5833,7 @@ let rec mk_sdt_subroutine (d:dwarf) (cu:compilation_unit) parents (die:die) : ma
         ss_type = find_DW_AT_type_of_die_deep(*_using_abstract_origin*) d cupdie;
         ss_vars = List.mapMaybe (mk_sdt_variable_or_formal_parameter d cu parents') die.die_children; 
         ss_unspecified_parameters = List.mapMaybe (mk_sdt_unspecified_parameter d cu parents') die.die_children; 
+        ss_pc_ranges = range_of_die_d d cu die;
         ss_subroutines  = List.mapMaybe (mk_sdt_subroutine d cu parents') die.die_children; 
         ss_lexical_blocks = List.mapMaybe (mk_sdt_lexical_block d cu parents') die.die_children; 
         ss_decl = decl_of_die d cu die; 
@@ -5837,6 +5854,7 @@ let rec mk_sdt_subroutine (d:dwarf) (cu:compilation_unit) parents (die:die) : ma
         <|
         slb_cupdie = cupdie;
         slb_vars = List.mapMaybe (mk_sdt_variable_or_formal_parameter d cu parents') die.die_children; 
+        slb_pc_ranges = range_of_die_d d cu die;
         slb_subroutines  = List.mapMaybe (mk_sdt_subroutine d cu parents') die.die_children; 
         slb_lexical_blocks = List.mapMaybe (mk_sdt_lexical_block d cu parents') die.die_children; 
         |> )
@@ -5879,7 +5897,15 @@ let pp_parsed_single_location_description (level:natural) ((n1:natural), (n2:nat
   ^ " " ^ pphex n2
   ^ " (" ^ pp_operations ops ^")"
   ^"\n"
-  
+
+let pp_pc_ranges (level:natural) (rso:maybe (list (natural*natural))) =
+  match rso with
+  | Nothing -> "none\n"
+  | Just rs ->
+      let indent = indent_level true level in
+      "\n" ^ String.concat "" (List.map (fun (n1,n2) -> indent ^ pphex n1 ^ " " ^ pphex n2 ^ "\n") rs)
+  end
+      
 let pp_sdt_variable_or_formal_parameter (level:natural) (svfp: sdt_variable_or_formal_parameter) : string =
   let indent = indent_level true level in
   ""
@@ -5902,8 +5928,9 @@ let rec pp_sdt_subroutine (level:natural) (ss:sdt_subroutine) : string =
   ^ indent ^ "type:" ^  (match ss.ss_type with Nothing -> "none\n" | Just typ -> pp_type_info_deep typ ^"\n" end) 
   ^ indent ^ "vars:" ^  "\n" ^ String.concat "\n" (List.map (pp_sdt_variable_or_formal_parameter (level+1)) ss.ss_vars)
   ^ indent ^ "unspecified_parameters:" ^ (match ss.ss_unspecified_parameters with | [] -> "none\n" | ups -> String.concat "" (List.map  (pp_sdt_unspecified_parameter (level+1)) ups) end)
-  ^ indent ^ "subroutines :" ^  (match ss.ss_subroutines with | [] -> "none\n" | sus -> String.concat "\n" (List.map  (pp_sdt_subroutine (level+1)) sus) end)
-  ^ indent ^ "lexical_blocks:" ^  (match ss.ss_lexical_blocks with | [] -> "none\n" | lbs -> String.concat "\n" (List.map  (pp_sdt_lexical_block (level+1)) lbs) end) 
+  ^ indent ^ "pc ranges:" ^ pp_pc_ranges (level+1) ss.ss_pc_ranges
+  ^ indent ^ "subroutines :" ^  (match ss.ss_subroutines with | [] -> "none\n" | sus -> "\n" ^ String.concat "\n" (List.map  (pp_sdt_subroutine (level+1)) sus) end)
+  ^ indent ^ "lexical_blocks:" ^  (match ss.ss_lexical_blocks with | [] -> "none\n" | lbs -> "\n" ^ String.concat "\n" (List.map  (pp_sdt_lexical_block (level+1)) lbs) end) 
   ^ indent ^ "decl:" ^  (match ss.ss_decl with Nothing -> "none\n" | Just ((ufe,line) as ud) -> "\n" ^ indent_level true (level+1) ^ pp_ufe ufe ^ " " ^ show line ^ "\n" end)
   ^ indent ^ "noreturn:" ^ show ss.ss_noreturn 
   ^ indent ^ "external:" ^  show ss.ss_external
@@ -5913,8 +5940,9 @@ and pp_sdt_lexical_block (level:natural) (lb:sdt_lexical_block) : string =
   ""
   ^ indent ^ "cupdie:" ^  pp_cupdie3 lb.slb_cupdie ^ "\n"
   ^ indent ^ "vars:" ^  "\n" ^ String.concat "\n" (List.map (pp_sdt_variable_or_formal_parameter (level+1)) lb.slb_vars)
-  ^ indent ^ "subroutines :" ^  (match lb.slb_subroutines with | [] -> "none\n" | sus -> String.concat "\n" (List.map  (pp_sdt_subroutine (level+1)) sus) end) 
-  ^ indent ^ "lexical_blocks:" ^  (match lb.slb_lexical_blocks with | [] -> "none\n" | lbs -> String.concat "\n" (List.map  (pp_sdt_lexical_block (level+1)) lbs) end) 
+  ^ indent ^ "pc ranges:" ^ pp_pc_ranges (level+1) lb.slb_pc_ranges
+  ^ indent ^ "subroutines :" ^  (match lb.slb_subroutines with | [] -> "none\n" | sus -> "\n" ^ String.concat "\n" (List.map  (pp_sdt_subroutine (level+1)) sus) end) 
+  ^ indent ^ "lexical_blocks:" ^  (match lb.slb_lexical_blocks with | [] -> "none\n" | lbs -> "\n" ^ String.concat "\n" (List.map  (pp_sdt_lexical_block (level+1)) lbs) end) 
 
 let pp_sdt_compilation_unit (level:natural) (cu:sdt_compilation_unit) : string = 
   let indent = indent_level true level in
@@ -5922,7 +5950,7 @@ let pp_sdt_compilation_unit (level:natural) (cu:sdt_compilation_unit) : string =
   ^ indent ^ "cupdie:" ^  pp_cupdie3 cu.scu_cupdie ^ "\n"
   ^ indent ^ "name:" ^  cu.scu_name ^ "\n"
   ^ indent ^ "vars:" ^  "\n" ^ String.concat "\n" (List.map (pp_sdt_variable_or_formal_parameter (level+1)) cu.scu_vars)
-  ^ indent ^ "subroutines :" ^  (match cu.scu_subroutines with | [] -> "none\n" | sus -> String.concat "\n" (List.map  (pp_sdt_subroutine (level+1)) sus) end) 
+  ^ indent ^ "subroutines :" ^  (match cu.scu_subroutines with | [] -> "none\n" | sus -> "\n" ^ String.concat "\n" (List.map  (pp_sdt_subroutine (level+1)) sus) end) 
 
 let pp_sdt_dwarf (sdt_d:sdt_dwarf) : string =
   let indent_level = 0 in 
