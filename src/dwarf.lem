@@ -757,7 +757,7 @@ type sdt_subroutine = (* subprogram or inlined subroutine *)
   ss_cupdie : cupdie;
   ss_name : maybe string;
   ss_kind : sdt_subroutine_kind;
-(*  ss_abstract_origin : maybe cupdie;  (* invariant: non-Nothing iff inlined *)*)
+  ss_abstract_origin : maybe sdt_subroutine;  (* invariant: non-Nothing iff inlined *)
   ss_type : maybe c_type;
   ss_vars : list sdt_variable_or_formal_parameter;
   ss_pc_ranges : maybe (list (natural*natural));
@@ -5830,6 +5830,13 @@ let rec mk_sdt_subroutine (d:dwarf) (cu:compilation_unit) parents (die:die) : ma
         ss_cupdie = cupdie;
         ss_name = (*strict_mss ( *)find_name_of_die_using_abstract_origin c d cu d.d_str die(* ) "no name" s cupdie;*);
         ss_kind = kind;
+        ss_abstract_origin =
+          match find_reference_attribute_of_die c d cu d.d_str "DW_AT_abstract_origin" die with
+          | Nothing ->
+             Nothing 
+          | Just ((cu',parents',die') as cupdie') ->
+             mk_sdt_subroutine d cu' parents' die'
+          end;
         ss_type = find_DW_AT_type_of_die_deep(*_using_abstract_origin*) d cupdie;
         ss_vars = List.mapMaybe (mk_sdt_variable_or_formal_parameter d cu parents') die.die_children; 
         ss_unspecified_parameters = List.mapMaybe (mk_sdt_unspecified_parameter d cu parents') die.die_children; 
@@ -5885,7 +5892,7 @@ let mk_sdt_dwarf (d:dwarf) : sdt_dwarf =
   <| sd_compilation_units = List.map (mk_sdt_compilation_unit d) d.d_compilation_units;
 |>
 
-  (* ******************* *)
+(* **** verbose pp of simple die tree view *************** *)
 
 let pp_sdt_unspecified_parameter (level:natural) (sup:sdt_unspecified_parameter) : string =
   indent_level true level ^ "unspecified parameters" ^ "\n"
@@ -5905,61 +5912,136 @@ let pp_pc_ranges (level:natural) (rso:maybe (list (natural*natural))) =
       let indent = indent_level true level in
       "\n" ^ String.concat "" (List.map (fun (n1,n2) -> indent ^ pphex n1 ^ " " ^ pphex n2 ^ "\n") rs)
   end
-      
+
+let pp_sdt_maybe x f = match x with Nothing -> "none\n" | Just y -> f y end
+let pp_sdt_list xs f = match xs with [] -> "none\n" | _ -> "\n" ^ String.concat "" ((List.map f) xs) end
+   
 let pp_sdt_variable_or_formal_parameter (level:natural) (svfp: sdt_variable_or_formal_parameter) : string =
   let indent = indent_level true level in
   ""
-  ^ indent ^ "cupdie:" ^  pp_cupdie3 svfp.svfp_cupdie ^ "\n"
-  ^ indent ^ "name:" ^  svfp.svfp_name ^ "\n"
-  ^ indent ^ "kind:" ^  (match svfp.svfp_kind with SVPK_var -> "var" | SVPK_param -> "param" end) ^ "\n" 
-  ^ indent ^ "type:" ^  pp_type_info_deep svfp.svfp_type ^ "\n"
-  ^ indent ^ "const_value:" ^  show svfp.svfp_const_value ^ "\n"
-  ^ indent ^ "external:" ^  show svfp.svfp_external ^ "\n"
-  ^ indent ^ "declaration:" ^  show svfp.svfp_declaration ^ "\n"
-  ^ indent ^ "locations:" ^ (match svfp.svfp_locations with Nothing -> "none\n" | Just locs -> "\n" ^ String.concat "" (List.map (pp_parsed_single_location_description (level+1)) locs) end)
-  ^ indent ^ "decl:" ^ (match svfp.svfp_decl with Nothing -> "none\n" | Just ((ufe,line) as ud) -> "\n" ^ indent_level true (level+1) ^ pp_ufe ufe ^ " " ^ show line ^ "\n" end)
-   
+  ^ indent ^ "name:"        ^ svfp.svfp_name ^ "\n"
+  ^ indent ^ "cupdie:"      ^ pp_cupdie3 svfp.svfp_cupdie ^ "\n"
+  ^ indent ^ "kind:"        ^ (match svfp.svfp_kind with SVPK_var -> "var" | SVPK_param -> "param" end) ^ "\n" 
+  ^ indent ^ "type:"        ^ pp_type_info_deep svfp.svfp_type ^ "\n"
+  ^ indent ^ "const_value:" ^ show svfp.svfp_const_value ^ "\n"
+  ^ indent ^ "external:"    ^ show svfp.svfp_external ^ "\n"
+  ^ indent ^ "declaration:" ^ show svfp.svfp_declaration ^ "\n"
+  ^ indent ^ "locations:"   ^ pp_sdt_maybe svfp.svfp_locations (fun locs -> "\n" ^ String.concat "" (List.map (pp_parsed_single_location_description (level+1)) locs))
+  ^ indent ^ "decl:"        ^ pp_sdt_maybe svfp.svfp_decl (fun ((ufe,line) as ud) -> "\n" ^ indent_level true (level+1) ^ pp_ufe ufe ^ " " ^ show line ^ "\n")
+  ^ "\n"   
+
 let rec pp_sdt_subroutine (level:natural) (ss:sdt_subroutine) : string = 
   let indent = indent_level true level in
   ""
-  ^ indent ^ "cupdie:" ^  pp_cupdie3 ss.ss_cupdie ^ "\n"
-  ^ indent ^ "name:" ^  (match ss.ss_name with Nothing -> "none\n" | Just name -> name ^ "\n" end)
-  ^ indent ^ "kind:" ^  (match ss.ss_kind with SSK_subprogram -> "subprogram" | SSK_inlined_subroutine -> "inlined subroutine" end) ^ "\n" 
-  ^ indent ^ "type:" ^  (match ss.ss_type with Nothing -> "none\n" | Just typ -> pp_type_info_deep typ ^"\n" end) 
-  ^ indent ^ "vars:" ^  "\n" ^ String.concat "\n" (List.map (pp_sdt_variable_or_formal_parameter (level+1)) ss.ss_vars)
-  ^ indent ^ "unspecified_parameters:" ^ (match ss.ss_unspecified_parameters with | [] -> "none\n" | ups -> String.concat "" (List.map  (pp_sdt_unspecified_parameter (level+1)) ups) end)
-  ^ indent ^ "pc ranges:" ^ pp_pc_ranges (level+1) ss.ss_pc_ranges
-  ^ indent ^ "subroutines :" ^  (match ss.ss_subroutines with | [] -> "none\n" | sus -> "\n" ^ String.concat "\n" (List.map  (pp_sdt_subroutine (level+1)) sus) end)
-  ^ indent ^ "lexical_blocks:" ^  (match ss.ss_lexical_blocks with | [] -> "none\n" | lbs -> "\n" ^ String.concat "\n" (List.map  (pp_sdt_lexical_block (level+1)) lbs) end) 
-  ^ indent ^ "decl:" ^  (match ss.ss_decl with Nothing -> "none\n" | Just ((ufe,line) as ud) -> "\n" ^ indent_level true (level+1) ^ pp_ufe ufe ^ " " ^ show line ^ "\n" end)
-  ^ indent ^ "noreturn:" ^ show ss.ss_noreturn 
-  ^ indent ^ "external:" ^  show ss.ss_external
+  ^ indent ^ "name:"                   ^ pp_sdt_maybe ss.ss_name (fun name -> name ^ "\n")
+  ^ indent ^ "cupdie:"                 ^ pp_cupdie3 ss.ss_cupdie ^ "\n"
+  ^ indent ^ "kind:"                   ^ (match ss.ss_kind with SSK_subprogram -> "subprogram" | SSK_inlined_subroutine -> "inlined subroutine" end) ^ "\n" 
+  ^ indent ^ "abstract origin:"        ^ pp_sdt_maybe ss.ss_abstract_origin (pp_sdt_subroutine (level+1))
+  ^ indent ^ "type:"                   ^ pp_sdt_maybe ss.ss_type (fun typ -> pp_type_info_deep typ ^"\n")
+  ^ indent ^ "vars:"                   ^ pp_sdt_list ss.ss_vars (pp_sdt_variable_or_formal_parameter (level+1))
+  ^ indent ^ "unspecified_parameters:" ^ pp_sdt_list ss.ss_unspecified_parameters (pp_sdt_unspecified_parameter (level+1))
+  ^ indent ^ "pc ranges:"              ^ pp_pc_ranges (level+1) ss.ss_pc_ranges
+  ^ indent ^ "subroutines:"            ^ pp_sdt_list ss.ss_subroutines (pp_sdt_subroutine (level+1))
+  ^ indent ^ "lexical_blocks:"         ^ pp_sdt_list ss.ss_lexical_blocks (pp_sdt_lexical_block (level+1))
+  ^ indent ^ "decl:"                   ^ pp_sdt_maybe ss.ss_decl (fun ((ufe,line) as ud) -> "\n" ^ indent_level true (level+1) ^ pp_ufe ufe ^ " " ^ show line ^ "\n")
+  ^ indent ^ "noreturn:"               ^ show ss.ss_noreturn ^ "\n"
+  ^ indent ^ "external:"               ^ show ss.ss_external ^"\n"
+  ^ "\n"   
 
 and pp_sdt_lexical_block (level:natural) (lb:sdt_lexical_block) : string = 
   let indent = indent_level true level in
   ""
-  ^ indent ^ "cupdie:" ^  pp_cupdie3 lb.slb_cupdie ^ "\n"
-  ^ indent ^ "vars:" ^  "\n" ^ String.concat "\n" (List.map (pp_sdt_variable_or_formal_parameter (level+1)) lb.slb_vars)
-  ^ indent ^ "pc ranges:" ^ pp_pc_ranges (level+1) lb.slb_pc_ranges
-  ^ indent ^ "subroutines :" ^  (match lb.slb_subroutines with | [] -> "none\n" | sus -> "\n" ^ String.concat "\n" (List.map  (pp_sdt_subroutine (level+1)) sus) end) 
-  ^ indent ^ "lexical_blocks:" ^  (match lb.slb_lexical_blocks with | [] -> "none\n" | lbs -> "\n" ^ String.concat "\n" (List.map  (pp_sdt_lexical_block (level+1)) lbs) end) 
+  ^ indent ^ "cupdie:"         ^ pp_cupdie3 lb.slb_cupdie ^ "\n"
+  ^ indent ^ "vars:"           ^ pp_sdt_list lb.slb_vars (pp_sdt_variable_or_formal_parameter (level+1))
+  ^ indent ^ "pc ranges:"      ^ pp_pc_ranges (level+1) lb.slb_pc_ranges
+  ^ indent ^ "subroutines :"   ^ pp_sdt_list lb.slb_subroutines (pp_sdt_subroutine (level+1))
+  ^ indent ^ "lexical_blocks:" ^ pp_sdt_list lb.slb_lexical_blocks (pp_sdt_lexical_block (level+1))
+  ^ "\n"   
 
 let pp_sdt_compilation_unit (level:natural) (cu:sdt_compilation_unit) : string = 
   let indent = indent_level true level in
   ""
-  ^ indent ^ "cupdie:" ^  pp_cupdie3 cu.scu_cupdie ^ "\n"
-  ^ indent ^ "name:" ^  cu.scu_name ^ "\n"
-  ^ indent ^ "vars:" ^  "\n" ^ String.concat "\n" (List.map (pp_sdt_variable_or_formal_parameter (level+1)) cu.scu_vars)
-  ^ indent ^ "subroutines :" ^  (match cu.scu_subroutines with | [] -> "none\n" | sus -> "\n" ^ String.concat "\n" (List.map  (pp_sdt_subroutine (level+1)) sus) end) 
+  ^ indent ^ "name:"         ^ cu.scu_name ^ "\n"
+  ^ indent ^ "cupdie:"       ^ pp_cupdie3 cu.scu_cupdie ^ "\n"
+  ^ indent ^ "vars:"         ^ pp_sdt_list cu.scu_vars (pp_sdt_variable_or_formal_parameter (level+1))
+  ^ indent ^ "subroutines :" ^ pp_sdt_list cu.scu_subroutines (pp_sdt_subroutine (level+1))
 
 let pp_sdt_dwarf (sdt_d:sdt_dwarf) : string =
   let indent_level = 0 in 
   String.concat "" (List.map (pp_sdt_compilation_unit indent_level) sdt_d.sd_compilation_units)
 
+(* **** concise pp of simple die tree view *************** *)
 
+(* **************** global vars ************* *)
   
+let pp_sdt_concise_variable_or_formal_parameter (level:natural) (svfp: sdt_variable_or_formal_parameter) : string =
+  let indent = indent_level true level in
+  ""
+  ^ indent
+  (*  ^ indent ^ "cupdie:" ^  pp_cupdie3 svfp.svfp_cupdie ^ "\n"*)
+  (*^ indent ^ "name:" ^*) ^ svfp.svfp_name ^ "  "
+  (*^ indent ^ "kind:" *) ^  (match svfp.svfp_kind with SVPK_var -> "var" | SVPK_param -> "param" end) ^ "  " 
+  (*^ indent ^ "type:" *) ^  pp_type_info_deep svfp.svfp_type ^ "  "
+  (*^ indent ^ "const_value:"*) ^  match svfp.svfp_const_value with | Nothing -> "" | Just v -> "const:"^show v ^ "  " end 
+  (*^ indent ^ "external:" ^  show svfp.svfp_external ^ "\n"*)
+  (*^ indent ^ "declaration:" ^  show svfp.svfp_declaration ^ "\n"*)
+(*^ indent ^ "locations:" *) ^ (match svfp.svfp_locations with Nothing -> "no locations\n" | Just locs -> "\n" ^ String.concat "" (List.map (pp_parsed_single_location_description (level+1)) locs) end)
+(*  ^ indent ^ "decl:" ^ (match svfp.svfp_decl with Nothing -> "none\n" | Just ((ufe,line) as ud) -> "\n" ^ indent_level true (level+1) ^ pp_ufe ufe ^ " " ^ show line ^ "\n" end)*)
 
-   
+let pp_sdt_globals_compilation_unit (level:natural) (cu:sdt_compilation_unit) : string = 
+  let indent = indent_level true level in
+  ""
+  (*  ^ indent ^ "cupdie:" ^  pp_cupdie3 cu.scu_cupdie ^ "\n"*)
+  ^ indent ^ (*"name:" ^*)  cu.scu_name ^ "\n"
+  (*  ^ indent ^ "vars:" ^  "\n"*) ^ String.concat "" (List.map (pp_sdt_concise_variable_or_formal_parameter (level+1)) cu.scu_vars)
+(*  ^ indent ^ "subroutines :" ^  (match cu.scu_subroutines with | [] -> "none\n" | sus -> "\n" ^ String.concat "\n" (List.map  (pp_sdt_subroutine (level+1)) sus) end) *)
+
+let pp_sdt_globals_dwarf (sdt_d:sdt_dwarf) : string =
+  let indent_level = 0 in 
+  String.concat "" (List.map (pp_sdt_globals_compilation_unit indent_level) sdt_d.sd_compilation_units)
+
+(* ******************  local vars *************** *)
+  
+let rec pp_sdt_locals_subroutine (level:natural) (ss:sdt_subroutine) : string = 
+  let indent = indent_level true level in
+  ""
+    ^ indent (*^ "name:"                   ^*) ^ pp_sdt_maybe ss.ss_name (fun name -> name ^ "\n")
+  (*  ^ indent ^ "cupdie:"                 ^ pp_cupdie3 ss.ss_cupdie ^ "\n"*)
+  ^ indent ^ "kind:"                   ^ (match ss.ss_kind with SSK_subprogram -> "subprogram" | SSK_inlined_subroutine -> "inlined subroutine" end) ^ "\n" 
+  ^ indent ^ "abstract origin:"        ^ pp_sdt_maybe ss.ss_abstract_origin (fun s -> "\n" ^ pp_sdt_locals_subroutine (level+1) s)
+  (*  ^ indent ^ "type:"                   ^ pp_sdt_maybe ss.ss_type (fun typ -> pp_type_info_deep typ ^"\n" end)*)
+  ^ indent ^ "vars:"                   ^ pp_sdt_list ss.ss_vars (pp_sdt_concise_variable_or_formal_parameter (level+1))
+  ^ indent ^ "unspecified_parameters:" ^ pp_sdt_list ss.ss_unspecified_parameters (pp_sdt_unspecified_parameter (level+1))
+  (*  ^ indent ^ "pc ranges:"              ^ pp_pc_ranges (level+1) ss.ss_pc_ranges*)
+  ^ indent ^ "subroutines:"            ^ pp_sdt_list ss.ss_subroutines (pp_sdt_locals_subroutine (level+1))
+  ^ indent ^ "lexical_blocks:"         ^ pp_sdt_list ss.ss_lexical_blocks (pp_sdt_locals_lexical_block (level+1))
+  (*  ^ indent ^ "decl:"                   ^ pp_sdt_maybe ss.ss_decl (fun ((ufe,line) as ud) -> "\n" ^ indent_level true (level+1) ^ pp_ufe ufe ^ " " ^ show line ^ "\n" end)*)
+  (*  ^ indent ^ "noreturn:"               ^ show ss.ss_noreturn ^ "\n"*)
+  (*  ^ indent ^ "external:"               ^ show ss.ss_external ^"\n"*)
+  ^ "\n"   
+
+and pp_sdt_locals_lexical_block (level:natural) (lb:sdt_lexical_block) : string = 
+  let indent = indent_level true level in
+  ""
+  (*  ^ indent ^ "cupdie:"         ^ pp_cupdie3 lb.slb_cupdie ^ "\n"*)
+  ^ indent ^ "vars:"           ^ pp_sdt_list lb.slb_vars (pp_sdt_concise_variable_or_formal_parameter (level+1))
+  (*  ^ indent ^ "pc ranges:"      ^ pp_pc_ranges (level+1) lb.slb_pc_ranges*)
+  ^ indent ^ "subroutines :"   ^ pp_sdt_list lb.slb_subroutines (pp_sdt_locals_subroutine (level+1))
+  ^ indent ^ "lexical_blocks:" ^ pp_sdt_list lb.slb_lexical_blocks (pp_sdt_locals_lexical_block (level+1))
+  ^ "\n"   
+
+let pp_sdt_locals_compilation_unit (level:natural) (cu:sdt_compilation_unit) : string = 
+  let indent = indent_level true level in
+  ""
+  ^ indent (*^ "name:"         *) ^ cu.scu_name ^ "\n"
+  (*  ^ indent ^ "cupdie:"       ^ pp_cupdie3 cu.scu_cupdie ^ "\n"*)
+  ^ indent ^ "vars:"         ^ pp_sdt_list cu.scu_vars (pp_sdt_concise_variable_or_formal_parameter (level+1))
+  ^ indent ^ "subroutines :" ^ pp_sdt_list cu.scu_subroutines (pp_sdt_locals_subroutine (level+1))
+
+let pp_sdt_locals_dwarf (sdt_d:sdt_dwarf) : string =
+  let indent_level = 0 in 
+  String.concat "" (List.map (pp_sdt_locals_compilation_unit indent_level) sdt_d.sd_compilation_units)
+  
 
 (** ************************************************************ *)
 (** **  pp of text section                                       *)
@@ -6026,9 +6108,12 @@ let mds = extract_dwarf_static f1 in
    ^ "************** subprograms info *************************\n"
    ^ pp_subprograms ds.ds_subprogram_line_extents
    ^ "************** simple die tree *************************\n"
-   ^  "************** simple die tree *************************\n"
    ^  let sdt_d = mk_sdt_dwarf ds.ds_dwarf in 
       pp_sdt_dwarf sdt_d
+      ^  "************** simple die tree globals *************************\n"
+      ^  pp_sdt_globals_dwarf sdt_d
+      ^  "************** simple die tree locals *************************\n"
+      ^  pp_sdt_locals_dwarf sdt_d
 
 
 end
