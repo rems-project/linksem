@@ -608,7 +608,7 @@ type line_number_registers =
 
 type unpacked_file_entry = (maybe string (*comp_dir*)) * (maybe string (*dir*)) * string (*file*)    
     
-type unpacked_decl = unpacked_file_entry * nat(*line*)
+type unpacked_decl = unpacked_file_entry * nat(*line*) * string(*subprogram name*)
 
 
 (* top-level collection of dwarf data *)
@@ -757,6 +757,7 @@ type sdt_subroutine = (* subprogram or inlined subroutine *)
   ss_cupdie : cupdie;
   ss_name : maybe string;
   ss_kind : sdt_subroutine_kind;
+  ss_call_site : maybe unpacked_decl;
   ss_abstract_origin : maybe sdt_subroutine;  (* invariant: non-Nothing iff inlined *)
   ss_type : maybe c_type;
   ss_vars : list sdt_variable_or_formal_parameter;
@@ -3705,6 +3706,14 @@ let pp_ufe (((mcomp_dir,mdir,file) as ufe) : unpacked_file_entry) : string =
   ^ " dir=" ^ match mdir with | Just s->s|Nothing->"<none>" end
   ^ " comp_dir=" ^ match mcomp_dir with | Just s->s|Nothing->"<none>" end
 
+let pp_ud (((((mcomp_dir,mdir,file) as ufe) : unpacked_file_entry), (line:nat), (subprogram_name:string)) : unpacked_decl) : string = 
+  file
+  ^ ":" ^ show line
+  ^ " " ^ subprogram_name
+  ^ " dir=" ^ match mdir with | Just s->s|Nothing->"<none>" end
+  ^ " comp_dir=" ^ match mcomp_dir with | Just s->s|Nothing->"<none>" end
+
+   
 let pp_ufe_brief (((mcomp_dir,mdir,file) as ufe) : unpacked_file_entry) : string = 
   file
   (*
@@ -5300,8 +5309,8 @@ let rec find_by_line line sles line_last name_last =
      if line >= line_last && line < line' then name_last else find_by_line line sles' line' name'
   end
 
-let subprogram_at_line d (*subprogram_line_data*) (ufe:unpacked_file_entry) (line:natural) : string =
-  match List.lookup ufe d.ds_subprogram_line_extents with
+let subprogram_at_line subprogram_line_extents (ufe:unpacked_file_entry) (line:natural) : string =
+  match List.lookup ufe subprogram_line_extents with
   | Nothing -> "no matching unpacked_file_entry"
   | Just sles -> find_by_line line sles 0 "file preamble"
   end
@@ -5404,7 +5413,7 @@ let rec pp_inlined_subroutine_parents (ds:list die) : string =
   
 let pp_inlined_subroutine_header ds is = 
   is.is_name
-  ^ " inlined from " ^ pp_ufe_brief is.is_call_file ^ ":" ^ show is.is_call_line ^ " (" ^ subprogram_at_line ds is.is_call_file is.is_call_line ^ ")" 
+  ^ " inlined from " ^ pp_ufe_brief is.is_call_file ^ ":" ^ show is.is_call_line ^ " (" ^ subprogram_at_line ds.ds_subprogram_line_extents is.is_call_file is.is_call_line ^ ")" 
   ^ " "
   ^ let (cu,parents,die) = is.is_inlined_subroutine in
     pp_inlined_subroutine_parents (die::parents)
@@ -5708,7 +5717,7 @@ let source_lines_of_address (ds:dwarf_static) (a: natural) : list ( unpacked_fil
          myfiltermaybe
            (fun lnr ->
              if a = lnr.lnr_address && not lnr.lnr_end_sequence then
-               Just (unpack_file_entry lnh lnr.lnr_file, lnr.lnr_line, lnr, subprogram_at_line ds (unpack_file_entry lnh lnr.lnr_file) lnr.lnr_line)
+               Just (unpack_file_entry lnh lnr.lnr_file, lnr.lnr_line, lnr, subprogram_at_line ds.ds_subprogram_line_extents (unpack_file_entry lnh lnr.lnr_file) lnr.lnr_line)
              else
                Nothing)
            lnrs
@@ -5754,19 +5763,36 @@ let extract_dwarf_static f1 =
 (** **  collect simple die tree view                             *)
 (** ************************************************************ *)
 
-let decl_of_die d cu die : maybe (unpacked_file_entry * nat (*line*)) = 
+let decl_of_die d subprogram_line_extents cu die : maybe (unpacked_file_entry * nat (*line*)  * string (*subprogram name*)) = 
   let c = p_context_of_d d in
   let lnp = line_number_program_of_compilation_unit d cu in
   let lnh = lnp.lnp_header in
   match (find_natural_attribute_value_of_die c "DW_AT_decl_file" die, 
             find_natural_attribute_value_of_die c "DW_AT_decl_line" die) with
   | (Just file, Just line) -> 
-     Just (unpack_file_entry lnh file, natFromNatural line)
+     let ufe = unpack_file_entry lnh file in
+     let subprogram_name = subprogram_at_line subprogram_line_extents ufe line in 
+     Just (ufe, natFromNatural line, subprogram_name)
   | (_,_) ->
      Nothing
   end
 
-let mk_sdt_unspecified_parameter (d:dwarf) cu parents die : maybe sdt_unspecified_parameter =
+let call_site_of_die d subprogram_line_extents cu die : maybe (unpacked_file_entry * nat (*line*) * string (*subprogram name*)) = 
+  let c = p_context_of_d d in
+  let lnp = line_number_program_of_compilation_unit d cu in
+  let lnh = lnp.lnp_header in
+  match (find_natural_attribute_value_of_die c "DW_AT_call_file" die, 
+            find_natural_attribute_value_of_die c "DW_AT_call_line" die) with
+  | (Just file, Just line) -> 
+     let ufe = unpack_file_entry lnh file in
+     let subprogram_name = subprogram_at_line subprogram_line_extents ufe line in 
+     Just (ufe, natFromNatural line, subprogram_name)
+  | (_,_) ->
+     Nothing
+  end
+
+   
+let mk_sdt_unspecified_parameter (d:dwarf) subprogram_line_extents cu parents die : maybe sdt_unspecified_parameter =
   if not(List.elem die.die_abbreviation_declaration.ad_tag [tag_encode "DW_TAG_unspecified_parameters"])
   then Nothing
   else Just ()
@@ -5780,7 +5806,7 @@ let strict_msvfp x e s z =
      Assert_extra.failwith ("mk_sdt_variable_or_formal_parameter strict failure " ^ e ^ " on \n" ^ s z ^ "\n")
   end
 
-let mk_sdt_variable_or_formal_parameter (d:dwarf) cu parents die : maybe sdt_variable_or_formal_parameter =
+let mk_sdt_variable_or_formal_parameter (d:dwarf) subprogram_line_extents cu parents die : maybe sdt_variable_or_formal_parameter =
   if not(List.elem die.die_abbreviation_declaration.ad_tag [tag_encode "DW_TAG_variable"; tag_encode "DW_TAG_formal_parameter"])
   then Nothing
   else
@@ -5805,7 +5831,7 @@ let mk_sdt_variable_or_formal_parameter (d:dwarf) cu parents die : maybe sdt_var
       let interpreted_locations : maybe (list (natural * natural * single_location_description)) =
         interpreted_location_of_die c cu.cu_header d.d_loc d.d_ranges base_address parents die in
       Maybe.map (fun nnbss -> List.map (fun (n1,n2,bs) -> (n1,n2,parse_operations_bs c cu.cu_header bs)) nnbss) interpreted_locations;
-    svfp_decl = decl_of_die d cu die;
+    svfp_decl = decl_of_die d subprogram_line_extents cu die;
     |> )
    
 let strict_mss x e s z =
@@ -5815,7 +5841,7 @@ let strict_mss x e s z =
      Assert_extra.failwith ("mk_sdt_subroutine strict failure " ^ e ^ " on \n" ^ s z ^ "\n")
   end
    
-let rec mk_sdt_subroutine (d:dwarf) (cu:compilation_unit) parents (die:die) : maybe sdt_subroutine =
+let rec mk_sdt_subroutine (d:dwarf) subprogram_line_extents (cu:compilation_unit) parents (die:die) : maybe sdt_subroutine =
   if not(List.elem die.die_abbreviation_declaration.ad_tag [tag_encode "DW_TAG_subprogram"; tag_encode "DW_TAG_inlined_subroutine"])
   then Nothing
   else
@@ -5830,25 +5856,26 @@ let rec mk_sdt_subroutine (d:dwarf) (cu:compilation_unit) parents (die:die) : ma
         ss_cupdie = cupdie;
         ss_name = (*strict_mss ( *)find_name_of_die_using_abstract_origin c d cu d.d_str die(* ) "no name" s cupdie;*);
         ss_kind = kind;
+        ss_call_site = call_site_of_die d subprogram_line_extents cu die; 
         ss_abstract_origin =
           match find_reference_attribute_of_die c d cu d.d_str "DW_AT_abstract_origin" die with
           | Nothing ->
              Nothing 
           | Just ((cu',parents',die') as cupdie') ->
-             mk_sdt_subroutine d cu' parents' die'
+             mk_sdt_subroutine d subprogram_line_extents cu' parents' die'
           end;
         ss_type = find_DW_AT_type_of_die_deep(*_using_abstract_origin*) d cupdie;
-        ss_vars = List.mapMaybe (mk_sdt_variable_or_formal_parameter d cu parents') die.die_children; 
-        ss_unspecified_parameters = List.mapMaybe (mk_sdt_unspecified_parameter d cu parents') die.die_children; 
+        ss_vars = List.mapMaybe (mk_sdt_variable_or_formal_parameter d subprogram_line_extents cu parents') die.die_children; 
+        ss_unspecified_parameters = List.mapMaybe (mk_sdt_unspecified_parameter d subprogram_line_extents cu parents') die.die_children; 
         ss_pc_ranges = range_of_die_d d cu die;
-        ss_subroutines  = List.mapMaybe (mk_sdt_subroutine d cu parents') die.die_children; 
-        ss_lexical_blocks = List.mapMaybe (mk_sdt_lexical_block d cu parents') die.die_children; 
-        ss_decl = decl_of_die d cu die; 
+        ss_subroutines  = List.mapMaybe (mk_sdt_subroutine d subprogram_line_extents cu parents') die.die_children; 
+        ss_lexical_blocks = List.mapMaybe (mk_sdt_lexical_block d subprogram_line_extents cu parents') die.die_children; 
+        ss_decl = decl_of_die d subprogram_line_extents cu die; 
         ss_noreturn = match find_flag_attribute_value_of_die_using_abstract_origin d "DW_AT_noreturn" cupdie with Just b -> b | Nothing -> false end;
         ss_external = match find_flag_attribute_value_of_die_using_abstract_origin d "DW_AT_external" cupdie with Just b -> b | Nothing -> false end;
         |> )
 
-  and mk_sdt_lexical_block (d:dwarf) (cu:compilation_unit) parents (die:die) : maybe sdt_lexical_block =
+  and mk_sdt_lexical_block (d:dwarf) subprogram_line_extents (cu:compilation_unit) parents (die:die) : maybe sdt_lexical_block =
   if not (die.die_abbreviation_declaration.ad_tag = tag_encode "DW_TAG_lexical_block")
   then Nothing
   else
@@ -5860,10 +5887,10 @@ let rec mk_sdt_subroutine (d:dwarf) (cu:compilation_unit) parents (die:die) : ma
     Just (
         <|
         slb_cupdie = cupdie;
-        slb_vars = List.mapMaybe (mk_sdt_variable_or_formal_parameter d cu parents') die.die_children; 
+        slb_vars = List.mapMaybe (mk_sdt_variable_or_formal_parameter d subprogram_line_extents cu parents') die.die_children; 
         slb_pc_ranges = range_of_die_d d cu die;
-        slb_subroutines  = List.mapMaybe (mk_sdt_subroutine d cu parents') die.die_children; 
-        slb_lexical_blocks = List.mapMaybe (mk_sdt_lexical_block d cu parents') die.die_children; 
+        slb_subroutines  = List.mapMaybe (mk_sdt_subroutine d subprogram_line_extents cu parents') die.die_children; 
+        slb_lexical_blocks = List.mapMaybe (mk_sdt_lexical_block d subprogram_line_extents cu parents') die.die_children; 
         |> )
 
    
@@ -5874,7 +5901,7 @@ let strict_mscu x e s z =
      Assert_extra.failwith ("mk_sdt_compilation_unit strict failure " ^ e ^ " on \n" ^ s z ^ "\n")
   end
 
-let mk_sdt_compilation_unit (d:dwarf) (cu:compilation_unit) : sdt_compilation_unit =
+let mk_sdt_compilation_unit (d:dwarf) subprogram_line_extents (cu:compilation_unit) : sdt_compilation_unit =
     let c = p_context_of_d d in
     let s (cu,(parents:list die),die) : string = pp_die c cu.cu_header d.d_str true 0 false die in
     let cupdie = (cu, [], cu.cu_die) in
@@ -5883,13 +5910,13 @@ let mk_sdt_compilation_unit (d:dwarf) (cu:compilation_unit) : sdt_compilation_un
     <|
     scu_cupdie = (cu, [], cu.cu_die);
     scu_name = strict_mscu (find_name_of_die d.d_str cu.cu_die) "no name" s cupdie;
-    scu_subroutines = List.mapMaybe (mk_sdt_subroutine d cu parents') cu.cu_die.die_children; 
-    scu_vars = List.mapMaybe (mk_sdt_variable_or_formal_parameter d cu parents') cu.cu_die.die_children;
+    scu_subroutines = List.mapMaybe (mk_sdt_subroutine d subprogram_line_extents cu parents') cu.cu_die.die_children; 
+    scu_vars = List.mapMaybe (mk_sdt_variable_or_formal_parameter d subprogram_line_extents cu parents') cu.cu_die.die_children;
     |>
 
    
-let mk_sdt_dwarf (d:dwarf) : sdt_dwarf =
-  <| sd_compilation_units = List.map (mk_sdt_compilation_unit d) d.d_compilation_units;
+let mk_sdt_dwarf (d:dwarf) subprogram_line_extents : sdt_dwarf =
+  <| sd_compilation_units = List.map (mk_sdt_compilation_unit d subprogram_line_extents) d.d_compilation_units;
 |>
 
 (* **** verbose pp of simple die tree view *************** *)
@@ -5927,7 +5954,7 @@ let pp_sdt_variable_or_formal_parameter (level:natural) (svfp: sdt_variable_or_f
   ^ indent ^ "external:"    ^ show svfp.svfp_external ^ "\n"
   ^ indent ^ "declaration:" ^ show svfp.svfp_declaration ^ "\n"
   ^ indent ^ "locations:"   ^ pp_sdt_maybe svfp.svfp_locations (fun locs -> "\n" ^ String.concat "" (List.map (pp_parsed_single_location_description (level+1)) locs))
-  ^ indent ^ "decl:"        ^ pp_sdt_maybe svfp.svfp_decl (fun ((ufe,line) as ud) -> "\n" ^ indent_level true (level+1) ^ pp_ufe ufe ^ " " ^ show line ^ "\n")
+  ^ indent ^ "decl:"        ^ pp_sdt_maybe svfp.svfp_decl (fun ud -> "\n" ^ indent_level true (level+1) ^ pp_ud ud ^ "\n")
   ^ "\n"   
 
 let rec pp_sdt_subroutine (level:natural) (ss:sdt_subroutine) : string = 
@@ -5936,6 +5963,7 @@ let rec pp_sdt_subroutine (level:natural) (ss:sdt_subroutine) : string =
   ^ indent ^ "name:"                   ^ pp_sdt_maybe ss.ss_name (fun name -> name ^ "\n")
   ^ indent ^ "cupdie:"                 ^ pp_cupdie3 ss.ss_cupdie ^ "\n"
   ^ indent ^ "kind:"                   ^ (match ss.ss_kind with SSK_subprogram -> "subprogram" | SSK_inlined_subroutine -> "inlined subroutine" end) ^ "\n" 
+  ^ indent ^ "call site:"              ^ pp_sdt_maybe ss.ss_call_site (fun ud -> "\n" ^ indent_level true (level+1) ^ pp_ud ud ^ "\n")
   ^ indent ^ "abstract origin:"        ^ pp_sdt_maybe ss.ss_abstract_origin (pp_sdt_subroutine (level+1))
   ^ indent ^ "type:"                   ^ pp_sdt_maybe ss.ss_type (fun typ -> pp_type_info_deep typ ^"\n")
   ^ indent ^ "vars:"                   ^ pp_sdt_list ss.ss_vars (pp_sdt_variable_or_formal_parameter (level+1))
@@ -5943,7 +5971,7 @@ let rec pp_sdt_subroutine (level:natural) (ss:sdt_subroutine) : string =
   ^ indent ^ "pc ranges:"              ^ pp_pc_ranges (level+1) ss.ss_pc_ranges
   ^ indent ^ "subroutines:"            ^ pp_sdt_list ss.ss_subroutines (pp_sdt_subroutine (level+1))
   ^ indent ^ "lexical_blocks:"         ^ pp_sdt_list ss.ss_lexical_blocks (pp_sdt_lexical_block (level+1))
-  ^ indent ^ "decl:"                   ^ pp_sdt_maybe ss.ss_decl (fun ((ufe,line) as ud) -> "\n" ^ indent_level true (level+1) ^ pp_ufe ufe ^ " " ^ show line ^ "\n")
+  ^ indent ^ "decl:"                   ^ pp_sdt_maybe ss.ss_decl (fun ud -> "\n" ^ indent_level true (level+1) ^ pp_ud ud ^ "\n")
   ^ indent ^ "noreturn:"               ^ show ss.ss_noreturn ^ "\n"
   ^ indent ^ "external:"               ^ show ss.ss_external ^"\n"
   ^ "\n"   
@@ -6008,6 +6036,7 @@ let rec pp_sdt_locals_subroutine (level:natural) (ss:sdt_subroutine) : string =
     ^ indent (*^ "name:"                   ^*) ^ pp_sdt_maybe ss.ss_name (fun name -> name ^ "\n")
   (*  ^ indent ^ "cupdie:"                 ^ pp_cupdie3 ss.ss_cupdie ^ "\n"*)
   ^ indent ^ "kind:"                   ^ (match ss.ss_kind with SSK_subprogram -> "subprogram" | SSK_inlined_subroutine -> "inlined subroutine" end) ^ "\n" 
+  ^ indent ^ "call site:"              ^ pp_sdt_maybe ss.ss_call_site (fun ud -> "\n" ^ indent_level true (level+1) ^ pp_ud ud ^ "\n")
   ^ indent ^ "abstract origin:"        ^ pp_sdt_maybe ss.ss_abstract_origin (fun s -> "\n" ^ pp_sdt_locals_subroutine (level+1) s)
   (*  ^ indent ^ "type:"                   ^ pp_sdt_maybe ss.ss_type (fun typ -> pp_type_info_deep typ ^"\n" end)*)
   ^ indent ^ "vars:"                   ^ pp_sdt_list ss.ss_vars (pp_sdt_concise_variable_or_formal_parameter (level+1))
@@ -6108,7 +6137,7 @@ let mds = extract_dwarf_static f1 in
    ^ "************** subprograms info *************************\n"
    ^ pp_subprograms ds.ds_subprogram_line_extents
    ^ "************** simple die tree *************************\n"
-   ^  let sdt_d = mk_sdt_dwarf ds.ds_dwarf in 
+   ^  let sdt_d = mk_sdt_dwarf ds.ds_dwarf ds.ds_subprogram_line_extents in 
       pp_sdt_dwarf sdt_d
       ^  "************** simple die tree globals *************************\n"
       ^  pp_sdt_globals_dwarf sdt_d
