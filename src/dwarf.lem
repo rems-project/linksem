@@ -2115,8 +2115,14 @@ let pp_operation_semantics (os: operation_semantics) : string =
   | OpSem_call_frame_cfa              -> "OpSem_call_frame_cfa"
   end
 
+let pp_operation_semantics_brief (os: operation_semantics) : string =
+  match os with
+  | OpSem_not_supported               -> " (OpSem_not_supported)"
+  | _ -> ""
+  end
+   
 let pp_operation (op: operation) : string =
-  op.op_string ^ " " ^ String.concat " " (List.map pp_operation_argument_value op.op_argument_values) ^ " (" ^ pp_operation_semantics op.op_semantics ^ ")"
+  op.op_string ^ (match op.op_argument_values with [] -> "" | _ -> " " ^ String.concat " " (List.map pp_operation_argument_value op.op_argument_values) end) ^ pp_operation_semantics_brief op.op_semantics 
 
 let pp_operations (ops: list operation) : string =
   String.concat "; " (List.map pp_operation ops)
