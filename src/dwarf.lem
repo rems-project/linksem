@@ -762,6 +762,7 @@ type sdt_subroutine = (* subprogram or inlined subroutine *)
   ss_type : maybe c_type;
   ss_vars : list sdt_variable_or_formal_parameter;
   ss_pc_ranges : maybe (list (natural*natural));
+  ss_entry_address : maybe natural;
   ss_unspecified_parameters : list sdt_unspecified_parameter;
   ss_subroutines : list sdt_subroutine;  (* invariant: all inlined*)
   ss_lexical_blocks : list sdt_lexical_block;
@@ -4916,7 +4917,13 @@ let range_of_die_d (d:dwarf) cu (die: die) : maybe (list (natural * natural)) =
   let c = p_context_of_d d in
   range_of_die c d.d_ranges (cu_base_address cu) die     
 
-  
+let entry_address (die:die) : maybe natural =
+  match (find_attribute_value "DW_AT_low_pc" die, find_attribute_value "DW_AT_entry_pc" die) with
+  | (_, Just (AV_addr n)) -> Just n
+  | (Just (AV_addr n), _) -> Just n    
+  | (Nothing,Nothing) -> Nothing
+  end                       
+                                 
 let rec closest_enclosing_range c (dranges: range_list_list) (cu_base_address: natural) (parents: list die) : maybe (list (natural * natural)) =
   match parents with
   | [] -> Nothing
@@ -5873,6 +5880,7 @@ let rec mk_sdt_subroutine (d:dwarf) subprogram_line_extents (cu:compilation_unit
         ss_type = find_DW_AT_type_of_die_deep(*_using_abstract_origin*) d cupdie;
         ss_vars = List.mapMaybe (mk_sdt_variable_or_formal_parameter d subprogram_line_extents cu parents') die.die_children; 
         ss_unspecified_parameters = List.mapMaybe (mk_sdt_unspecified_parameter d subprogram_line_extents cu parents') die.die_children; 
+        ss_entry_address = entry_address die;
         ss_pc_ranges = range_of_die_d d cu die;
         ss_subroutines  = List.mapMaybe (mk_sdt_subroutine d subprogram_line_extents cu parents') die.die_children; 
         ss_lexical_blocks = List.mapMaybe (mk_sdt_lexical_block d subprogram_line_extents cu parents') die.die_children; 
@@ -5974,6 +5982,7 @@ let rec pp_sdt_subroutine (level:natural) (ss:sdt_subroutine) : string =
   ^ indent ^ "type:"                   ^ pp_sdt_maybe ss.ss_type (fun typ -> pp_type_info_deep typ ^"\n")
   ^ indent ^ "vars:"                   ^ pp_sdt_list ss.ss_vars (pp_sdt_variable_or_formal_parameter (level+1))
   ^ indent ^ "unspecified_parameters:" ^ pp_sdt_list ss.ss_unspecified_parameters (pp_sdt_unspecified_parameter (level+1))
+  ^ indent ^ "entry address: "         ^ pp_sdt_maybe ss.ss_entry_address (fun n -> pphex n^"\n")
   ^ indent ^ "pc ranges:"              ^ pp_pc_ranges (level+1) ss.ss_pc_ranges
   ^ indent ^ "subroutines:"            ^ pp_sdt_list ss.ss_subroutines (pp_sdt_subroutine (level+1))
   ^ indent ^ "lexical_blocks:"         ^ pp_sdt_list ss.ss_lexical_blocks (pp_sdt_lexical_block (level+1))
@@ -6042,6 +6051,7 @@ let rec pp_sdt_locals_subroutine (level:natural) (ss:sdt_subroutine) : string =
     ^ indent (*^ "name:"                   ^*) ^ pp_sdt_maybe ss.ss_name (fun name -> name ^ "\n")
   (*  ^ indent ^ "cupdie:"                 ^ pp_cupdie3 ss.ss_cupdie ^ "\n"*)
   ^ indent ^ "kind:"                   ^ (match ss.ss_kind with SSK_subprogram -> "subprogram" | SSK_inlined_subroutine -> "inlined subroutine" end) ^ "\n" 
+  ^ indent ^ "entry address: "         ^ pp_sdt_maybe ss.ss_entry_address (fun n -> pphex n^"\n")
   ^ indent ^ "call site:"              ^ pp_sdt_maybe ss.ss_call_site (fun ud -> "\n" ^ indent_level true (level+1) ^ pp_ud ud ^ "\n")
   ^ indent ^ "abstract origin:"        ^ pp_sdt_maybe ss.ss_abstract_origin (fun s -> "\n" ^ pp_sdt_locals_subroutine (level+1) s)
   (*  ^ indent ^ "type:"                   ^ pp_sdt_maybe ss.ss_type (fun typ -> pp_type_info_deep typ ^"\n" end)*)
