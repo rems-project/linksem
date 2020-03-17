@@ -741,6 +741,7 @@ type sdt_variable_or_formal_parameter =
   svfp_name : string;
   svfp_kind : variable_or_formal_parameter_kind;
   svfp_type : c_type;
+  svfp_abstract_origin : maybe sdt_variable_or_formal_parameter;  (* invariant: non-Nothing iff inlined *)
   svfp_const_value : maybe integer;
   svfp_external : bool;
   svfp_declaration : bool;
@@ -5330,145 +5331,6 @@ let subprogram_at_line subprogram_line_extents (ufe:unpacked_file_entry) (line:n
      
   
   
-(** ************************************************************ *)
-(** **  analysis of inlined_subroutine data                      *)
-(** ************************************************************ *)
-
-let strict_ais x e s z =
-  match x with
-  | Just y -> y
-  | Nothing ->
-     Assert_extra.failwith ("analyse_inlined_subroutine strict failure " ^ e ^ " on \n" ^ s z ^ "\n")
-  end
-  
-val analyse_inlined_subroutines : dwarf -> inlined_subroutine_data
-let analyse_inlined_subroutines (d: dwarf) : inlined_subroutine_data =
-
-  let c = p_context_of_d d in
-  
-  let s (cu,parents,die) = pp_die c cu.cu_header d.d_str true 0 false die in
-
-  let inlined_subroutines : list (compilation_unit * (list die) * die) =
-    find_dies
-      (fun die ->
-        die.die_abbreviation_declaration.ad_tag = tag_encode "DW_TAG_inlined_subroutine")
-      d in
-  
-  List.map
-    (fun (((cu:compilation_unit), (parents: list die), (die: die)) as inlined_subroutine) ->
-      
-      let ((cu',parents,die') as abstract_origin) : compilation_unit * (list die) * die = 
-        strict_ais (find_reference_attribute_of_die c d cu d.d_str "DW_AT_abstract_origin" die)
-          "no abstract origin" s inlined_subroutine  in
-      let name : string =
-        strict_ais (find_name_of_die d.d_str die')
-          "no abstract origin name" s abstract_origin in
-      let call_file : unpacked_file_entry = 
-        let file_index = strict_ais (find_natural_attribute_value_of_die c "DW_AT_call_file" die) "no DW_AT_call_file" s inlined_subroutine in
-        unpack_file_entry (line_number_program_of_compilation_unit d cu).lnp_header file_index in
-        (*        match filename d cu file_index with | Just s -> s | Nothing -> "none" end in*)
-      let call_line : natural = strict_ais (find_natural_attribute_value_of_die c "DW_AT_call_line" die) "no DW_AT_call_line" s inlined_subroutine  in
-      let pc_ranges : list (natural*natural) = 
-        strict_ais (closest_enclosing_range c d.d_ranges (cu_base_address cu) [die](*deliberately ignore parents*))
-          "no pc ranges" s inlined_subroutine in
-      let const_params =
-        List.mapMaybe (fun die'' ->
-            if die''.die_abbreviation_declaration.ad_tag = tag_encode "DW_TAG_formal_parameter" then
-              match find_reference_attribute_of_die c d cu d.d_str "DW_AT_abstract_origin" die'' with
-              | Nothing -> Nothing
-              | Just abstract_origin' ->
-                 match find_integer_attribute_value_of_die c "DW_AT_const_value" die'' with
-                 | Nothing -> Nothing
-                 | Just n ->
-                    Just (<|
-                          iscp_abstract_origin = abstract_origin';
-                          iscp_value = n;
-                        |>)
-                 end
-              end
-            else
-              Nothing 
-          ) die.die_children in
-      <|
-      is_inlined_subroutine = inlined_subroutine;
-      is_abstract_origin = abstract_origin;
-      is_name = name;
-      is_call_file = call_file;
-      is_call_line = call_line;
-      is_pc_ranges = pc_ranges;
-      is_const_params = const_params;
-      |>
-    )
-    inlined_subroutines
-
-let analyse_inlined_subroutine_by_range (is:inlined_subroutine) : inlined_subroutine_data_by_range =
-  let n_ranges = List.length is.is_pc_ranges in 
-  List.mapi (fun i -> fun (n1,n2) -> ((n1,n2),(naturalFromNat i, naturalFromNat n_ranges),is)) is.is_pc_ranges
-
-
-let is_lt ((n1,n2),(m,n),is) ((n1',n2'),(m',n'),is') = n1 < n1' || (n1 = n1' && n2 > n2')
-  
-let analyse_inlined_subroutines_by_range (iss:inlined_subroutine_data) : inlined_subroutine_data_by_range =
-  Sorting.sortBy is_lt (List.concat (List.map analyse_inlined_subroutine_by_range iss))
-
-(* pp the inlined_subroutine tree structure.  Technically these die offsets each also need the compilation-unit offset to be globally unique, but that's locally constant *)
-let rec pp_inlined_subroutine_parents (ds:list die) : string =
-  match ds with
-  | [] -> ""
-  | die::ds' ->
-     if die.die_abbreviation_declaration.ad_tag = tag_encode "DW_TAG_inlined_subroutine" then
-       pp_pos die.die_offset ^ ":" ^ pp_inlined_subroutine_parents ds'
-     else if die.die_abbreviation_declaration.ad_tag = tag_encode "DW_TAG_lexical_block" then "<lexical_block>:" ^ pp_inlined_subroutine_parents ds'
-     else if die.die_abbreviation_declaration.ad_tag = tag_encode "DW_TAG_subprogram" then ""
-     else "<surprising ad_tag in " ^ pp_pos die.die_offset ^ ": " ^ pphex die.die_abbreviation_declaration.ad_tag ^ ">"
-  end 
-       
-  
-let pp_inlined_subroutine_header ds is = 
-  is.is_name
-  ^ " inlined from " ^ pp_ufe_brief is.is_call_file ^ ":" ^ show is.is_call_line ^ " (" ^ subprogram_at_line ds.ds_subprogram_line_extents is.is_call_file is.is_call_line ^ ")" 
-  ^ " "
-  ^ let (cu,parents,die) = is.is_inlined_subroutine in
-    pp_inlined_subroutine_parents (die::parents)
-  
-let pp_inlined_subroutine_const_params d is =
-  let c = p_context_of_d d in
-  match is.is_const_params with
-  | [] -> ""
-  | _ ->
-     String.concat ""
-       (List.map
-          (fun iscp ->
-            let fake_als : analysed_location_data = [(iscp.iscp_abstract_origin,Nothing)] in
-            let fake_diff = pp_analysed_locations3_diff c (*HACK*) d d.d_str [] fake_als in
-            let const_in_place_of_locs = 
-              List.map
-                (fun (removed,(name,offset,kind),typ,locs,parents) ->
-                  (removed,(name,offset,kind),typ,"const="^show iscp.iscp_value,parents))
-                fake_diff in
-            pp_analysed_location_format const_in_place_of_locs
-          )
-          is.is_const_params)
-  end
-  
-let pp_inlined_subroutine ds is =
-  pp_inlined_subroutine_header ds is ^ "\n"
-  ^ String.concat "" (List.map (fun (n1,n2) -> "  " ^ pphex n1 ^ " " ^ pphex n2 ^ "\n") is.is_pc_ranges)
-  ^ pp_inlined_subroutine_const_params ds.ds_dwarf is 
-
-let pp_inlined_subroutines ds iss =
-  String.concat "" (List.map (pp_inlined_subroutine ds) iss)           
-
-
-let pp_inlined_subroutine_by_range ds ((n1,n2),((m:natural),(n:natural)),is) =
-  pphex n1 ^ " " ^ pphex n2 ^ " "
-  ^ (if n<>1 then "("^show m^" of "^show n^") " else "")
-  ^  pp_inlined_subroutine_header ds is 
-  ^"\n"
-  ^ (if m=0 then pp_inlined_subroutine_const_params ds.ds_dwarf is else "")
-
-let pp_inlined_subroutines_by_range ds iss =
-  String.concat "" (List.map (pp_inlined_subroutine_by_range ds) iss)           
   
 
 (** ************************************************************ *)
@@ -5819,7 +5681,7 @@ let strict_msvfp x e s z =
      Assert_extra.failwith ("mk_sdt_variable_or_formal_parameter strict failure " ^ e ^ " on \n" ^ s z ^ "\n")
   end
 
-let mk_sdt_variable_or_formal_parameter (d:dwarf) subprogram_line_extents cu parents die : maybe sdt_variable_or_formal_parameter =
+let rec mk_sdt_variable_or_formal_parameter (d:dwarf) subprogram_line_extents cu parents die : maybe sdt_variable_or_formal_parameter =
   if not(List.elem die.die_abbreviation_declaration.ad_tag [tag_encode "DW_TAG_variable"; tag_encode "DW_TAG_formal_parameter"])
   then Nothing
   else
@@ -5836,6 +5698,13 @@ let mk_sdt_variable_or_formal_parameter (d:dwarf) subprogram_line_extents cu par
     svfp_kind = kind;
     svfp_name = strict_msvfp (find_name_of_die_using_abstract_origin c d cu d.d_str die) "no name" s cupdie;
     svfp_type =  strict_msvfp (find_DW_AT_type_of_die_deep_using_abstract_origin d cupdie) "no type" s cupdie;
+    svfp_abstract_origin =
+      match find_reference_attribute_of_die c d cu d.d_str "DW_AT_abstract_origin" die with
+      | Nothing ->
+         Nothing 
+      | Just ((cu',parents',die') as cupdie') ->
+         mk_sdt_variable_or_formal_parameter d subprogram_line_extents cu' parents' die'
+    end;
     svfp_const_value = find_integer_attribute_value_of_die c "DW_AT_const_value" die;
     svfp_external = match find_flag_attribute_value_of_die_using_abstract_origin d "DW_AT_external" cupdie with Just b -> b | Nothing -> false end;
     svfp_declaration = match find_flag_attribute_value_of_die_using_abstract_origin d "DW_AT_declaration" cupdie with Just b -> b | Nothing -> false end;
@@ -6087,6 +5956,205 @@ let pp_sdt_locals_dwarf (sdt_d:sdt_dwarf) : string =
   let indent_level = 0 in 
   String.concat "" (List.map (pp_sdt_locals_compilation_unit indent_level) sdt_d.sd_compilation_units)
   
+(** ************************************************************ *)
+(** **  analysis of inlined_subroutine data                      *)
+(** ************************************************************ *)
+
+(* old version, directly over die tree *)
+  
+let strict_ais x e s z =
+  match x with
+  | Just y -> y
+  | Nothing ->
+     Assert_extra.failwith ("analyse_inlined_subroutine strict failure " ^ e ^ " on \n" ^ s z ^ "\n")
+  end
+  
+val analyse_inlined_subroutines : dwarf -> inlined_subroutine_data
+let analyse_inlined_subroutines (d: dwarf) : inlined_subroutine_data =
+
+  let c = p_context_of_d d in
+  
+  let s (cu,parents,die) = pp_die c cu.cu_header d.d_str true 0 false die in
+
+  let inlined_subroutines : list (compilation_unit * (list die) * die) =
+    find_dies
+      (fun die ->
+        die.die_abbreviation_declaration.ad_tag = tag_encode "DW_TAG_inlined_subroutine")
+      d in
+  
+  List.map
+    (fun (((cu:compilation_unit), (parents: list die), (die: die)) as inlined_subroutine) ->
+      
+      let ((cu',parents,die') as abstract_origin) : compilation_unit * (list die) * die = 
+        strict_ais (find_reference_attribute_of_die c d cu d.d_str "DW_AT_abstract_origin" die)
+          "no abstract origin" s inlined_subroutine  in
+      let name : string =
+        strict_ais (find_name_of_die d.d_str die')
+          "no abstract origin name" s abstract_origin in
+      let call_file : unpacked_file_entry = 
+        let file_index = strict_ais (find_natural_attribute_value_of_die c "DW_AT_call_file" die) "no DW_AT_call_file" s inlined_subroutine in
+        unpack_file_entry (line_number_program_of_compilation_unit d cu).lnp_header file_index in
+        (*        match filename d cu file_index with | Just s -> s | Nothing -> "none" end in*)
+      let call_line : natural = strict_ais (find_natural_attribute_value_of_die c "DW_AT_call_line" die) "no DW_AT_call_line" s inlined_subroutine  in
+      let pc_ranges : list (natural*natural) = 
+        strict_ais (closest_enclosing_range c d.d_ranges (cu_base_address cu) [die](*deliberately ignore parents*))
+          "no pc ranges" s inlined_subroutine in
+      let const_params =
+        List.mapMaybe (fun die'' ->
+            if die''.die_abbreviation_declaration.ad_tag = tag_encode "DW_TAG_formal_parameter" then
+              match find_reference_attribute_of_die c d cu d.d_str "DW_AT_abstract_origin" die'' with
+              | Nothing -> Nothing
+              | Just abstract_origin' ->
+                 match find_integer_attribute_value_of_die c "DW_AT_const_value" die'' with
+                 | Nothing -> Nothing
+                 | Just n ->
+                    Just (<|
+                          iscp_abstract_origin = abstract_origin';
+                          iscp_value = n;
+                        |>)
+                 end
+              end
+            else
+              Nothing 
+          ) die.die_children in
+      <|
+      is_inlined_subroutine = inlined_subroutine;
+      is_abstract_origin = abstract_origin;
+      is_name = name;
+      is_call_file = call_file;
+      is_call_line = call_line;
+      is_pc_ranges = pc_ranges;
+      is_const_params = const_params;
+      |>
+    )
+    inlined_subroutines
+
+(* new version, over simple-die-tree view, but still producing the previous old-style datastructure *)
+
+let analyse_inlined_subroutines_sdt_const_param (svfp:sdt_variable_or_formal_parameter) : maybe inlined_subroutine_const_param =
+  match (svfp.svfp_kind, svfp.svfp_abstract_origin, svfp.svfp_const_value) with
+  | (SVPK_param, Just svfp', Just n) ->
+     Just (<|
+           iscp_abstract_origin = svfp'.svfp_cupdie;
+           iscp_value = n;
+           |>)
+  | _ ->
+     Nothing
+  end
+
+let rec analyse_inlined_subroutines_sdt_subroutine (ss:sdt_subroutine) : list inlined_subroutine =
+  let this : list inlined_subroutine = 
+  match (ss.ss_kind, ss.ss_abstract_origin) with
+  | (SSK_inlined_subroutine, Just ss') ->
+     let ((call_file:unpacked_file_entry),(call_line:natural)) =
+       match ss.ss_call_site with 
+       | Just (((ufe,line,subprogram_name) as ud):unpacked_decl) ->
+          (ufe,naturalFromNat line)
+       | Nothing ->
+          Assert_extra.failwith "analyse_inlined_subroutines_sdt_subroutine found no ss_call_site"
+      end in
+    let pc_ranges = match ss.ss_pc_ranges with | Just pc_ranges -> pc_ranges | Nothing -> Assert_extra.failwith "analyse_inlined_subroutines_sdt_subroutine found no ss_pc_ranges"   end in
+    let const_params = List.mapMaybe analyse_inlined_subroutines_sdt_const_param ss.ss_vars in
+    [ (<|
+            is_inlined_subroutine = ss.ss_cupdie;
+          is_abstract_origin = ss'.ss_cupdie;
+          is_name = match ss.ss_name with Just name->name | Nothing -> "no name" end;
+          is_call_file = call_file;
+          is_call_line = call_line;
+          is_pc_ranges = pc_ranges;
+          is_const_params = const_params;
+          |>
+      )]
+   | (SSK_inlined_subroutine, Nothing) ->
+      Assert_extra.failwith "analyse_inlined_subroutines_sdt_subroutine found SSK_inlined_subroutine without ss_abstract_origin"
+   | _ ->
+      []
+   end in
+
+   this 
+   ++ List.concatMap analyse_inlined_subroutines_sdt_subroutine ss.ss_subroutines
+   ++ List.concatMap analyse_inlined_subroutines_sdt_lexical_block ss.ss_lexical_blocks
+
+
+and analyse_inlined_subroutines_sdt_lexical_block (lb:sdt_lexical_block) : list inlined_subroutine =
+  List.concatMap analyse_inlined_subroutines_sdt_subroutine lb.slb_subroutines
+  ++ List.concatMap analyse_inlined_subroutines_sdt_lexical_block lb.slb_lexical_blocks
+
+let analyse_inlined_subroutines_sdt_compilation_unit (cu:sdt_compilation_unit) : list inlined_subroutine =
+  List.concatMap analyse_inlined_subroutines_sdt_subroutine cu.scu_subroutines
+
+let analyse_inlined_subroutines_sdt_dwarf (sd: sdt_dwarf) : list inlined_subroutine =
+  List.concatMap analyse_inlined_subroutines_sdt_compilation_unit sd.sd_compilation_units
+
+  
+let analyse_inlined_subroutine_by_range (is:inlined_subroutine) : inlined_subroutine_data_by_range =
+  let n_ranges = List.length is.is_pc_ranges in 
+  List.mapi (fun i -> fun (n1,n2) -> ((n1,n2),(naturalFromNat i, naturalFromNat n_ranges),is)) is.is_pc_ranges
+
+
+let is_lt ((n1,n2),(m,n),is) ((n1',n2'),(m',n'),is') = n1 < n1' || (n1 = n1' && n2 > n2')
+  
+let analyse_inlined_subroutines_by_range (iss:inlined_subroutine_data) : inlined_subroutine_data_by_range =
+  Sorting.sortBy is_lt (List.concat (List.map analyse_inlined_subroutine_by_range iss))
+
+(* pp the inlined_subroutine tree structure.  Technically these die offsets each also need the compilation-unit offset to be globally unique, but that's locally constant *)
+let rec pp_inlined_subroutine_parents (ds:list die) : string =
+  match ds with
+  | [] -> ""
+  | die::ds' ->
+     if die.die_abbreviation_declaration.ad_tag = tag_encode "DW_TAG_inlined_subroutine" then
+       pp_pos die.die_offset ^ ":" ^ pp_inlined_subroutine_parents ds'
+     else if die.die_abbreviation_declaration.ad_tag = tag_encode "DW_TAG_lexical_block" then "<lexical_block>:" ^ pp_inlined_subroutine_parents ds'
+     else if die.die_abbreviation_declaration.ad_tag = tag_encode "DW_TAG_subprogram" then ""
+     else "<surprising ad_tag in " ^ pp_pos die.die_offset ^ ": " ^ pphex die.die_abbreviation_declaration.ad_tag ^ ">"
+  end 
+       
+  
+let pp_inlined_subroutine_header ds is = 
+  is.is_name
+  ^ " inlined from " ^ pp_ufe_brief is.is_call_file ^ ":" ^ show is.is_call_line ^ " (" ^ subprogram_at_line ds.ds_subprogram_line_extents is.is_call_file is.is_call_line ^ ")" 
+  ^ " "
+  ^ let (cu,parents,die) = is.is_inlined_subroutine in
+    pp_inlined_subroutine_parents (die::parents)
+  
+let pp_inlined_subroutine_const_params d is =
+  let c = p_context_of_d d in
+  match is.is_const_params with
+  | [] -> ""
+  | _ ->
+     String.concat ""
+       (List.map
+          (fun iscp ->
+            let fake_als : analysed_location_data = [(iscp.iscp_abstract_origin,Nothing)] in
+            let fake_diff = pp_analysed_locations3_diff c (*HACK*) d d.d_str [] fake_als in
+            let const_in_place_of_locs = 
+              List.map
+                (fun (removed,(name,offset,kind),typ,locs,parents) ->
+                  (removed,(name,offset,kind),typ,"const="^show iscp.iscp_value,parents))
+                fake_diff in
+            pp_analysed_location_format const_in_place_of_locs
+          )
+          is.is_const_params)
+  end
+  
+let pp_inlined_subroutine ds is =
+  pp_inlined_subroutine_header ds is ^ "\n"
+  ^ String.concat "" (List.map (fun (n1,n2) -> "  " ^ pphex n1 ^ " " ^ pphex n2 ^ "\n") is.is_pc_ranges)
+  ^ pp_inlined_subroutine_const_params ds.ds_dwarf is 
+
+let pp_inlined_subroutines ds iss =
+  String.concat "" (List.map (pp_inlined_subroutine ds) iss)           
+
+
+let pp_inlined_subroutine_by_range ds ((n1,n2),((m:natural),(n:natural)),is) =
+  pphex n1 ^ " " ^ pphex n2 ^ " "
+  ^ (if n<>1 then "("^show m^" of "^show n^") " else "")
+  ^  pp_inlined_subroutine_header ds is 
+  ^"\n"
+  ^ (if m=0 then pp_inlined_subroutine_const_params ds.ds_dwarf is else "")
+
+let pp_inlined_subroutines_by_range ds iss =
+  String.concat "" (List.map (pp_inlined_subroutine_by_range ds) iss)           
 
 (** ************************************************************ *)
 (** **  pp of text section                                       *)
