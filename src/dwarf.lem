@@ -1,3 +1,4 @@
+(* -*-tuareg-*- *)
 open import Basic_classes
 open import Bool
 open import Function
@@ -697,9 +698,9 @@ type decl =
 
 type array_dimension 't = maybe natural(*count*) * 't(*subrange type*)
 
-type aggregate_member 't = cupdie * (maybe string)(*mname*) * 't * natural(*data_member_location*)
+type struct_union_member 't = cupdie * (maybe string)(*mname*) * 't * natural(*data_member_location*)
                          
-type aggregate_type_kind =
+type struct_union_type_kind =
   | Atk_structure
   | Atk_union
 
@@ -713,9 +714,11 @@ type c_type_top 't =
   | CT_restrict of cupdie * 't
   | CT_typedef of cupdie * string(*name*) * 't * decl
   | CT_array of cupdie * 't * list (array_dimension 't)
-  | CT_aggregate of cupdie * aggregate_type_kind * (maybe string)(*mname*) * (maybe natural)(*byte_size*) * decl * list (aggregate_member 't)(*members*)
-  | CT_enumeration of cupdie * (maybe string)(*mname*) * (maybe 't)(*mtyp*) * (maybe natural)(*byte_size*) * decl * list (enumeration_member)(*members*)
+  | CT_struct_union of cupdie * struct_union_type_kind * (maybe string)(*mname*) * (maybe natural)(*byte_size*) * decl * maybe (list (struct_union_member 't)(*members*))
+  | CT_enumeration of cupdie * (maybe string)(*mname*) * (maybe 't)(*mtyp*) * (maybe natural)(*mbyte_size*) * decl * maybe (list (enumeration_member)(*members*))
 
+(* In the CT_struct_union and C_enumeration cases, the final maybe(list(...member)) is Nothing if the analysis has not been recursed into the members, and Just ... if it has - which will typically be only one level deep *)
+                    
 type c_type =
   | CT of (c_type_top c_type)
         
@@ -4574,7 +4577,7 @@ let strict s x =
   end 
 
 
-let analyse_type_info_top c (d: dwarf) (cupdie: cupdie) : c_type_top cupdie = 
+let analyse_type_info_top c (d: dwarf) (r:bool(*recurse into members*)) (cupdie: cupdie) : c_type_top cupdie = 
   let (cu,parents,die) = cupdie in
   let mname = find_name_of_die d.d_str die in
   let mtyp = find_DW_AT_type_of_die c d cu d.d_str die in
@@ -4628,18 +4631,21 @@ let analyse_type_info_top c (d: dwarf) (cupdie: cupdie) : c_type_top cupdie =
       decl_line = Nothing; (* TODO *)
       |>) in 
 
-    let members_raw = List.filter (fun die' -> die'.die_abbreviation_declaration.ad_tag = tag_encode "DW_TAG_member") die.die_children in
     let members =
-      List.map
-        (fun die' ->
-          let cupdie' = (cu,die::parents,die') in
-          let mname' = find_name_of_die d.d_str die' in
-          let typ' = strict s (find_DW_AT_type_of_die c d cu d.d_str die') in
-          let data_member_location' = strict s (find_natural_attribute_value_of_die c "DW_AT_data_member_location" die') in
-          (cupdie',mname',typ',data_member_location'))
-        members_raw in
+      if r then 
+        let members_raw = List.filter (fun die' -> die'.die_abbreviation_declaration.ad_tag = tag_encode "DW_TAG_member") die.die_children in
+        Just (List.map
+          (fun die' ->
+            let cupdie' = (cu,die::parents,die') in
+            let mname' = find_name_of_die d.d_str die' in
+            let typ' = strict s (find_DW_AT_type_of_die c d cu d.d_str die') in
+            let data_member_location' = strict s (find_natural_attribute_value_of_die c "DW_AT_data_member_location" die') in
+            (cupdie',mname',typ',data_member_location'))
+          members_raw)
+      else
+        Nothing in 
 
-    CT_aggregate cupdie atk mname mbyte_size decl members
+    CT_struct_union cupdie atk mname mbyte_size decl members
 
   else if die.die_abbreviation_declaration.ad_tag = tag_encode "DW_TAG_enumeration_type" then
     let mbyte_size = find_natural_attribute_value_of_die c "DW_AT_byte_size" die in
@@ -4648,15 +4654,19 @@ let analyse_type_info_top c (d: dwarf) (cupdie: cupdie) : c_type_top cupdie =
       decl_file = Nothing; (* TODO *)
       decl_line = Nothing; (* TODO *)
       |> in 
-    let members_raw = List.filter (fun die' -> die'.die_abbreviation_declaration.ad_tag = tag_encode "DW_TAG_enumerator") die.die_children in
     let members =
-      List.map
-        (fun die' ->
-          let cupdie' = (cu,die::parents,die') in
-          let mname' = find_name_of_die d.d_str die' in
-          let const_value = strict s (find_natural_attribute_value_of_die c "DW_AT_const_value" die') in
-          (cupdie',mname',const_value))
-        members_raw in
+      if r then
+        let members_raw = List.filter (fun die' -> die'.die_abbreviation_declaration.ad_tag = tag_encode "DW_TAG_enumerator") die.die_children in
+        Just (List.map
+                (fun die' ->
+                  let cupdie' = (cu,die::parents,die') in
+                  let mname' = find_name_of_die d.d_str die' in
+                  let const_value = strict s (find_natural_attribute_value_of_die c "DW_AT_const_value" die') in
+                  (cupdie',mname',const_value))
+                members_raw)
+      else
+        Nothing
+    in
     
     CT_enumeration cupdie mname mtyp mbyte_size decl members
 
@@ -4665,23 +4675,23 @@ let analyse_type_info_top c (d: dwarf) (cupdie: cupdie) : c_type_top cupdie =
     Assert_extra.failwith "analyse_type_info_top didn't recognise tag"
 
 
-let rec analyse_type_info_deep (d: dwarf) cupdie : c_type = 
+let rec analyse_type_info_deep (d: dwarf) (r:bool(*recurse_into_members*)) cupdie : c_type = 
   let c = p_context_of_d d in
   let (cu,parents,die) = cupdie in
-  let (typ:c_type_top cupdie) = analyse_type_info_top c (d: dwarf) cupdie in
+  let (typ:c_type_top cupdie) = analyse_type_info_top c (d: dwarf) r cupdie in
   match typ with
   | CT_base cupdie name encoding mbyte_size -> CT (CT_base cupdie name encoding mbyte_size) 
-  | CT_pointer cupdie mtyp'  -> CT (CT_pointer cupdie (Maybe.map (analyse_type_info_deep d) mtyp'))
-  | CT_const cupdie mtyp'    -> CT (CT_const cupdie (Maybe.map (analyse_type_info_deep d) mtyp'))
-  | CT_volatile cupdie typ' ->  CT (CT_volatile cupdie (analyse_type_info_deep d typ'))
-  | CT_restrict cupdie typ' -> CT (CT_restrict cupdie (analyse_type_info_deep d typ'))
-  | CT_typedef cupdie name typ' decl -> CT (CT_typedef cupdie name (analyse_type_info_deep d typ') decl)
-  | CT_array cupdie typ' dims -> CT (CT_array cupdie (analyse_type_info_deep d typ') 
-     (List.map (fun (mcount,subrange_typ) -> (mcount, (analyse_type_info_deep d subrange_typ))) dims))
-  | CT_aggregate cupdie atk mname mbyte_size decl members ->
-     CT (CT_aggregate cupdie atk mname mbyte_size decl [](*(List.map (fun ((cupdie,mname,typ,data_member_location) as am) -> (cupdie,mname,(analyse_type_info_deep d typ),data_member_location))members)*))
-  | CT_enumeration cupdie mname mtyp' mbyte_size decl members ->
-     CT(CT_enumeration cupdie mname (Maybe.map (analyse_type_info_deep d) mtyp') mbyte_size decl members)
+  | CT_pointer cupdie mtyp'  -> CT (CT_pointer cupdie (Maybe.map (analyse_type_info_deep d r) mtyp'))
+  | CT_const cupdie mtyp'    -> CT (CT_const cupdie (Maybe.map (analyse_type_info_deep d r) mtyp'))
+  | CT_volatile cupdie typ' ->  CT (CT_volatile cupdie (analyse_type_info_deep d r typ'))
+  | CT_restrict cupdie typ' -> CT (CT_restrict cupdie (analyse_type_info_deep d r typ'))
+  | CT_typedef cupdie name typ' decl -> CT (CT_typedef cupdie name (analyse_type_info_deep d r typ') decl)
+  | CT_array cupdie typ' dims -> CT (CT_array cupdie (analyse_type_info_deep d r typ') 
+     (List.map (fun (mcount,subrange_typ) -> (mcount, (analyse_type_info_deep d r subrange_typ))) dims))
+  | CT_struct_union cupdie atk mname mbyte_size decl mmembers ->
+     CT (CT_struct_union cupdie atk mname mbyte_size decl (Maybe.map (fun members -> (List.map (fun ((cupdie,mname,typ,data_member_location) as am) -> (cupdie,mname,(analyse_type_info_deep d false typ),data_member_location))members)) mmembers))
+  | CT_enumeration cupdie mname mtyp' mbyte_size decl mmembers ->
+     CT(CT_enumeration cupdie mname (Maybe.map (analyse_type_info_deep d r) mtyp') mbyte_size decl mmembers)
   end
 
 let find_DW_AT_type_of_die_deep d cupdie : maybe c_type =
@@ -4690,7 +4700,7 @@ let find_DW_AT_type_of_die_deep d cupdie : maybe c_type =
   match find_reference_attribute_of_die c d cu d.d_str "DW_AT_type" die with
   | Nothing -> Nothing
   | Just cupdie' ->
-     Just (analyse_type_info_deep d cupdie')
+     Just (analyse_type_info_deep d false cupdie')
   end
 
 let find_DW_AT_type_of_die_deep_using_abstract_origin d cupdie : maybe c_type =
@@ -4699,14 +4709,14 @@ let find_DW_AT_type_of_die_deep_using_abstract_origin d cupdie : maybe c_type =
   match find_reference_attribute_using_abstract_origin c d cu d.d_str "DW_AT_type" die with
   | Nothing -> Nothing
   | Just cupdie' ->
-     Just (analyse_type_info_deep d cupdie')
+     Just (analyse_type_info_deep d false cupdie')
   end
    
   
-(* analyse and pp C type structure, but without going into the definitions of aggregate or enumeration types *)
-let pp_aggregate_type_kind atk =
+(* analyse and pp C type structure, but without going into the definitions of struct_union or enumeration types *)
+let pp_struct_union_type_kind atk =
   match atk with
-  | Atk_structure -> "structure"
+  | Atk_structure -> "struct"
   | Atk_union -> "union"
   end
 
@@ -4716,7 +4726,7 @@ let pp_cupdie3 (cu,parents,die) = pp_pos die.die_offset ^ "/" ^ String.concat "/
                                                               
 let pp_mbyte_size mbyte_size = "size:" ^ match mbyte_size with | Just n -> show n | Nothing -> "?" end
 
-(* pp the top-level structure of a C type, omitting aggregate-type and enum member definitions*)   
+(* pp the top-level structure of a C type, omitting struct_union-type and enum member definitions*)   
 let pp_type_info_top (ppa:'a->string) (typ:c_type_top 'a) : string = 
   match typ with
   | CT_base cupdie name encoding mbyte_size -> 
@@ -4728,8 +4738,8 @@ let pp_type_info_top (ppa:'a->string) (typ:c_type_top 'a) : string =
   | CT_typedef cupdie name typ' decl -> "typedef("^name^"="^ppa typ' ^ ")"
   | CT_array cupdie typ' dims ->
      ppa typ' ^ String.concat "" (List.map (fun (mcount,subrange_typ) -> "["^match mcount with | Just count -> show count | Nothing -> "no count" end ^"]") dims)
-  | CT_aggregate cupdie atk mname mbyte_size decl members -> pp_aggregate_type_kind atk ^ " " ^ (match mname with | Just s -> s | Nothing -> "noname" end) ^ pp_cupdie cupdie
-  | CT_enumeration cupdie mname mtyp' mbyte_size decl members -> "enum" ^ " " ^ (match mname with | Just s -> s | Nothing -> "noname" end) ^ pp_cupdie cupdie
+  | CT_struct_union cupdie atk mname mbyte_size decl mmembers -> pp_struct_union_type_kind atk ^ " " ^ (match mname with | Just s -> s | Nothing -> "noname" end) ^ pp_cupdie cupdie
+  | CT_enumeration cupdie mname mtyp' mbyte_size decl mmembers -> "enum" ^ " " ^ (match mname with | Just s -> s | Nothing -> "noname" end) ^ pp_cupdie cupdie
   end
 
 
@@ -4739,11 +4749,70 @@ let rec pp_type_info_deep (ctyp:c_type) : string =
   | CT typ -> 
      pp_type_info_top ppa typ
   end
-   
+
 let rec pp_type_info_die c (d: dwarf) cupdie : string = 
-  let (typ:c_type_top cupdie) = analyse_type_info_top c (d: dwarf) cupdie in
+  let (typ:c_type_top cupdie) = analyse_type_info_top c (d: dwarf) false cupdie in
   let ppa = pp_type_info_die c d in
   pp_type_info_top ppa typ
+
+   
+let pp_struct_union_type_member c d (am:struct_union_member cupdie) : list string = 
+  let (cupdie,mname,typ,data_member_location) = am in 
+      [ "  ";
+        (match mname with | Just s -> s | Nothing -> "noname" end);
+        " @ " ^ show data_member_location;
+        " : " ^ pp_type_info_die c d typ
+      ]
+
+let pp_struct_union_type_defn c d cupdie =
+  let (typ:c_type_top cupdie) = analyse_type_info_top c (d: dwarf) true cupdie in
+  match typ with 
+  | CT_struct_union cupdie atk mname mbyte_size decl mmembers -> 
+     (match mname with | Just s -> s | Nothing -> "noname" end) 
+     ^ " " ^ pp_cupdie cupdie
+     ^ " " ^ pp_mbyte_size mbyte_size ^ "\n"
+     ^ pad_rows (match mmembers with Just members -> (List.map (pp_struct_union_type_member c d) members) | Nothing -> [] end)
+  | _ ->
+    Assert_extra.failwith "pp_struct_union_type_defn called on non-struct_union"
+  end
+
+
+let pp_struct_union_type_member' (am:struct_union_member c_type) : list string = 
+  let (cupdie,mname,ctyp,data_member_location) = am in 
+      [ "  ";
+        (match mname with | Just s -> s | Nothing -> "noname" end);
+        " @ " ^ show data_member_location;
+        " : " ^ pp_type_info_deep ctyp
+      ]
+
+let pp_enum_type_member' (em:enumeration_member) : list string = 
+  let (cupdie,mname,const_value) = em in 
+      [ "  ";
+        (match mname with | Just s -> s | Nothing -> "noname" end);
+        " = " ^ show const_value
+      ]
+    
+let pp_struct_union_type_defn' (ctyp: c_type) :string =
+  let preamble mname kind cupdie mbyte_size = 
+    (match mname with | Just s -> s | Nothing -> "noname" end) 
+    ^ " " ^ kind
+    ^ " " ^ pp_cupdie cupdie
+    ^ " " ^ pp_mbyte_size mbyte_size in
+  match ctyp with 
+  | CT(CT_struct_union cupdie atk mname mbyte_size decl mmembers) -> 
+     preamble mname (pp_struct_union_type_kind atk) cupdie mbyte_size ^ "\n" 
+     ^ pad_rows (match mmembers with Just members -> (List.map (pp_struct_union_type_member') members) | Nothing -> [["warning: no members list"]] end)
+  | CT(CT_enumeration cupdie mname mtyp mbyte_size decl mmembers) ->
+     preamble mname "enum" cupdie mbyte_size
+     ^ " " ^ (match mtyp with Just typ -> pp_type_info_deep typ | Nothing -> "no representation type" end)
+     ^ "\n"
+     ^ pad_rows (match mmembers with Just members -> (List.map (pp_enum_type_member') members) | Nothing -> [["warning: no members list"]] end)
+  | _ ->
+    Assert_extra.failwith "pp_struct_union_type_defn called on non-struct_union"
+  end
+
+   
+   
 (*
   match typ with
   | CT_base cupdie name encoding mbyte_size -> 
@@ -4755,7 +4824,7 @@ let rec pp_type_info_die c (d: dwarf) cupdie : string =
   | CT_typedef cupdie name typ' decl -> "typedef("^name^"="^pp_type_info_die c d typ' ^ ")"
   | CT_array cupdie typ' dims ->
      pp_type_info_die c d typ' ^ String.concat "" (List.map (fun (mcount,subrange_typ) -> "["^match mcount with | Just count -> show count | Nothing -> "no count" end ^"]") dims)
-  | CT_aggregate cupdie atk mname mbyte_size decl members -> pp_aggregate_type_kind atk ^ " " ^ (match mname with | Just s -> s | Nothing -> "noname" end) ^ pp_cupdie cupdie
+  | CT_struct_union cupdie atk mname mbyte_size decl members -> pp_struct_union_type_kind atk ^ " " ^ (match mname with | Just s -> s | Nothing -> "noname" end) ^ pp_cupdie cupdie
   | CT_enumeration cupdie mname mtyp' mbyte_size decl members -> "enum" ^ " " ^ (match mname with | Just s -> s | Nothing -> "noname" end) ^ pp_cupdie cupdie
   end
  *)
@@ -4770,32 +4839,22 @@ let pp_type_info_die_DW_AT_type c (d: dwarf) cu str die =
   end 
 
   
-let pp_aggregate_type_member c d (am:aggregate_member cupdie) : list string = 
-  let (cupdie,mname,typ,data_member_location) = am in 
-      [ "  ";
-        (match mname with | Just s -> s | Nothing -> "noname" end);
-        " @ " ^ show data_member_location;
-        " : " ^ pp_type_info_die c d typ
-      ]
-
-let pp_aggregate_type_defn c d cupdie =
-  let (typ:c_type_top cupdie) = analyse_type_info_top c (d: dwarf) cupdie in
-  match typ with 
-  | CT_aggregate cupdie atk mname mbyte_size decl members -> 
-     (match mname with | Just s -> s | Nothing -> "noname" end) 
-     ^ " " ^ pp_cupdie cupdie
-     ^ " " ^ pp_mbyte_size mbyte_size ^ "\n"
-     ^ pad_rows (List.map (pp_aggregate_type_member c d) members)
-  | _ ->
-    Assert_extra.failwith "pp_aggregate_type_defn called on non-aggregate"
-  end
                  
-let aggregate_type_dies (d:dwarf) : list (compilation_unit * (list die) * die) =
-  find_dies (fun die -> die.die_abbreviation_declaration.ad_tag = tag_encode "DW_TAG_structure_type" || die.die_abbreviation_declaration.ad_tag = tag_encode "DW_TAG_union_type") d
+let struct_union_enum_types (d:dwarf) : list c_type =
+  let cupdies = find_dies (fun die -> List.elem die.die_abbreviation_declaration.ad_tag [tag_encode "DW_TAG_structure_type"; tag_encode "DW_TAG_union_type"; tag_encode "DW_TAG_enumeration_type"]) d in
+  List.map (analyse_type_info_deep (d: dwarf) true) cupdies
 
-let pp_all_aggregate_types c d : string =
-  String.concat "\n\n" (List.map ((fun (cu,parents,die) -> pp_aggregate_type_defn c d (cu,parents,die))) (aggregate_type_dies d))
+
+(*  
+let pp_all_struct_union_enum_types c d : string =
+  String.concat "\n\n" (List.map ((fun (cu,parents,die) -> pp_struct_union_type_defn c d (cu,parents,die))) (struct_union_type_dies d))
+ *)
   
+let pp_all_struct_union_enum_types' d : string =
+  let ctyps : list c_type = struct_union_enum_types d in
+  String.concat "" ((List.map   pp_struct_union_type_defn') ctyps)
+    
+
 
    
 (** ************************************************************ *)
@@ -6202,7 +6261,8 @@ let mds = extract_dwarf_static f1 in
   match mds with
   | Nothing -> "<no dwarf information extracted>"
   | Just ds ->
-     "" (*pp_text_section f1*)
+   "* emacs outline-mode configuration -*-outline-*-   C-c C-{t,a,d,e}"
+   ^  "" (*pp_text_section f1*)
         ^ pp_dwarf ds.ds_dwarf
       (*   ^ analyse_locations_raw c d    *)
 
@@ -6218,7 +6278,7 @@ let mds = extract_dwarf_static f1 in
      pp_inlined_subroutines ds iss 
      ^ "************** inlined subroutine info by range *************************\n"
      ^ pp_inlined_subroutines_by_range ds (analyse_inlined_subroutines_by_range iss)
-   ^ "************** subprograms info *************************\n"
+   ^ "************** subprogram line-number extent info *************************\n"
    ^ pp_subprograms ds.ds_subprogram_line_extents
    ^ "************** simple die tree *************************\n"
    ^  let sdt_d = mk_sdt_dwarf ds.ds_dwarf ds.ds_subprogram_line_extents in 
