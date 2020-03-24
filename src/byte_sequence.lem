@@ -6,6 +6,7 @@ open import String
 open import Assert_extra
 
 open import Error
+open import Maybe
 open import Missing_pervasives
 open import Show
 open import Byte_sequence_impl
@@ -24,6 +25,12 @@ let empty = Byte_sequence_impl.empty
   *)
 val read_char : byte_sequence -> error (byte * byte_sequence)
 let read_char = Byte_sequence_impl.read_char
+
+(** [find_byte bs b] finds the first occurence of b in bs and gives the index.
+  * returns [Nothing] if the byte do not appear in bs
+*)
+val find_byte : byte_sequence -> byte -> maybe natural
+let find_byte = Byte_sequence_impl.find_byte
 
 (* There's no generic implementation for those two *)
 
@@ -105,7 +112,10 @@ let equal = Byte_sequence_impl.equal
 val dropbytes : natural -> byte_sequence -> error byte_sequence
 let dropbytes = Byte_sequence_impl.dropbytes
 
-val takebytes : natural -> byte_sequence -> error (byte_sequence)
+(** [takebytes cnt bs0] takes [cnt] bytes from byte sequence [bs0].  Fails if
+  * [cnt] is greater than the length of [bs0].
+*)
+val takebytes : natural -> byte_sequence -> error byte_sequence
 let takebytes = Byte_sequence_impl.takebytes
 
 val takebytes_with_length : natural -> natural -> byte_sequence -> error byte_sequence

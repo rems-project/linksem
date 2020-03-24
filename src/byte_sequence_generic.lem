@@ -29,6 +29,16 @@ let read_char bs =
     | x::xs -> return (x, xs)
   end
 
+val find_byte : byte_sequence -> byte -> maybe natural
+let find_byte bs b =
+  match bs with
+    | []      -> Nothing
+    | x :: xs -> (
+      match find_byte xs b with
+        | Just n  -> Just n + 1
+        | Nothing -> Nothing
+      )
+
 val acquire : string -> error byte_sequence
 let acquire filename = fail "acquire: not available on this backend"
 declare ocaml target_rep function acquire = `Byte_sequence_wrapper.acquire_byte_list`

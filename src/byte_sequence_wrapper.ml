@@ -1,5 +1,4 @@
 open Buffer
-open Bytes
 open Error
 open List
 
@@ -37,9 +36,19 @@ let serialise (filename : string) bs =
 let get bs i =
   Bytes.get bs.bytes (bs.start + i)
 
+let unsafe_get bs i =
+  Bytes.unsafe_get bs.bytes (bs.start + i)
+
 let read_char bs =
   if length bs = 0 then Fail "read_char: sequence is empty"
-  else Success (get bs 0, { bs with start = bs.start + 1; len = bs.len - 1 })
+  else Success (unsafe_get bs 0, { bs with start = bs.start + 1; len = bs.len - 1 })
+
+let find_byte bs b =
+  match Bytes.index_from_opt bs.bytes bs.start b with
+  | Some i ->
+    let i = i - bs.start in
+    if i < bs.len then Some i else None
+  | None -> None
 
 let make len c =
   of_bytes (Bytes.make len c)
@@ -82,12 +91,17 @@ let list_init len f =
 (* Note: byte lists are lame *)
 let to_char_list bs =
   (* TODO: OCaml >= 4.06 has List.init, use that instead *)
-  list_init bs.len (fun i -> get bs i)
+  list_init bs.len (fun i -> unsafe_get bs i)
 
 let from_char_list l =
-  let buf = Buffer.create 16 in
-  List.iter (fun c -> Buffer.add_char buf c) l;
-  of_bytes (Buffer.to_bytes buf)
+  let n = List.length l in
+  let res = Bytes.create n in
+  let rec from_at i = function
+    | [] -> ()
+    | c :: xc -> Bytes.unsafe_set res i c; from_at (i+1) xc
+  in
+  from_at 0 l;
+  of_bytes res
 
 exception Different of int
 
@@ -129,6 +143,9 @@ let takebytes len bs =
 
 let big_num_length bs =
   Nat_big_num.of_int (length bs)
+
+let big_num_find_byte bs b=
+  Option.map Nat_big_num.of_int (find_byte bs b)
 
 let big_num_make len c =
   make (Nat_big_num.to_int len) c
