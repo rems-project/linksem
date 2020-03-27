@@ -2068,7 +2068,7 @@ let parse_abbreviation_declaration c : parser (maybe abbreviation_declaration) =
                     ad_tag = n2;
                     ad_has_children = (c<>0);
                     ad_attribute_specifications = l;
-                  |> in let _ = my_debug2 (pp_abbreviation_declaration ad) in ad)
+                  |> in (* let _ = my_debug2 (pp_abbreviation_declaration ad) in *) ad)
                 ))))
 
 let parse_abbreviations_table c =
@@ -2721,11 +2721,11 @@ let pp_die_abbrev_var_parents c d cu str parents =
 val parse_die : p_context -> byte_sequence -> compilation_unit_header -> (natural->abbreviation_declaration) -> parser (maybe die)
 let rec parse_die c str cuh find_abbreviation_declaration =
   fun (pc: parse_context) ->
-    let _ = my_debug3 ("parse_die called at " ^ pp_parse_context pc ^ "\n") in
+    (* let _ = my_debug3 ("parse_die called at " ^ pp_parse_context pc ^ "\n") in *)
     pr_bind (parse_ULEB128 pc) (fun abbreviation_code pc' ->
       if abbreviation_code = 0 then PR_success Nothing pc'
       else
-        let _ = my_debug3 ("parse_die abbreviation code "^pphex abbreviation_code ^"\n") in
+        (* let _ = my_debug3 ("parse_die abbreviation code "^pphex abbreviation_code ^"\n") in *)
         let ad = find_abbreviation_declaration abbreviation_code in
         let attribute_value_parsers = List.map (fun (at,af) -> pr_with_pos (parser_of_attribute_form c cuh af)) ad.ad_attribute_specifications in
         pr_bind (parse_parser_list attribute_value_parsers pc') (fun avs pc'' ->
@@ -2797,7 +2797,7 @@ let parse_compilation_unit c (debug_str_section_body: byte_sequence) (debug_abbr
         | PR_success cuh pc' -> (cuh,pc')
         end in
 
-      let _ = my_debug4 (pp_compilation_unit_header cuh) in
+      (* let _ = my_debug4 (pp_compilation_unit_header cuh) in *)
 
       let pc_abbrev = <|pc_bytes = match dropbytes cuh.cuh_debug_abbrev_offset debug_abbrev_section_body with Success bs -> bs | Fail _ -> Assert_extra.failwith "mydrop of debug_abbrev" end; pc_offset = cuh.cuh_debug_abbrev_offset  |> in
 
@@ -2807,13 +2807,13 @@ let parse_compilation_unit c (debug_str_section_body: byte_sequence) (debug_abbr
         | PR_success at pc_abbrev' -> at
         end in
 
-      let _ = my_debug4 (pp_abbreviations_table abbreviations_table) in
+      (* let _ = my_debug4 (pp_abbreviations_table abbreviations_table) in *)
 
       let find_abbreviation_declaration (ac:natural) : abbreviation_declaration =
-        let _ = my_debug4 ("find_abbreviation_declaration "^pphex ac) in
+        (* let _ = my_debug4 ("find_abbreviation_declaration "^pphex ac) in *)
         myfindNonPure (fun ad -> ad.ad_abbreviation_code = ac) abbreviations_table  in
 
-      let _ = my_debug3 (pp_abbreviations_table abbreviations_table) in
+      (* let _ = my_debug3 (pp_abbreviations_table abbreviations_table) in *)
 
       match parse_die c debug_str_section_body cuh find_abbreviation_declaration pc' with
       | PR_fail s pc'' -> Assert_extra.failwith ("parse_die fail: " ^ pp_parse_fail s pc'')
@@ -2855,7 +2855,7 @@ let parse_type_unit c (debug_str_section_body: byte_sequence) (debug_abbrev_sect
         | PR_success tuh pc' -> (tuh,pc')
         end in
 
-      let _ = my_debug4 (pp_type_unit_header tuh) in
+      (* let _ = my_debug4 (pp_type_unit_header tuh) in *)
 
       let pc_abbrev = let n = tuh.tuh_cuh.cuh_debug_abbrev_offset in <|pc_bytes = match dropbytes n debug_abbrev_section_body with Success bs -> bs | Fail _ -> Assert_extra.failwith "mydrop of debug_abbrev" end; pc_offset = n  |> in
 
@@ -2865,13 +2865,13 @@ let parse_type_unit c (debug_str_section_body: byte_sequence) (debug_abbrev_sect
         | PR_success at pc_abbrev' -> at
         end in
 
-      let _ = my_debug4 (pp_abbreviations_table abbreviations_table) in
+      (* let _ = my_debug4 (pp_abbreviations_table abbreviations_table) in *)
 
       let find_abbreviation_declaration (ac:natural) : abbreviation_declaration =
-        let _ = my_debug4 ("find_abbreviation_declaration "^pphex ac) in
+        (* let _ = my_debug4 ("find_abbreviation_declaration "^pphex ac) in *)
         myfindNonPure (fun ad -> ad.ad_abbreviation_code = ac) abbreviations_table  in
 
-      let _ = my_debug3 (pp_abbreviations_table abbreviations_table) in
+      (* let _ = my_debug3 (pp_abbreviations_table abbreviations_table) in *)
 
       match parse_die c debug_str_section_body tuh.tuh_cuh find_abbreviation_declaration pc' with
       | PR_fail s pc'' -> Assert_extra.failwith ("parse_die fail: " ^ pp_parse_fail s pc'')
@@ -2948,7 +2948,7 @@ let parse_location_list_item c (cuh: compilation_unit_header) : parser (maybe lo
            (parse_uint_address_size c cuh.cuh_address_size)
            pc)
         (fun ((a1: natural),(a2:natural)) pc' ->
-          let _ = my_debug4 ("offset="^pphex pc.pc_offset ^ " begin=" ^ pphex a1 ^ " end=" ^ pphex a2) in
+          (* let _ = my_debug4 ("offset="^pphex pc.pc_offset ^ " begin=" ^ pphex a1 ^ " end=" ^ pphex a2) in *)
           if a1=0 && a2=0 then
             PR_success Nothing pc'
           else if a1 = max_address cuh.cuh_address_size then
@@ -3049,7 +3049,7 @@ let parse_range_list_item c (cuh: compilation_unit_header) : parser (maybe range
            (parse_uint_address_size c cuh.cuh_address_size)
            pc)
         (fun ((a1: natural),(a2:natural)) pc' ->
-          let _ = my_debug4 ("offset="^pphex pc.pc_offset ^ " begin=" ^ pphex a1 ^ " end=" ^ pphex a2) in
+          (* let _ = my_debug4 ("offset="^pphex pc.pc_offset ^ " begin=" ^ pphex a1 ^ " end=" ^ pphex a2) in *)
           if a1=0 && a2=0 then
             PR_success Nothing pc'
           else if a1 = max_address cuh.cuh_address_size then
@@ -3390,7 +3390,7 @@ let parse_frame_info_element c cuh (fi: list frame_info_element) : parser frame_
       else
         (* parse fde *)
         let cie = find_cie fi cie_id in
-        let _ = my_debug4 (pp_cie c cuh cie) in
+        (* let _ = my_debug4 (pp_cie c cuh cie) in *)
         pr_post_map
           (parse_triple
              (parse_initial_location c cuh cie.cie_segment_size cie.cie_address_size) (*(segment selector and target address)*)
@@ -3842,7 +3842,7 @@ let parse_dwarf c
   let pc_frame = <|pc_bytes = debug_frame_section_body; pc_offset = 0  |> in
 
   let fi =
-    let _ = my_debug5 ("debug_frame_section_body:\n" ^ ppbytes2 0 debug_frame_section_body) in
+    (* let _ = my_debug5 ("debug_frame_section_body:\n" ^ ppbytes2 0 debug_frame_section_body) in *)
 
     match parse_frame_info c cuh_default pc_frame with
     | PR_fail s pc_info' ->  Assert_extra.failwith ("parse_frame_info: " ^ pp_parse_fail s pc_info')
@@ -3881,8 +3881,8 @@ let extract_section_body (f:elf_file) (section_name:string) (strict: bool) =
       | [section] ->
           let section_addr = section.Elf_interpreted_section.elf32_section_addr in
           let section_body = section.Elf_interpreted_section.elf32_section_body in
-          let _ = my_debug4 (section_name ^ (": \n" ^ (Elf_interpreted_section.string_of_elf32_interpreted_section section ^ "\n"
-                         ^ "  body = " ^ ppbytes2 0 section_body ^ "\n"))) in
+          (* let _ = my_debug4 (section_name ^ (": \n" ^ (Elf_interpreted_section.string_of_elf32_interpreted_section section ^ "\n"
+           *                ^ "  body = " ^ ppbytes2 0 section_body ^ "\n"))) in *)
           (c,section_addr,section_body)
       | [] ->
           if strict then
@@ -5675,7 +5675,7 @@ let extract_dwarf_static f1 =
   match extract_dwarf f1 with
   | Nothing -> Nothing
   | Just dwarf ->
-      let _ = my_debug5 (pp_dwarf dwarf) in
+      (* let _ = my_debug5 (pp_dwarf dwarf) in *)
 
       let ald : analysed_location_data =
         analyse_locations dwarf in
