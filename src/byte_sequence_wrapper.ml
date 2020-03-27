@@ -145,7 +145,9 @@ let big_num_length bs =
   Nat_big_num.of_int (length bs)
 
 let big_num_find_byte bs b=
-  Option.map Nat_big_num.of_int (find_byte bs b)
+  match find_byte bs b with
+  | Some i -> Some (Nat_big_num.of_int i)
+  | None -> None
 
 let big_num_make len c =
   make (Nat_big_num.to_int len) c
