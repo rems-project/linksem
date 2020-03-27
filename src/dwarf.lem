@@ -292,6 +292,7 @@ type attribute_value =  (* following Figure 3 *)
   | AV_string of byte_sequence (* not including terminating null *)
   | AV_strp of natural (* dwarf_format dependent *)
 
+
 type die =
     <|
     die_offset: natural;
@@ -300,6 +301,8 @@ type die =
     die_attribute_values: list (natural (*pos*) * attribute_value);
     die_children: list die;
   |>
+
+type die_index = Map.map natural (list die * die)
 
 type compilation_unit_header =
     <|
@@ -316,6 +319,7 @@ type compilation_unit =
     cu_header: compilation_unit_header;
     cu_abbreviations_table: abbreviations_table;
     cu_die: die;
+    cu_index: die_index
   |>
 
 type compilation_units = list compilation_unit
@@ -675,19 +679,19 @@ type inlined_subroutine =
   is_const_params : list inlined_subroutine_const_param;
   |>
   (* ignoring the nesting structure of inlined subroutines for now *)
-  
+
 type inlined_subroutine_data       = list inlined_subroutine
 
-type inlined_subroutine_data_by_range = list ( (natural*natural)(*range*) * (natural*natural) (*range m-of-n*) * inlined_subroutine)                                   
-                                   
+type inlined_subroutine_data_by_range = list ( (natural*natural)(*range*) * (natural*natural) (*range m-of-n*) * inlined_subroutine)
+
 (*type inlined_subroutine_data_at_pc = list ((compilation_unit * (list die) * die) *             (natural * natural * single_location_description * error single_location))*)
 
 
-    
+
 (* type descriptions *)
 (* NB these do not cover all the DWARF-expressible types; only some common C cases *)
 (* ignore base type DW_endianity and DW_bitsize for now *)
-type cupdie = compilation_unit * (list die) * die        
+type cupdie = compilation_unit * (list die) * die
 
 type decl =
   <|
@@ -698,14 +702,14 @@ type decl =
 type array_dimension 't = maybe natural(*count*) * 't(*subrange type*)
 
 type struct_union_member 't = cupdie * (maybe string)(*mname*) * 't * natural(*data_member_location*)
-                         
+
 type struct_union_type_kind =
   | Atk_structure
   | Atk_union
 
 type enumeration_member = cupdie * (maybe string)(*mname*) * natural(*const_value*)
-  
-type c_type_top 't = 
+
+type c_type_top 't =
   | CT_base of cupdie * string(*name*) * natural(*encoding*) * (maybe natural)(*byte_size*)
   | CT_pointer of cupdie * maybe 't
   | CT_const of cupdie * maybe 't
@@ -717,10 +721,10 @@ type c_type_top 't =
   | CT_enumeration of cupdie * (maybe string)(*mname*) * (maybe 't)(*mtyp*) * (maybe natural)(*mbyte_size*) * decl * maybe (list (enumeration_member)(*members*))
 
 (* In the CT_struct_union and C_enumeration cases, the final maybe(list(...member)) is Nothing if the analysis has not been recursed into the members, and Just ... if it has - which will typically be only one level deep *)
-                    
+
 type c_type =
   | CT of (c_type_top c_type)
-        
+
 (* simple die tree *)
 
 (* this unifies variables and formal parameters, and also subprograms
@@ -728,7 +732,7 @@ type c_type =
    best *)
 (* not including DW_AT_low_pc/DW_AT_high_pc or DW_AT_ranges - might want that*)
 (* also not including per-instruction line number info *)
-        
+
 type variable_or_formal_parameter_kind =
   | SVPK_var
   | SVPK_param
@@ -736,7 +740,7 @@ type variable_or_formal_parameter_kind =
 type sdt_unspecified_parameter = unit
 
 
-      
+
 type sdt_variable_or_formal_parameter =
   <|
   svfp_cupdie : cupdie;
@@ -750,11 +754,11 @@ type sdt_variable_or_formal_parameter =
   svfp_locations : maybe (list (natural * natural * list operation (*the parsed single_location_description*)));
   svfp_decl : maybe unpacked_decl;
 |>
-  
+
 type sdt_subroutine_kind =
   | SSK_subprogram
   | SSK_inlined_subroutine
-        
+
 type sdt_subroutine = (* subprogram or inlined subroutine *)
   <|
   ss_cupdie : cupdie;
@@ -782,7 +786,7 @@ and sdt_lexical_block =
   slb_subroutines : list sdt_subroutine; (* invariant: all inlined*)
   slb_lexical_blocks : list sdt_lexical_block;
   |>
-    
+
 type sdt_compilation_unit =
   <|
   scu_cupdie : cupdie;
@@ -796,12 +800,12 @@ type sdt_dwarf =
   |>
 
 
-  
 
-        
 
-        
-  
+
+
+
+
 (** ************************************************************ *)
 (** **  missing pervasives  ************************************ *)
 (** ************************************************************ *)
@@ -2334,17 +2338,17 @@ let parser_of_attribute_form c cuh n =
 
 
 (* *** where to put this? *)
-  
+
 let pp_pos pos = "<" ^ pphexplain pos ^">"
 
-  
+
 (** ************************************************************ *)
 (** **  finding things in the die tree                           *)
 (** ************************************************************ *)
 
-val find_maybe : forall 'a 'b. ('a -> maybe 'b) -> list 'a -> maybe 'b 
+val find_maybe : forall 'a 'b. ('a -> maybe 'b) -> list 'a -> maybe 'b
 let rec find_maybe f l =
-  match l with 
+  match l with
   | []      -> Nothing
   | x :: xs ->
      match f x with
@@ -2353,21 +2357,23 @@ let rec find_maybe f l =
      end
   end
 
-let rec find_die_by_offset_in_die offset cu parents die : maybe (compilation_unit * (list die) * die) =
-  if die.die_offset = offset then Just (cu,parents,die) else
-    find_maybe (find_die_by_offset_in_die offset cu (die::parents)) die.die_children
+let rec find_die_by_offset_in_cu offset cu : maybe cupdie =
+  match Map.lookup offset cu.cu_index with
+    | Just (parents,die) -> Just (cu, parents,die)
+    | Nothing -> Nothing
+  end
 
-let find_die_by_offset_in_all offset d : maybe (compilation_unit * (list die) * die) =
+let find_die_by_offset_in_all offset d : maybe cupdie =
   find_maybe
-    (fun cu -> find_die_by_offset_in_die offset cu [] cu.cu_die) 
+    (fun cu -> find_die_by_offset_in_cu offset cu)
     d.d_compilation_units
 
-val find_dies_in_die : (die->bool) -> compilation_unit -> list die -> die -> list (compilation_unit * (list die) * die)
+val find_dies_in_die : (die->bool) -> compilation_unit -> list die -> die -> list cupdie
 let rec find_dies_in_die (p:die->bool) (cu:compilation_unit) (parents: list die) (d: die) =
   let ds = List.concatMap (find_dies_in_die p cu (d::parents)) d.die_children in
   if p d then (cu,parents,d)::ds else ds
 
-let find_dies (p:die->bool) (d: dwarf) : list (compilation_unit * (list die) * die) =
+let find_dies (p:die->bool) (d: dwarf) : list cupdie =
   List.concatMap
     (fun cu -> find_dies_in_die p cu [] cu.cu_die)
     d.d_compilation_units
@@ -2784,6 +2790,10 @@ let pp_compilation_unit_abbrev c (debug_str_section_body: byte_sequence) cu =
 let pp_compilation_units_abbrev c debug_string_section_body (compilation_units: list compilation_unit) : string =
   String.concat "" (List.map (pp_compilation_unit_abbrev c debug_string_section_body) compilation_units)
 
+val add_die_to_index : die_index -> list die -> die -> die_index
+let rec add_die_to_index acc parents die =
+  let nacc : die_index = Map.insert die.die_offset (parents,die) acc in
+  List.foldl (fun acc ndie -> add_die_to_index acc (die::parents) ndie) nacc die.die_children
 
 let parse_compilation_unit c (debug_str_section_body: byte_sequence) (debug_abbrev_section_body: byte_sequence) : parser (maybe compilation_unit) =
     fun (pc:parse_context) ->
@@ -2824,6 +2834,7 @@ let parse_compilation_unit c (debug_str_section_body: byte_sequence) (debug_abbr
             cu_header = cuh;
             cu_abbreviations_table = abbreviations_table;
             cu_die = die;
+            cu_index = add_die_to_index Map.empty [] die
           |> in
           PR_success (Just cu) pc''
       end
