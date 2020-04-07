@@ -660,33 +660,6 @@ type p_context =
   |>
 
 
-(* inlined subroutine data *)
-
-type inlined_subroutine_const_param =
-  <|
-  iscp_abstract_origin: compilation_unit * (list die) * die;
-  iscp_value: integer;
-  |>
-
-type inlined_subroutine =
-  <|
-  is_inlined_subroutine: compilation_unit * (list die) * die;
-  is_abstract_origin: compilation_unit * (list die) * die;
-  is_name : string;
-  is_call_file: unpacked_file_entry;
-  is_call_line: natural;
-  is_pc_ranges: list (natural * natural);
-  is_const_params : list inlined_subroutine_const_param;
-  |>
-  (* ignoring the nesting structure of inlined subroutines for now *)
-
-type inlined_subroutine_data       = list inlined_subroutine
-
-type inlined_subroutine_data_by_range = list ( (natural*natural)(*range*) * (natural*natural) (*range m-of-n*) * inlined_subroutine)
-
-(*type inlined_subroutine_data_at_pc = list ((compilation_unit * (list die) * die) *             (natural * natural * single_location_description * error single_location))*)
-
-
 
 (* type descriptions *)
 (* NB these do not cover all the DWARF-expressible types; only some common C cases *)
@@ -798,6 +771,35 @@ type sdt_compilation_unit =
 type sdt_dwarf =
   <| sd_compilation_units : list sdt_compilation_unit;
   |>
+
+
+(* inlined subroutine data *)
+
+type inlined_subroutine_const_param =
+  <|
+  iscp_abstract_origin: compilation_unit * (list die) * die;
+  iscp_value: integer;
+  |>
+
+type inlined_subroutine =
+  <|
+  is_inlined_subroutine: compilation_unit * (list die) * die;
+  is_abstract_origin: compilation_unit * (list die) * die;
+  is_inlined_subroutine_sdt: sdt_subroutine;
+  is_inlined_subroutine_sdt_parents: list sdt_subroutine;
+  is_name : string;
+  is_call_file: unpacked_file_entry;
+  is_call_line: natural;
+  is_pc_ranges: list (natural * natural);
+  is_const_params : list inlined_subroutine_const_param;
+  |>
+  (* ignoring the nesting structure of inlined subroutines for now *)
+
+type inlined_subroutine_data       = list inlined_subroutine
+
+type inlined_subroutine_data_by_range = list ( (natural*natural)(*range*) * (natural*natural) (*range m-of-n*) * inlined_subroutine)
+
+(*type inlined_subroutine_data_at_pc = list ((compilation_unit * (list die) * die) *             (natural * natural * single_location_description * error single_location))*)
 
 
 
@@ -6035,7 +6037,7 @@ let pp_sdt_locals_dwarf (sdt_d:sdt_dwarf) : string =
 (** ************************************************************ *)
 
 (* old version, directly over die tree *)
-  
+(*  
 let strict_ais x e s z =
   match x with
   | Just y -> y
@@ -6102,7 +6104,8 @@ let analyse_inlined_subroutines (d: dwarf) : inlined_subroutine_data =
       |>
     )
     inlined_subroutines
-
+ *)
+  
 (* new version, over simple-die-tree view, but still producing the previous old-style datastructure *)
 
 let analyse_inlined_subroutines_sdt_const_param (svfp:sdt_variable_or_formal_parameter) : maybe inlined_subroutine_const_param =
@@ -6116,7 +6119,7 @@ let analyse_inlined_subroutines_sdt_const_param (svfp:sdt_variable_or_formal_par
      Nothing
   end
 
-let rec analyse_inlined_subroutines_sdt_subroutine (ss:sdt_subroutine) : list inlined_subroutine =
+let rec analyse_inlined_subroutines_sdt_subroutine (sdt_parents: list sdt_subroutine) (ss:sdt_subroutine) : list inlined_subroutine =
   let this : list inlined_subroutine = 
   match (ss.ss_kind, ss.ss_abstract_origin) with
   | (SSK_inlined_subroutine, Just ss') ->
@@ -6132,6 +6135,8 @@ let rec analyse_inlined_subroutines_sdt_subroutine (ss:sdt_subroutine) : list in
     [ (<|
             is_inlined_subroutine = ss.ss_cupdie;
           is_abstract_origin = ss'.ss_cupdie;
+          is_inlined_subroutine_sdt = ss;
+          is_inlined_subroutine_sdt_parents = sdt_parents;
           is_name = match ss.ss_name with Just name->name | Nothing -> "no name" end;
           is_call_file = call_file;
           is_call_line = call_line;
@@ -6144,18 +6149,19 @@ let rec analyse_inlined_subroutines_sdt_subroutine (ss:sdt_subroutine) : list in
    | _ ->
       []
    end in
+   let sdt_parents' = ss::sdt_parents in
 
    this 
-   ++ List.concatMap analyse_inlined_subroutines_sdt_subroutine ss.ss_subroutines
-   ++ List.concatMap analyse_inlined_subroutines_sdt_lexical_block ss.ss_lexical_blocks
+   ++ List.concatMap (analyse_inlined_subroutines_sdt_subroutine sdt_parents') ss.ss_subroutines
+   ++ List.concatMap (analyse_inlined_subroutines_sdt_lexical_block sdt_parents') ss.ss_lexical_blocks
 
 
-and analyse_inlined_subroutines_sdt_lexical_block (lb:sdt_lexical_block) : list inlined_subroutine =
-  List.concatMap analyse_inlined_subroutines_sdt_subroutine lb.slb_subroutines
-  ++ List.concatMap analyse_inlined_subroutines_sdt_lexical_block lb.slb_lexical_blocks
+and analyse_inlined_subroutines_sdt_lexical_block sdt_parents (lb:sdt_lexical_block) : list inlined_subroutine =
+  List.concatMap (analyse_inlined_subroutines_sdt_subroutine sdt_parents) lb.slb_subroutines
+  ++ List.concatMap (analyse_inlined_subroutines_sdt_lexical_block sdt_parents) lb.slb_lexical_blocks
 
 let analyse_inlined_subroutines_sdt_compilation_unit (cu:sdt_compilation_unit) : list inlined_subroutine =
-  List.concatMap analyse_inlined_subroutines_sdt_subroutine cu.scu_subroutines
+  List.concatMap (analyse_inlined_subroutines_sdt_subroutine []) cu.scu_subroutines
 
 let analyse_inlined_subroutines_sdt_dwarf (sd: sdt_dwarf) : list inlined_subroutine =
   List.concatMap analyse_inlined_subroutines_sdt_compilation_unit sd.sd_compilation_units
@@ -6275,32 +6281,33 @@ let mds = extract_dwarf_static f1 in
   match mds with
   | Nothing -> "<no dwarf information extracted>"
   | Just ds ->
-   "* emacs outline-mode configuration -*-outline-*-   C-c C-{t,a,d,e}"
-   ^  "" (*pp_text_section f1*)
-        ^ pp_dwarf ds.ds_dwarf
-      (*   ^ analyse_locations_raw c d    *)
+     let sdt_d = mk_sdt_dwarf ds.ds_dwarf ds.ds_subprogram_line_extents in 
 
-   ^ "************** evaluation of frame data *************************\n"
-   ^ pp_evaluated_frame_info ds.ds_evaluated_frame_info
-   ^ "************** analysis of location data *************************\n"
-   ^ pp_analysed_location_data ds.ds_dwarf ds.ds_analysed_location_data
-   ^ "************** line info *************************\n"
-   ^ pp_evaluated_line_info ds.ds_evaluated_line_info
-
-   ^ "************** inlined subroutine info *************************\n"
-   ^ let iss = analyse_inlined_subroutines ds.ds_dwarf in
-     pp_inlined_subroutines ds iss 
-     ^ "************** inlined subroutine info by range *************************\n"
-     ^ pp_inlined_subroutines_by_range ds (analyse_inlined_subroutines_by_range iss)
-   ^ "************** subprogram line-number extent info *************************\n"
-   ^ pp_subprograms ds.ds_subprogram_line_extents
-   ^ "************** simple die tree *************************\n"
-   ^  let sdt_d = mk_sdt_dwarf ds.ds_dwarf ds.ds_subprogram_line_extents in 
-      pp_sdt_dwarf sdt_d
-      ^  "************** simple die tree globals *************************\n"
-      ^  pp_sdt_globals_dwarf sdt_d
-      ^  "************** simple die tree locals *************************\n"
-      ^  pp_sdt_locals_dwarf sdt_d
+     "* emacs outline-mode configuration -*-outline-*-   C-c C-{t,a,d,e}"
+     ^  "" (*pp_text_section f1*)
+     ^ pp_dwarf ds.ds_dwarf
+     (*   ^ analyse_locations_raw c d    *)
+     
+     ^ "************** evaluation of frame data *************************\n"
+     ^ pp_evaluated_frame_info ds.ds_evaluated_frame_info
+     ^ "************** analysis of location data *************************\n"
+     ^ pp_analysed_location_data ds.ds_dwarf ds.ds_analysed_location_data
+     ^ "************** line info *************************\n"
+     ^ pp_evaluated_line_info ds.ds_evaluated_line_info
+     
+     ^ "************** inlined subroutine info *************************\n"
+     ^ let iss = analyse_inlined_subroutines_sdt_dwarf sdt_d in
+       pp_inlined_subroutines ds iss 
+       ^ "************** inlined subroutine info by range *************************\n"
+       ^ pp_inlined_subroutines_by_range ds (analyse_inlined_subroutines_by_range iss)
+       ^ "************** subprogram line-number extent info *************************\n"
+       ^ pp_subprograms ds.ds_subprogram_line_extents
+       ^ "************** simple die tree *************************\n"
+       ^        pp_sdt_dwarf sdt_d
+       ^  "************** simple die tree globals *************************\n"
+       ^  pp_sdt_globals_dwarf sdt_d
+       ^  "************** simple die tree locals *************************\n"
+       ^  pp_sdt_locals_dwarf sdt_d
 
 
 end
