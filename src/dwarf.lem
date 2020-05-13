@@ -6194,7 +6194,7 @@ let rec pp_inlined_subroutine_parents (ds:list die) : string =
   
 let pp_inlined_subroutine_header ds is = 
   is.is_name
-  ^ " inlined from " ^ pp_ufe_brief is.is_call_file ^ ":" ^ show is.is_call_line ^ " (" ^ subprogram_at_line ds.ds_subprogram_line_extents is.is_call_file is.is_call_line ^ ")" 
+  ^ " inlined from " ^ (subprogram_at_line ds.ds_subprogram_line_extents is.is_call_file is.is_call_line) ^ ":" ^ show is.is_call_line ^ " (" ^ (pp_ufe_brief is.is_call_file) ^ ")" 
   ^ " "
   ^ let (cu,parents,die) = is.is_inlined_subroutine in
     pp_inlined_subroutine_parents (die::parents)
