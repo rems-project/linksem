@@ -74,6 +74,13 @@ directory is `linksem`), `cd` into `src` and type `make`.
 This will build the Lem model (extracting OCaml files) and build these files
 with the OCaml compiler.
 
+## Install process
+
+To install from the OPAM repository, the preferred method is 
+`opam install linksem`. 
+To install a specific git checkout, do `opam install .` in the repository root.
+If you really do not want to use OPAM, `make install` will work.
+
 ## Known issues
 
   1. Currently a bug in Lem prevents 'error.lem' from being extracted correctly
