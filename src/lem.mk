@@ -19,7 +19,7 @@ $(error No zarith installed [anywhere ocamlfind can find it]; install it (opam i
 endif
 # assume the host system has lem
 ifeq ($(shell printenv | grep CAML 1>&2 && env OCAMLPATH=$(OCAMLPATH) ocamlfind query lem),)
-$(error No lem installed [anywhere ocamlfind can find it]; please install it ('make install' from lem/ocaml-lib || 'make local-install' from lem/ocaml-lib and add lem/ocaml-lib/local to OCAMLPATH))
+$(error No lem installed [anywhere ocamlfind can find it]; please install it (opam install lem || 'make install' from lem/ocaml-lib || 'make local-install' from lem/ocaml-lib and add lem/ocaml-lib/local to OCAMLPATH))
 endif
 endif
 

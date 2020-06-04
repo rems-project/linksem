@@ -1,17 +1,27 @@
-opam-version: "1.2"
+opam-version: "2.0"
 name: "linksem"
-version: "0.6"
-maintainer: "Stephen Kell <Stephen.Kell@cl.cam.ac.uk>"
+version: "0.7"
+maintainer: "Linksem Devs <cl-linksem-dev@lists.cam.ac.uk>"
 authors: ["Stephen Kell" "Dominic Mulligan" "Peter Sewell"]
 homepage: "https://github.com/rems-project/linksem"
 bug-reports: "https://github.com/rems-project/linksem/issues"
 license: "BSD-2"
-dev-repo: "http://github.com/rems-project/linksem.git"
+dev-repo: "git+https://github.com/rems-project/linksem.git"
 build: [make]
 install: [make "install"]
 remove: [make "uninstall"]
 depends: [
-  "ocamlfind"
-  "ocamlbuild"
+  "ocaml" {>= "4.06.1"}
+  "ocamlfind" {build}
+  "ocamlbuild" {build}
   "lem" {>= "2018-05-11"}
 ]
+synopsis:
+  "A formalisation of the core ELF file format written in Lem"
+description: """
+A formalisation of the core ELF file format written in Lem.
+ELF is the de facto standard executable and linkable file format
+on Linux and related systems.
+This formalisation has been tested against approximately 5,000 ELF binaries
+found \"in the wild\" on various different platforms.
+"""
