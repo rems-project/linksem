@@ -4,7 +4,7 @@
 
 This repository contains work relating to an ongoing project (under the aegis of
 the wider REMS project) to formalise the linking of ELF object code, and related
-notions. Toward this end, this repository contains:
+notions. It contains:
 
   * A formalisation of the core ELF file format, the de facto standard
     executable and linkable file format on Linux and related systems, written
@@ -22,7 +22,7 @@ notions. Toward this end, this repository contains:
     extraction of the linker, ELF model, and ABI formalisations mentioned above.
 
 The ELF formalisation (and parts of the ABI formalisation) are currently also
-being used as a subcomponent of the `ppcmem2` architectural exploration tool,
+being used as a subcomponent of the `rmem` architectural exploration tool,
 for parsing ELF files and setting up initial machine states.
 
 ## Contributors
@@ -30,13 +30,15 @@ for parsing ELF files and setting up initial machine states.
 The main contributors to the formalisation are: Stephen Kell, Dominic Mulligan
 and Peter Sewell.
 
-Current clients of the formalisation are: Shaked Flur, Kathy Gray,
-Christopher Pulte, and Susmit Sarkar, authors of the `ppcmem2` tool.
+This software was developed by the University of Cambridge Computer
+Laboratory (Department of Computer Science and Technology), in part
+funded by EPSRC Programme Grant EP/K008528/1 [REMS: Rigorous
+Engineering for Mainstream
+Systems](http://www.cl.cam.ac.uk/~pes20/rems), and in part funded from
+the European Research Council (ERC) under the European Union’s Horizon
+2020 research and innovation programme (grant agreement No 789108,
+"ELVER").
 
-This work is funded by
-[REMS: Rigorous Engineering of Mainstream Systems]
-(http://www.cl.cam.ac.uk/~pes20/rems),
-EPSRC Programme Grant EP/K008528/1.
 
 ## Directory structure
 

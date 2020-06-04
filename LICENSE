@@ -1,7 +1,7 @@
 BSD 2-Clause License
 
 Linksem, located in the src/, test/ and validation/ directories, is subject to
-this BSD 2-Clause License. This license doesn't apply to files outside these
+this BSD 2-Clause License. This license does not apply to files outside these
 directories.
 
 Copyright (c) 2016, Dominic Mulligan
@@ -14,6 +14,16 @@ Copyright (c) 2018, Ramana Kumar
 Copyright (c) 2018, Jonathan French
 Copyright (c) 2017, Thomas Bauereiss
 All rights reserved.
+
+This software was developed by the University of Cambridge Computer
+Laboratory (Department of Computer Science and Technology), in part
+funded by EPSRC Programme Grant EP/K008528/1 [REMS: Rigorous
+Engineering for Mainstream
+Systems](http://www.cl.cam.ac.uk/~pes20/rems), and in part funded from
+the European Research Council (ERC) under the European Union’s Horizon
+2020 research and innovation programme (grant agreement No 789108,
+"ELVER").
+
 
 Redistribution and use in source and binary forms, with or without
 modification, are permitted provided that the following conditions are met:
