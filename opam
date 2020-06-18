@@ -17,11 +17,11 @@ depends: [
   "lem" {>= "2018-05-11"}
 ]
 synopsis:
-  "A formalisation of the core ELF file format written in Lem"
+  "A formalisation of the core ELF and DWARF file formats written in Lem"
 description: """
-A formalisation of the core ELF file format written in Lem.
+A formalisation of the core ELF and DWARF file format written in Lem.
 ELF is the de facto standard executable and linkable file format
-on Linux and related systems.
+on Linux and related systems; DWARF is the associated debug information format.
 This formalisation has been tested against approximately 5,000 ELF binaries
 found \"in the wild\" on various different platforms.
 """

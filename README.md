@@ -2,9 +2,8 @@
 
 ## Introduction
 
-This repository contains work relating to an ongoing project (under the aegis of
-the wider REMS project) to formalise the linking of ELF object code, and related
-notions. It contains:
+Linksem is a formalisation of substantial parts of ELF linking and DWARF debug information.
+It contains:
 
   * A formalisation of the core ELF file format, the de facto standard
     executable and linkable file format on Linux and related systems, written
@@ -20,15 +19,26 @@ notions. It contains:
     `bzip2`, derived from an OCaml extraction of the Lem models above.
   * A sample proof of correctness for AMD64 relocation, using an `Isabelle/HOL`
     extraction of the linker, ELF model, and ABI formalisations mentioned above.
+  * A formalisation of the DWARF debug information format, as an executable
+    specification that interprets the DWARF information. 
 
 The ELF formalisation (and parts of the ABI formalisation) are currently also
 being used as a subcomponent of the `rmem` architectural exploration tool,
 for parsing ELF files and setting up initial machine states.
 
-## Contributors
 
-The main contributors to the formalisation are: Stephen Kell, Dominic Mulligan
-and Peter Sewell.
+## Papers
+
+* [The missing link: explaining ELF static linking, semantically](http://www.cl.cam.ac.uk/~pes20/rems/papers/oopsla-elf-linking-2016.pdf). Stephen Kell, Dominic P. Mulligan, and Peter Sewell. In OOPSLA 2016.
+
+## People
+
+The main authors are Stephen Kell, Dominic Mulligan and Peter Sewell,
+with additional contributions from Thibaut Pérami, Simon Ser, Shaked
+Flur, Robert Norton, Ramana Kumar, Jonathan French, Brian Campbell,
+and Thomas Bauereiss.
+
+## Funding
 
 This software was developed by the University of Cambridge Computer
 Laboratory (Department of Computer Science and Technology), in part
@@ -68,7 +78,33 @@ The top-level directory structure is as follows:
   * 'validation' contains the validation scripts used for mass-validation of the
     ELF and ABI specifications against existing ELF binaries.
 
-## Build process
+
+## To install and build
+
+Linksem is available as an [opam](https://opam.ocaml.org) package and
+a [github repo](https://github.com/rems-project/linksem).
+
+### With OPAM  (released version)
+
+First, ensure you have opam (the OCaml package manager) installed,
+version 2.0 or greater (opam 1 versions of ott are no longer
+supported).  You can use your system's package manager e.g. `sudo
+apt-get install opam` (e.g. on Ubuntu 20.04) or follow the
+[instructions from the opam website](https://opam.ocaml.org/doc/Install.html).
+On older Ubuntu versions you will not be able to use their package
+manager's opam 1 version, and will need to install opam 2 following the
+instructions on the opam website.
+
+Then `opam install linksem` will install the latest release version. 
+
+
+### With OPAM (github checkout)
+
+In the checkout directory, run `opam pin add linksem .`.
+
+To rebuild and reinstall after local changes, run `opam upgrade --working-dir linksem`  (or `opam upgrade -w linksem`).
+
+### Without OPAM
 
 To build the model from a fresh git checkout (assuming your current working
 directory is `linksem`), `cd` into `src` and type `make`.
@@ -76,12 +112,16 @@ directory is `linksem`), `cd` into `src` and type `make`.
 This will build the Lem model (extracting OCaml files) and build these files
 with the OCaml compiler.
 
-## Install process
 
-To install from the OPAM repository, the preferred method is 
-`opam install linksem`. 
-To install a specific git checkout, do `opam install .` in the repository root.
-If you really do not want to use OPAM, `make install` will work.
+## Usage
+
+Linksem is principally intended to be used in other code, but for testing purposes, the `src/main_elf` binary produces output in the style of existing tools:
+
+`src/main_elf <flag> <filename>`
+
+where `<flag>` is one of `--file-header`, `--program-headers`, `--section-headers`, `--relocs`, `--dynamic`, `--in-out`, `--debug-dump=info`.
+
+
 
 ## Known issues
 
@@ -99,5 +139,5 @@ If you really do not want to use OPAM, `make install` will work.
   3. Isabelle extractions of the Lem models require a small amount of hand
      editing to get Isabelle to accept them, due to various bugs in Lem.
 
-All other issues, infelicities or missing pieces of formalisation should be
+Any infelicities or missing pieces of formalisation should be
 noted in a camldoc-style comment at the top of the relevant Lem file.
