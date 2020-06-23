@@ -129,7 +129,7 @@ let my_debug s = () (*print_endline s*)
 let my_debug2 s = () (*print_endline s*)
 let my_debug3 s = () (*print_endline s*)
 let my_debug4 s = () (*print_endline s*)
-let my_debug5 s = () (*print_endline s*)
+let my_debug5 s = print_endline s
 
 
 (** ************************************************************ *)
@@ -437,6 +437,7 @@ type call_frame_instruction =
   | DW_CFA_val_offset          of cfa_register * cfa_offset
   | DW_CFA_val_offset_sf       of cfa_register * cfa_sfoffset
   | DW_CFA_val_expression      of cfa_register * cfa_block
+  | DW_CFA_AARCH64_negate_ra_state
   | DW_CFA_unknown             of byte
 
 (* .debug_frame section: top-level *)
@@ -672,7 +673,7 @@ type decl =
   decl_line: maybe natural;
   |>
 
-type array_dimension 't = maybe natural(*count*) * 't(*subrange type*)
+type array_dimension 't = maybe natural(*count*) * maybe 't(*subrange type*)
 
 type struct_union_member 't = cupdie * (maybe string)(*mname*) * 't * natural(*data_member_location*)
 
@@ -692,7 +693,8 @@ type c_type_top 't =
   | CT_array of cupdie * 't * list (array_dimension 't)
   | CT_struct_union of cupdie * struct_union_type_kind * (maybe string)(*mname*) * (maybe natural)(*byte_size*) * decl * maybe (list (struct_union_member 't)(*members*))
   | CT_enumeration of cupdie * (maybe string)(*mname*) * (maybe 't)(*mtyp*) * (maybe natural)(*mbyte_size*) * decl * maybe (list (enumeration_member)(*members*))
-
+  | CT_subroutine of cupdie * (bool)(*prototyped*) * (maybe 't)(*mresult_type*) * (list 't)(*parameter_types*) * (bool)(*variable_parameter_list*)
+                   
 (* In the CT_struct_union and C_enumeration cases, the final maybe(list(...member)) is Nothing if the analysis has not been recursed into the members, and Just ... if it has - which will typically be only one level deep *)
 
 type c_type =
@@ -1284,10 +1286,24 @@ let call_frame_instruction_encoding : list (string * natural * natural * list ca
 ("DW_CFA_val_offset_sf",       0,                  natural_of_hex "0x15", [CFAT_register; CFAT_sfoffset], (* ULEB128 SLEB128 *)
  fun avs -> match avs with [CFAV_register r; CFAV_sfoffset i] -> Just (DW_CFA_val_offset_sf r i) | _ -> Nothing end);
 ("DW_CFA_val_expression",      0,                  natural_of_hex "0x16", [CFAT_register; CFAT_block], (* ULEB128 BLOCK *)
- fun avs -> match avs with [CFAV_register r; CFAV_block b] -> Just (DW_CFA_val_expression r b) | _ -> Nothing end)
+ fun avs -> match avs with [CFAV_register r; CFAV_block b] -> Just (DW_CFA_val_expression r b) | _ -> Nothing end);
+("DW_CFA_AARCH64_negate_ra_state",     0,                  natural_of_hex "0x2d", [], (* *)
+ fun avs -> match avs with [] -> Just (DW_CFA_AARCH64_negate_ra_state) | _ -> Nothing end);
 ]
-
 (*
+0x2d DW_CFA_GNU_window_save is listed in https://sourceware.org/elfutils/DwarfExtensions as "magic shorthand used only by SPARC"
+https://elixir.bootlin.com/linux/v4.0/source/arch/arc/kernel/unwind.c#L842 no-ops it
+https://refspecs.linuxbase.org/LSB_3.0.0/LSB-PDA/LSB-PDA/dwarfext.html doesn't mention it
+https://github.com/gcc-mirror/gcc/blob/master/libgcc/unwind-dw2.c#L1189 says
+"This CFA is multiplexed with Sparc.  On AArch64 it's used to toggle return address signing status."
+fs->regs.reg[DWARF_REGNUM_AARCH64_RA_STATE].loc.offset ^= 1;
+https://developer.arm.com/docs/ihi0057/c/dwarf-for-the-arm-64-bit-architecture-aarch64-abi-2018q4 "DWARF for the Arm® 64-bit Architecture (AArch64) - ABI 2018Q4"
+calls this "DW_CFA_AARCH64_negate_ra_state" 
+"The DW_CFA_AARCH64_negate_ra_state operation negates bit[0] of the RA_SIGN_STATE pseudo-register. It does not take any operands."
+p10 says "The RA_SIGN_STATE pseudo-register records whether the return address has been signed with aPAC. This information can be used when unwinding.  It is an unsigned integer with the same sizeas a general register. Only bit[0] is meaningful and is initialized to zero. A value of 0 indicates the return address has not been signed. A value of 1 indicates the return address has been signed"
+For our purposes it seems fine to nop-this.
+ *)
+                          (*
 ("DW_CFA_lo_user",             0,                  natural_of_hex "0x1c", []); (* *)
 ("DW_CFA_hi_user",             0,                  natural_of_hex "0x3f", []); (* *)
 *)
@@ -2345,6 +2361,10 @@ let parser_of_attribute_form c cuh n =
 
 let pp_pos pos = "<" ^ pphexplain pos ^">"
 
+let pp_cupdie (cu,parents,die) = pp_pos cu.cu_header.cuh_offset ^ "/" ^ pp_pos die.die_offset
+
+let pp_cupdie3 (cu,parents,die) = pp_pos die.die_offset ^ "/" ^ String.concat "/" (List.map (fun p -> pp_pos p.die_offset) parents) ^ "/" ^ pp_pos cu.cu_header.cuh_offset
+                                                              
 
 (** ************************************************************ *)
 (** **  finding things in the die tree                           *)
@@ -3205,6 +3225,7 @@ let pp_call_frame_instruction i =
   | DW_CFA_val_offset r n         -> "DW_CFA_val_offset" ^ " " ^ pp_cfa_register r ^ " " ^ pp_cfa_offset (integerFromNatural n)
   | DW_CFA_val_offset_sf r i      -> "DW_CFA_val_offset_sf" ^ pp_cfa_register r ^ " " ^ pp_cfa_sfoffset i
   | DW_CFA_val_expression r b     -> "DW_CFA_val_expression" ^ " " ^ pp_cfa_register r ^ " " ^ pp_cfa_block b
+  | DW_CFA_AARCH64_negate_ra_state        -> "DW_CFA_AARCH64_negate_ra_state"
   | DW_CFA_unknown bt             -> "DW_CFA_unknown" ^ " " ^ show bt
   end
 
@@ -4526,6 +4547,10 @@ let evaluate_call_frame_instruction (fi: frame_info) (cie: cie) (state: cfa_stat
   | DW_CFA_nop                    ->
       state
 
+(* DW_CFA_AARCH64_negate_ra_state Instruction *)
+  | DW_CFA_AARCH64_negate_ra_state        ->
+      state
+    
 (* Unknown *)
   | DW_CFA_unknown b              ->
       Assert_extra.failwith ("evaluate_call_frame_instruction: DW_CFA_unknown " ^ show b)
@@ -4637,7 +4662,7 @@ let analyse_type_info_top c (d: dwarf) (r:bool(*recurse into members*)) (cupdie:
         (fun die' ->
           let mcount = find_natural_attribute_value_of_die c "DW_AT_count" die' in
           let msubrange_type = find_DW_AT_type_of_die c d cu d.d_str die' in
-          (mcount, strict s msubrange_type))
+          (mcount, msubrange_type))
         subranges in 
     CT_array cupdie (strict s mtyp) dims
 
@@ -4689,9 +4714,29 @@ let analyse_type_info_top c (d: dwarf) (r:bool(*recurse into members*)) (cupdie:
     
     CT_enumeration cupdie mname mtyp mbyte_size decl members
 
+  else if die.die_abbreviation_declaration.ad_tag = tag_encode "DW_TAG_subroutine_type" then
+
+    let prototyped = strict s (find_flag_attribute_value_of_die "DW_AT_prototyped" die) in
+    
+    let mresult_type = mtyp in 
+    
+    let parameter_types = 
+      let parameter_types_raw = List.filter (fun die' -> die'.die_abbreviation_declaration.ad_tag = tag_encode "DW_TAG_formal_parameter") die.die_children in
+      (List.map
+         (fun die' ->
+           let cupdie' = (cu,die::parents,die') in
+           let mname' = find_name_of_die d.d_str die' in
+           let typ' = strict s (find_DW_AT_type_of_die c d cu d.d_str die') in
+           typ')
+         parameter_types_raw) in
+
+    let (variable_parameter_list: bool) = List.any (fun die' -> die'.die_abbreviation_declaration.ad_tag = tag_encode "DW_TAG_unspecified_parameters") die.die_children in
+
+    CT_subroutine cupdie prototyped mresult_type parameter_types variable_parameter_list
+
   else 
     
-    Assert_extra.failwith "analyse_type_info_top didn't recognise tag"
+    Assert_extra.failwith ("analyse_type_info_top didn't recognise tag: " ^ pphex die.die_abbreviation_declaration.ad_tag ^ " for DIE " ^ pp_cupdie3 cupdie)
 
 
 let rec analyse_type_info_deep (d: dwarf) (r:bool(*recurse_into_members*)) cupdie : c_type = 
@@ -4706,11 +4751,14 @@ let rec analyse_type_info_deep (d: dwarf) (r:bool(*recurse_into_members*)) cupdi
   | CT_restrict cupdie typ' -> CT (CT_restrict cupdie (analyse_type_info_deep d r typ'))
   | CT_typedef cupdie name typ' decl -> CT (CT_typedef cupdie name (analyse_type_info_deep d r typ') decl)
   | CT_array cupdie typ' dims -> CT (CT_array cupdie (analyse_type_info_deep d r typ') 
-     (List.map (fun (mcount,subrange_typ) -> (mcount, (analyse_type_info_deep d r subrange_typ))) dims))
+     (List.map (fun (mcount,msubrange_typ) -> (mcount, (Maybe.map (analyse_type_info_deep d r) msubrange_typ))) dims))
   | CT_struct_union cupdie atk mname mbyte_size decl mmembers ->
      CT (CT_struct_union cupdie atk mname mbyte_size decl (Maybe.map (fun members -> (List.map (fun ((cupdie,mname,typ,data_member_location) as am) -> (cupdie,mname,(analyse_type_info_deep d false typ),data_member_location))members)) mmembers))
   | CT_enumeration cupdie mname mtyp' mbyte_size decl mmembers ->
      CT(CT_enumeration cupdie mname (Maybe.map (analyse_type_info_deep d r) mtyp') mbyte_size decl mmembers)
+  | CT_subroutine cupdie prototyped mresult_type parameter_types variable_parameter_list ->
+     CT (CT_subroutine cupdie prototyped (Maybe.map (analyse_type_info_deep d r) mresult_type) 
+           (List.map (fun typ -> analyse_type_info_deep d r typ) parameter_types) variable_parameter_list)
   end
 
 let find_DW_AT_type_of_die_deep d cupdie : maybe c_type =
@@ -4739,10 +4787,6 @@ let pp_struct_union_type_kind atk =
   | Atk_union -> "union"
   end
 
-let pp_cupdie (cu,parents,die) = pp_pos cu.cu_header.cuh_offset ^ "/" ^ pp_pos die.die_offset
-
-let pp_cupdie3 (cu,parents,die) = pp_pos die.die_offset ^ "/" ^ String.concat "/" (List.map (fun p -> pp_pos p.die_offset) parents) ^ "/" ^ pp_pos cu.cu_header.cuh_offset
-                                                              
 let pp_mbyte_size mbyte_size = "size:" ^ match mbyte_size with | Just n -> show n | Nothing -> "?" end
 
 (* pp the top-level structure of a C type, omitting struct_union-type and enum member definitions*)   
@@ -4756,9 +4800,11 @@ let pp_type_info_top (ppa:'a->string) (typ:c_type_top 'a) : string =
   | CT_restrict cupdie typ' -> "restrict(" ^ ppa typ' ^ ")"
   | CT_typedef cupdie name typ' decl -> "typedef("^name^"="^ppa typ' ^ ")"
   | CT_array cupdie typ' dims ->
-     ppa typ' ^ String.concat "" (List.map (fun (mcount,subrange_typ) -> "["^match mcount with | Just count -> show count | Nothing -> "no count" end ^"]") dims)
+     ppa typ' ^ String.concat "" (List.map (fun (mcount,msubrange_typ) -> "["^match mcount with | Just count -> show count | Nothing -> "no count" end ^"]") dims)
   | CT_struct_union cupdie atk mname mbyte_size decl mmembers -> pp_struct_union_type_kind atk ^ " " ^ (match mname with | Just s -> s | Nothing -> "noname" end) ^ pp_cupdie cupdie
   | CT_enumeration cupdie mname mtyp' mbyte_size decl mmembers -> "enum" ^ " " ^ (match mname with | Just s -> s | Nothing -> "noname" end) ^ pp_cupdie cupdie
+  | CT_subroutine cupdie prototyped mresult_type parameter_types variable_parameter_list  ->
+     "subroutine(" ^ (if prototyped then "prototyped" else "not-prototyped") ^ " " ^ (match mresult_type with Nothing -> "no type" | Just result_type -> ppa result_type end) ^ "(" ^ String.concat "," ((List.map ppa parameter_types) ++ (if variable_parameter_list then ["..."] else [])) ^ ")"
   end
 
 
@@ -5690,7 +5736,7 @@ let extract_dwarf_static f1 =
   match extract_dwarf f1 with
   | Nothing -> Nothing
   | Just dwarf ->
-      (* let _ = my_debug5 (pp_dwarf dwarf) in *)
+      let _ = my_debug5 (pp_dwarf dwarf) in 
 
       let ald : analysed_location_data =
         analyse_locations dwarf in
