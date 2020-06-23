@@ -721,7 +721,7 @@ type sdt_variable_or_formal_parameter =
   svfp_cupdie : cupdie;
   svfp_name : string;
   svfp_kind : variable_or_formal_parameter_kind;
-  svfp_type : c_type;
+  svfp_type : maybe c_type;
   svfp_abstract_origin : maybe sdt_variable_or_formal_parameter;  (* invariant: non-Nothing iff inlined *)
   svfp_const_value : maybe integer;
   svfp_external : bool;
@@ -5821,7 +5821,7 @@ let rec mk_sdt_variable_or_formal_parameter (d:dwarf) subprogram_line_extents cu
     svfp_cupdie = cupdie;
     svfp_kind = kind;
     svfp_name = strict_msvfp (find_name_of_die_using_abstract_origin c d cu d.d_str die) "no name" s cupdie;
-    svfp_type =  strict_msvfp (find_DW_AT_type_of_die_deep_using_abstract_origin d cupdie) "no type" s cupdie;
+    svfp_type =  (*strict_msvfp*) (find_DW_AT_type_of_die_deep_using_abstract_origin d cupdie) (*"no type" s cupdie*);
     svfp_abstract_origin =
       match find_reference_attribute_of_die c d cu d.d_str "DW_AT_abstract_origin" die with
       | Nothing ->
@@ -5948,6 +5948,7 @@ let pp_pc_ranges (level:natural) (rso:maybe (list (natural*natural))) =
   end
 
 let pp_sdt_maybe x f = match x with Nothing -> "none\n" | Just y -> f y end
+let pp_sdt_maybe' f x = pp_sdt_maybe x f
 let pp_sdt_list xs f = match xs with [] -> "none\n" | _ -> "\n" ^ String.concat "" ((List.map f) xs) end
    
 let pp_sdt_variable_or_formal_parameter (level:natural) (svfp: sdt_variable_or_formal_parameter) : string =
@@ -5956,7 +5957,7 @@ let pp_sdt_variable_or_formal_parameter (level:natural) (svfp: sdt_variable_or_f
   ^ indent ^ "name:"        ^ svfp.svfp_name ^ "\n"
   ^ indent ^ "cupdie:"      ^ pp_cupdie3 svfp.svfp_cupdie ^ "\n"
   ^ indent ^ "kind:"        ^ (match svfp.svfp_kind with SVPK_var -> "var" | SVPK_param -> "param" end) ^ "\n" 
-  ^ indent ^ "type:"        ^ pp_type_info_deep svfp.svfp_type ^ "\n"
+  ^ indent ^ "type:"        ^ pp_sdt_maybe' pp_type_info_deep svfp.svfp_type ^ "\n"
   ^ indent ^ "const_value:" ^ show svfp.svfp_const_value ^ "\n"
   ^ indent ^ "external:"    ^ show svfp.svfp_external ^ "\n"
   ^ indent ^ "declaration:" ^ show svfp.svfp_declaration ^ "\n"
@@ -6017,7 +6018,7 @@ let pp_sdt_concise_variable_or_formal_parameter (level:natural) (svfp: sdt_varia
   (*  ^ indent ^ "cupdie:" ^  pp_cupdie3 svfp.svfp_cupdie ^ "\n"*)
   (*^ indent ^ "name:" ^*) ^ svfp.svfp_name ^ "  "
   (*^ indent ^ "kind:" *) ^  (match svfp.svfp_kind with SVPK_var -> "var" | SVPK_param -> "param" end) ^ "  " 
-  (*^ indent ^ "type:" *) ^  pp_type_info_deep svfp.svfp_type ^ "  "
+  (*^ indent ^ "type:" *) ^  pp_sdt_maybe' pp_type_info_deep svfp.svfp_type ^ "  "
   (*^ indent ^ "const_value:"*) ^  match svfp.svfp_const_value with | Nothing -> "" | Just v -> "const:"^show v ^ "  " end 
   (*^ indent ^ "external:" ^  show svfp.svfp_external ^ "\n"*)
   (*^ indent ^ "declaration:" ^  show svfp.svfp_declaration ^ "\n"*)
