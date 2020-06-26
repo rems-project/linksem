@@ -128,7 +128,7 @@ declare ocaml target_rep function print_endline = `print_endline`
 let my_debug s = () (*print_endline s*)
 let my_debug2 s = () (*print_endline s*)
 let my_debug3 s = () (*print_endline s*)
-let my_debug4 s = () (*print_endline s*)
+let my_debug4 s = print_endline s
 let my_debug5 s = print_endline s
 
 
@@ -2780,7 +2780,9 @@ let rec parse_die c str cuh find_abbreviation_declaration =
                   die_abbreviation_declaration = ad;
                   die_attribute_values = avs;
                   die_children = dies;
-                |> in (* let _ = my_debug3 ("die entire " ^ pp_die cuh str true 999 die) in *)die)) pc''')))
+                  |> in
+                  let _ = my_debug4 ("die entire " ^ pp_die c cuh str true 0 false die) in
+                  die)) pc''')))
 
 let has_attribute (an: string) (die: die) : bool =
   List.elem
@@ -2831,10 +2833,13 @@ let parse_compilation_unit c (debug_str_section_body: byte_sequence) (debug_abbr
         | PR_success cuh pc' -> (cuh,pc')
         end in
 
-      (* let _ = my_debug4 (pp_compilation_unit_header cuh) in *)
+      let _ = my_debug4 (pp_compilation_unit_header cuh) in
 
+      if cuh.cuh_unit_length = 0 then PR_success Nothing pc' else
+      
       let pc_abbrev = <|pc_bytes = match dropbytes cuh.cuh_debug_abbrev_offset debug_abbrev_section_body with Success bs -> bs | Fail _ -> Assert_extra.failwith "mydrop of debug_abbrev" end; pc_offset = cuh.cuh_debug_abbrev_offset  |> in
 
+      (* todo: this is reparsing the abbreviations table for each cu *)
       let abbreviations_table =
         match parse_abbreviations_table c pc_abbrev with
         | PR_fail s pc_abbrev' -> Assert_extra.failwith ("parse_abbrevations_table fail: " ^ pp_parse_fail s pc_abbrev')
@@ -3712,8 +3717,8 @@ let line_number_offset_of_compilation_unit c cu =
   | Just (AV_sec_offset n) -> n
   | Just (AV_block n bs) -> natural_of_bytes c.endianness bs
         (* a 32-bit MIPS example used a 4-byte AV_block not AV_sec_offset *)
-  | Just _ -> Assert_extra.failwith "compilation unit DW_AT_stmt_list attribute was not an AV_sec_offset"
-  | _ -> Assert_extra.failwith "compilation unit did not have a DW_AT_stmt_list attribute"
+  | Just _ -> (Assert_extra.failwith ("compilation unit DW_AT_stmt_list attribute was not an AV_sec_offset"  ^ pp_compilation_unit_header cu.cu_header))
+  | _ -> Assert_extra.failwith ("compilation unit did not have a DW_AT_stmt_list attribute\n" ^ pp_compilation_unit_header cu.cu_header ^ "\n")
   end
 
 let line_number_program_of_compilation_unit d cu =
