@@ -273,7 +273,11 @@ type abbreviation_declaration =
     ad_attribute_specifications: list (natural * natural);
   |>
 
-type abbreviations_table = list abbreviation_declaration
+type abbreviations_table =
+  <|
+    at_offset: natural;
+    at_table: list abbreviation_declaration;
+|>
 
 (* .debug_info section *)
 
@@ -684,6 +688,7 @@ type struct_union_type_kind =
 type enumeration_member = cupdie * (maybe string)(*mname*) * natural(*const_value*)
 
 type c_type_top 't =
+  | CT_missing of cupdie
   | CT_base of cupdie * string(*name*) * natural(*encoding*) * (maybe natural)(*byte_size*)
   | CT_pointer of cupdie * maybe 't
   | CT_const of cupdie * maybe 't
@@ -2051,7 +2056,8 @@ let pp_abbreviation_declaration (x:abbreviation_declaration) =
 
       
 let pp_abbreviations_table (x:abbreviations_table) =
-  String.concat "" (List.map (pp_abbreviation_declaration) x)
+  "offset: "^pphex x.at_offset^"\n"
+  ^ String.concat "" (List.map (pp_abbreviation_declaration) x.at_table)
 
 (* print the distinct abbreviation tables used by all compilation units *)
 let rec remove_duplicates xys xys_acc =
@@ -2539,6 +2545,19 @@ let find_name_of_die_using_abstract_origin c d cu str die : maybe string =
   | Nothing -> Nothing
   | Just (cu',av) -> Just (string_of_string_attribute_value str av)
   end
+
+(* TODO: not sure how DW_AT_specification should interact with abstract origins *)   
+let find_name_of_die_using_abstract_origin_and_spec c d cu str die mcupdie_spec : maybe string = 
+  match find_name_of_die_using_abstract_origin c d cu str die with
+  | Just name -> Just name
+  | Nothing ->
+     match mcupdie_spec with
+     | Just ((cu_spec,parents_spec,die_spec) as cupdie_spec) -> 
+        find_name_of_die_using_abstract_origin c d cu_spec str die_spec
+     | Nothing ->
+        Nothing
+    end
+end
    
 let find_reference_attribute_using_abstract_origin c d cu str an die : maybe (compilation_unit * (list die) * die) = 
   match find_attribute_value_using_abstract_origin c d cu str an die with
@@ -2781,7 +2800,7 @@ let rec parse_die c str cuh find_abbreviation_declaration =
                   die_attribute_values = avs;
                   die_children = dies;
                   |> in
-                  let _ = my_debug4 ("die entire " ^ pp_die c cuh str true 0 false die) in
+                  let _ = my_debug3 ("die entire " ^ pp_die c cuh str true 0 false die) in
                   die)) pc''')))
 
 let has_attribute (an: string) (die: die) : bool =
@@ -2796,11 +2815,10 @@ let pp_compilation_unit c (indent:bool) (debug_str_section_body: byte_sequence) 
   ""
 (*  "*** compilation unit header               ***\n"*)
   ^ pp_compilation_unit_header cu.cu_header
-(*  ^ "\n*** compilation unit abbreviation table ***\n"
+  ^ "\n*** compilation unit abbreviation table\n"
   ^ pp_abbreviations_table cu.cu_abbreviations_table
- *)
-(*  ^ "\n"*)
-(*  ^ "*** compilation unit die tree           ***\n"*)
+  ^ "\n"
+  ^ "*** compilation unit die tree\n"
   ^ pp_die c cu.cu_header debug_str_section_body indent 0 true cu.cu_die
   ^ "\n"
 
@@ -2843,14 +2861,14 @@ let parse_compilation_unit c (debug_str_section_body: byte_sequence) (debug_abbr
       let abbreviations_table =
         match parse_abbreviations_table c pc_abbrev with
         | PR_fail s pc_abbrev' -> Assert_extra.failwith ("parse_abbrevations_table fail: " ^ pp_parse_fail s pc_abbrev')
-        | PR_success at pc_abbrev' -> at
+        | PR_success at pc_abbrev' -> <| at_offset=pc_abbrev.pc_offset; at_table= at|>
         end in
 
       (* let _ = my_debug4 (pp_abbreviations_table abbreviations_table) in *)
 
       let find_abbreviation_declaration (ac:natural) : abbreviation_declaration =
         (* let _ = my_debug4 ("find_abbreviation_declaration "^pphex ac) in *)
-        myfindNonPure (fun ad -> ad.ad_abbreviation_code = ac) abbreviations_table  in
+        myfindNonPure (fun ad -> ad.ad_abbreviation_code = ac) abbreviations_table.at_table  in
 
       (* let _ = my_debug3 (pp_abbreviations_table abbreviations_table) in *)
 
@@ -2902,14 +2920,14 @@ let parse_type_unit c (debug_str_section_body: byte_sequence) (debug_abbrev_sect
       let abbreviations_table =
         match parse_abbreviations_table c pc_abbrev with
         | PR_fail s pc_abbrev' -> Assert_extra.failwith ("parse_abbrevations_table fail: " ^ pp_parse_fail s pc_abbrev')
-        | PR_success at pc_abbrev' -> at
+        | PR_success at pc_abbrev' -> <| at_offset=pc_abbrev.pc_offset; at_table= at|>
         end in
 
       (* let _ = my_debug4 (pp_abbreviations_table abbreviations_table) in *)
 
       let find_abbreviation_declaration (ac:natural) : abbreviation_declaration =
         (* let _ = my_debug4 ("find_abbreviation_declaration "^pphex ac) in *)
-        myfindNonPure (fun ad -> ad.ad_abbreviation_code = ac) abbreviations_table  in
+        myfindNonPure (fun ad -> ad.ad_abbreviation_code = ac) abbreviations_table.at_table  in
 
       (* let _ = my_debug3 (pp_abbreviations_table abbreviations_table) in *)
 
@@ -4647,7 +4665,13 @@ let analyse_type_info_top c (d: dwarf) (r:bool(*recurse into members*)) (cupdie:
     CT_const cupdie mtyp
 
   else if die.die_abbreviation_declaration.ad_tag = tag_encode "DW_TAG_volatile_type" then
-    CT_volatile cupdie (strict s mtyp)
+(*    CT_volatile cupdie (strict s mtyp')*)
+    (* TODO: this is a temporary hack, while we figure out what DW_TAG_volatile without a DW_AT_type is supposed to mean *)
+    match mtyp with
+    | Just typ -> CT_volatile cupdie typ
+    | Nothing -> CT_missing cupdie
+    end 
+
 
   else if die.die_abbreviation_declaration.ad_tag = tag_encode "DW_TAG_restrict_type" then
     CT_restrict cupdie  (strict s mtyp)
@@ -4749,6 +4773,7 @@ let rec analyse_type_info_deep (d: dwarf) (r:bool(*recurse_into_members*)) cupdi
   let (cu,parents,die) = cupdie in
   let (typ:c_type_top cupdie) = analyse_type_info_top c (d: dwarf) r cupdie in
   match typ with
+  | CT_missing cupdie -> CT (CT_missing cupdie)
   | CT_base cupdie name encoding mbyte_size -> CT (CT_base cupdie name encoding mbyte_size) 
   | CT_pointer cupdie mtyp'  -> CT (CT_pointer cupdie (Maybe.map (analyse_type_info_deep d r) mtyp'))
   | CT_const cupdie mtyp'    -> CT (CT_const cupdie (Maybe.map (analyse_type_info_deep d r) mtyp'))
@@ -4797,6 +4822,7 @@ let pp_mbyte_size mbyte_size = "size:" ^ match mbyte_size with | Just n -> show 
 (* pp the top-level structure of a C type, omitting struct_union-type and enum member definitions*)   
 let pp_type_info_top (ppa:'a->string) (typ:c_type_top 'a) : string = 
   match typ with
+  | CT_missing cupdie -> "missing at " ^ pp_cupdie cupdie 
   | CT_base cupdie name encoding mbyte_size -> 
      name ^ " (base type, " ^ match lookup_aB_a encoding base_type_attribute_encodings with Just s -> s | Nothing -> show encoding end ^ " " ^ pp_mbyte_size mbyte_size ^ ")"
   | CT_pointer cupdie mtyp'  -> "pointer("  ^ match mtyp' with | Just typ' -> ppa typ' | Nothing -> "no type" end ^ ")"
@@ -5802,30 +5828,34 @@ let mk_sdt_unspecified_parameter (d:dwarf) subprogram_line_extents cu parents di
   else Just ()
 
    
-
+(*
 let strict_msvfp x e s z =
   match x with
   | Just y -> y
   | Nothing ->
      Assert_extra.failwith ("mk_sdt_variable_or_formal_parameter strict failure " ^ e ^ " on \n" ^ s z ^ "\n")
   end
-
+ *)
 let rec mk_sdt_variable_or_formal_parameter (d:dwarf) subprogram_line_extents cu parents die : maybe sdt_variable_or_formal_parameter =
   if not(List.elem die.die_abbreviation_declaration.ad_tag [tag_encode "DW_TAG_variable"; tag_encode "DW_TAG_formal_parameter"])
   then Nothing
   else
 
     let c = p_context_of_d d in
-    let s (cu,parents,die) = pp_die c cu.cu_header d.d_str true 0 false die in
+    (*    let s (cu,parents,die) = pp_die c cu.cu_header d.d_str true 0 false die in*)
 
     let cupdie = (cu,parents,die) in
     let kind = if die.die_abbreviation_declaration.ad_tag = tag_encode "DW_TAG_variable" then  SVPK_var else if die.die_abbreviation_declaration.ad_tag = tag_encode "DW_TAG_formal_parameter" then SVPK_param else Assert_extra.failwith ("unreachable bad kind") in
 
+    (* find aDW_AT_specification die, if it exists. TODO: how should this interact with abstract origins? *)
+    let mcupdie_spec = find_reference_attribute_of_die c d cu d.d_str "DW_AT_specification" die in
+    
     Just (
     <|
     svfp_cupdie = cupdie;
     svfp_kind = kind;
-    svfp_name = strict_msvfp (find_name_of_die_using_abstract_origin c d cu d.d_str die) "no name" s cupdie;
+    (*    svfp_name = strict_msvfp (find_name_of_die_using_abstract_origin_and_spec c d cu d.d_str die mcupdie_spec) "no name" s cupdie;*)
+    svfp_name = match (find_name_of_die_using_abstract_origin_and_spec c d cu d.d_str die mcupdie_spec) with Just name -> name | Nothing -> "no name" end;
     svfp_type =  (*strict_msvfp*) (find_DW_AT_type_of_die_deep_using_abstract_origin d cupdie) (*"no type" s cupdie*);
     svfp_abstract_origin =
       match find_reference_attribute_of_die c d cu d.d_str "DW_AT_abstract_origin" die with
