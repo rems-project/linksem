@@ -382,7 +382,7 @@ type range_list_item =
   | RLI_rle of range_list_entry
   | RLI_base of base_address_selection_entry
 
-type range_list = natural (*offset*) * list range_list_item
+type range_list = natural (*offset (of range_list from start of .debug_ranges section?) *) * list range_list_item
 
 type range_list_list = list range_list
 
@@ -3056,29 +3056,29 @@ let rec interpret_location_list (base_address: natural) (llis: list location_lis
 
 (** range lists, pp and parsing *)
 
-(* readelf example
-Contents of the .debug_aranges section:
+(* example output from:  aarch64-linux-gnu-objdump --dwarf=Ranges 
 
-  Length:                   44
-  Version:                  2
-  Offset into .debug_info:  0x0
-  Pointer Size:             8
-  Segment Size:             0
+Contents of the .debug_ranges section:
 
-    Address            Length
-    00000000100000e8 0000000000000090
-    0000000000000000 0000000000000000
-  Length:                   44
-  Version:                  2
-  Offset into .debug_info:  0x1de
-  Pointer Size:             8
-  Segment Size:             0
+    Offset   Begin    End
+    00000000 00000000004000fc 0000000000400114 
+    00000000 000000000040011c 0000000000400128 
+    00000000 <End of list>
+...
+    00000380 0000000000400598 000000000040059c 
+    00000380 00000000004005a0 00000000004005a4 
+    00000380 00000000004005b4 00000000004005b8 
+    00000380 00000000004005bc 00000000004005bc (start == end)
+    00000380 00000000004005c0 00000000004005c4 
+    00000380 <End of list>
+
 *)
 
 let pp_range_list_entry c (cuh:compilation_unit_header) (offset:natural) (x:range_list_entry) : string =
   "    " ^ pphex offset
   ^ " " ^ pphex x.rle_beginning_address_offset
   ^ " " ^ pphex x.rle_ending_address_offset
+  ^ (if x.rle_beginning_address_offset = x.rle_ending_address_offset then " (start == end)" else "")
   ^ "\n"
 
 let pp_range_list_item c (cuh: compilation_unit_header) (offset: natural) (x:range_list_item) =
@@ -3089,10 +3089,10 @@ let pp_range_list_item c (cuh: compilation_unit_header) (offset: natural) (x:ran
 
 let pp_range_list c (cuh: compilation_unit_header) ((offset:natural), (rlis: list range_list_item)) =
   String.concat "" (List.map (pp_range_list_item c cuh offset) rlis)
-(*  ^ "    " ^ pphex offset  ^ " <End of list>\n"*)
+  ^ "    " ^ pphex offset  ^ " <End of list>\n"
 
 let pp_ranges c (cuh: compilation_unit_header) (rls: list range_list) =
-  "    Offset   Begin    End      Expression\n"
+  "    Offset   Begin    End\n"
   ^  String.concat "" (List.map (pp_range_list c cuh) rls)
 
 (* Note that this is just pp'ing the raw range list data - see also
@@ -3122,20 +3122,29 @@ let parse_range_list_item c (cuh: compilation_unit_header) : parser (maybe range
                   PR_success (Just x (*(pc.pc_offset, x)*)) pc'
         )
 
-let parse_range_list c cuh : parser (maybe range_list) =
+(* compiler output includes DW_AT_ranges attributes that point to proper suffixes of range lists. We support that by explicitly including each suffix - though one could be more efficient *)
+    
+let rec expand_range_list_suffixes cuh (offset,(rlis: list range_list_item)) : list range_list =
+  match rlis with
+  | [] -> []
+  | [rli] -> [(offset,rlis)]
+  | rli::rlis' -> (offset,rlis) :: expand_range_list_suffixes cuh ((offset + 2*cuh.cuh_address_size),rlis')
+  end  
+
+let parse_range_list c cuh : parser (maybe (list range_list)) =
     fun (pc: parse_context) ->
       if Byte_sequence.length pc.pc_bytes = 0 then
         PR_success Nothing pc
       else
         pr_post_map1
           (parse_list (parse_range_list_item c cuh) pc)
-          (fun rlis -> (Just (pc.pc_offset, rlis)))
+          (fun rlis -> (Just (expand_range_list_suffixes cuh (pc.pc_offset, rlis))))
 
 let parse_range_list_list c cuh : parser range_list_list =
-    parse_list (parse_range_list c cuh)
+    pr_map2 List.concat (parse_list (parse_range_list c cuh))
 
-let find_range_list dranges n : range_list =
-  myfindNonPure (fun (n',_)-> n'=n) dranges
+let find_range_list dranges n : maybe range_list =
+  List.find (fun (n',_)-> n'=n) dranges
   (* fails if range list not found *)
 
 (* interpretation of a range list applies the base_address and RLI_base offsets to give a list of concrete address ranges *)
@@ -5052,7 +5061,7 @@ let cu_base_address cu =
 
 
     
-let range_of_die c (dranges: range_list_list) (cu_base_address: natural) (die: die) : maybe (list (natural * natural)) =
+let range_of_die c cuh str (dranges: range_list_list) (cu_base_address: natural) (die: die) : maybe (list (natural * natural)) =
   match (find_attribute_value "DW_AT_low_pc" die, find_attribute_value "DW_AT_high_pc" die, find_attribute_value "DW_AT_ranges" die) with
   | (Just (AV_addr n),  Nothing,                       Nothing               ) -> Just [(n,n+1)]   (* unclear if this case is used? *)
   | (Just (AV_addr n1), Just (AV_addr n2),             Nothing               ) -> Just [(n1,n2)]
@@ -5062,7 +5071,7 @@ let range_of_die c (dranges: range_list_list) (cu_base_address: natural) (die: d
         
   | (Just (AV_addr n1), Just (AV_block n bs),          Nothing               ) -> let n2 = natural_of_bytes c.endianness bs in Just [(n1, n1+n2)] (* should be mod all? *) (* signed or unsigned interp? *)
   | (_,                 Nothing,                       Just (AV_sec_offset n)) ->
-      let rlis = Tuple.snd (find_range_list dranges n) in
+      let rlis = Tuple.snd (match find_range_list dranges n with Just rlis->rlis | None -> Assert_extra.failwith ("find_range_list failed on AV_sec_offset n=" ^ show n ^ " for die\n" ^ pp_die c cuh str false 0 false die) end) in
       let nns = interpret_range_list cu_base_address rlis in
       Just nns
   | (Nothing,           Nothing,                       Nothing               ) -> Nothing
@@ -5071,7 +5080,7 @@ end
 
 let range_of_die_d (d:dwarf) cu (die: die) : maybe (list (natural * natural)) =
   let c = p_context_of_d d in
-  range_of_die c d.d_ranges (cu_base_address cu) die     
+  range_of_die c cu.cu_header d.d_str d.d_ranges (cu_base_address cu) die     
 
 let entry_address (die:die) : maybe natural =
   match (find_attribute_value "DW_AT_low_pc" die, find_attribute_value "DW_AT_entry_pc" die) with
@@ -5080,14 +5089,14 @@ let entry_address (die:die) : maybe natural =
   | (Nothing,Nothing) -> Nothing
   end                       
                                  
-let rec closest_enclosing_range c (dranges: range_list_list) (cu_base_address: natural) (parents: list die) : maybe (list (natural * natural)) =
+let rec closest_enclosing_range c cuh str (dranges: range_list_list) (cu_base_address: natural) (parents: list die) : maybe (list (natural * natural)) =
   match parents with
   | [] -> Nothing
   | die::parents' ->
-      match range_of_die c dranges cu_base_address die with
+      match range_of_die c cuh str dranges cu_base_address die with
       | ((Just x) as y) -> y
       | Nothing ->
-          closest_enclosing_range c dranges cu_base_address parents'        
+          closest_enclosing_range c cuh str dranges cu_base_address parents'        
       end
   end
 
@@ -5113,12 +5122,12 @@ let rec closest_enclosing_frame_base dloc (base_address: natural) (parents: list
 
 
 
-let interpreted_location_of_die c cuh (dloc: location_list_list) (dranges: range_list_list) (base_address: natural) (parents: list die) (die: die) : maybe (list (natural * natural * single_location_description)) =
+let interpreted_location_of_die c cuh str (dloc: location_list_list) (dranges: range_list_list) (base_address: natural) (parents: list die) (die: die) : maybe (list (natural * natural * single_location_description)) =
 
   (* for a simple location expression bs, we look in the enclosing die
   tree to find the associated pc range *)
   let location bs =
-    match closest_enclosing_range c dranges base_address (die::parents) with
+    match closest_enclosing_range c cuh str dranges base_address (die::parents) with
     | Just nns ->
         Just (List.map (fun (n1,n2) -> (n1,n2,bs)) nns)
     | Nothing ->
@@ -5161,7 +5170,7 @@ let analyse_locations (d: dwarf) : analysed_location_data =
     (fun (((cu:compilation_unit), (parents: list die), (die: die)) as x) ->
       let base_address = cu_base_address cu in
       let interpreted_locations : maybe (list (natural * natural * single_location_description)) =
-        interpreted_location_of_die c cu.cu_header d.d_loc d.d_ranges base_address parents die in
+        interpreted_location_of_die c cu.cu_header d.d_str d.d_loc d.d_ranges base_address parents die in
       (x,interpreted_locations)
     )
     dies
@@ -5870,7 +5879,7 @@ let rec mk_sdt_variable_or_formal_parameter (d:dwarf) subprogram_line_extents cu
     svfp_locations =
       let base_address = cu_base_address cu in
       let interpreted_locations : maybe (list (natural * natural * single_location_description)) =
-        interpreted_location_of_die c cu.cu_header d.d_loc d.d_ranges base_address parents die in
+        interpreted_location_of_die c cu.cu_header d.d_str d.d_loc d.d_ranges base_address parents die in
       Maybe.map (fun nnbss -> List.map (fun (n1,n2,bs) -> (n1,n2,parse_operations_bs c cu.cu_header bs)) nnbss) interpreted_locations;
     svfp_decl = decl_of_die d subprogram_line_extents cu die;
     |> )
