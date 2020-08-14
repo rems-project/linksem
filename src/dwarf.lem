@@ -2851,7 +2851,7 @@ let parse_compilation_unit c (debug_str_section_body: byte_sequence) (debug_abbr
         | PR_success cuh pc' -> (cuh,pc')
         end in
 
-      let _ = my_debug4 (pp_compilation_unit_header cuh) in
+(*let _ = my_debug4 (pp_compilation_unit_header cuh) in*)
 
       if cuh.cuh_unit_length = 0 then PR_success Nothing pc' else
       
@@ -4747,8 +4747,8 @@ let analyse_type_info_top c (d: dwarf) (r:bool(*recurse into members*)) (cupdie:
                 (fun die' ->
                   let cupdie' = (cu,die::parents,die') in
                   let mname' = find_name_of_die d.d_str die' in
-                  let _ = my_debug5 (s ())in 
-                  let const_value = strict s (find_integer_attribute_value_of_die c "DW_AT_const_value" die') in let _ = my_debug5 "ok" in
+                  (*let _ = my_debug5 (s ()) in *)
+                 let const_value = strict s (find_integer_attribute_value_of_die c "DW_AT_const_value" die') in (*let _ = my_debug5 "ok" in*)
                   (cupdie',mname',const_value))
                 members_raw)
       else
@@ -5781,7 +5781,7 @@ let extract_dwarf_static f1 =
   match extract_dwarf f1 with
   | Nothing -> Nothing
   | Just dwarf ->
-      let _ = my_debug5 (pp_dwarf dwarf) in 
+     (*let _ = my_debug5 (pp_dwarf dwarf) in *)
 
       let ald : analysed_location_data =
         analyse_locations dwarf in
