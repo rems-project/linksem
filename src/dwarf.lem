@@ -679,7 +679,7 @@ type decl =
 
 type array_dimension 't = maybe natural(*count*) * maybe 't(*subrange type*)
 
-type struct_union_member 't = cupdie * (maybe string)(*mname*) * 't * natural(*data_member_location*)
+type struct_union_member 't = cupdie * (maybe string)(*mname*) * 't * maybe natural(*data_member_location, non-Nothing for structs*)
 
 type struct_union_type_kind =
   | Atk_structure
@@ -4721,8 +4721,12 @@ let analyse_type_info_top c (d: dwarf) (r:bool(*recurse into members*)) (cupdie:
             let cupdie' = (cu,die::parents,die') in
             let mname' = find_name_of_die d.d_str die' in
             let typ' = strict s (find_DW_AT_type_of_die c d cu d.d_str die') in
-            let data_member_location' = strict s (find_natural_attribute_value_of_die c "DW_AT_data_member_location" die') in
-            (cupdie',mname',typ',data_member_location'))
+            let mdata_member_location' =
+              match atk with
+              | Atk_structure -> Just (strict s (find_natural_attribute_value_of_die c "DW_AT_data_member_location" die'))
+              | Atk_union -> (find_natural_attribute_value_of_die c "DW_AT_data_member_location" die') 
+              end in 
+            (cupdie',mname',typ',mdata_member_location'))
           members_raw)
       else
         Nothing in 
@@ -4792,7 +4796,7 @@ let rec analyse_type_info_deep (d: dwarf) (r:bool(*recurse_into_members*)) cupdi
   | CT_array cupdie typ' dims -> CT (CT_array cupdie (analyse_type_info_deep d r typ') 
      (List.map (fun (mcount,msubrange_typ) -> (mcount, (Maybe.map (analyse_type_info_deep d r) msubrange_typ))) dims))
   | CT_struct_union cupdie atk mname mbyte_size decl mmembers ->
-     CT (CT_struct_union cupdie atk mname mbyte_size decl (Maybe.map (fun members -> (List.map (fun ((cupdie,mname,typ,data_member_location) as am) -> (cupdie,mname,(analyse_type_info_deep d false typ),data_member_location))members)) mmembers))
+     CT (CT_struct_union cupdie atk mname mbyte_size decl (Maybe.map (fun members -> (List.map (fun ((cupdie,mname,typ,mdata_member_location) as am) -> (cupdie,mname,(analyse_type_info_deep d false typ),mdata_member_location))members)) mmembers))
   | CT_enumeration cupdie mname mtyp' mbyte_size decl mmembers ->
      CT(CT_enumeration cupdie mname (Maybe.map (analyse_type_info_deep d r) mtyp') mbyte_size decl mmembers)
   | CT_subroutine cupdie prototyped mresult_type parameter_types variable_parameter_list ->
@@ -4862,10 +4866,10 @@ let rec pp_type_info_die c (d: dwarf) cupdie : string =
 
    
 let pp_struct_union_type_member c d (am:struct_union_member cupdie) : list string = 
-  let (cupdie,mname,typ,data_member_location) = am in 
+  let (cupdie,mname,typ,mdata_member_location) = am in 
       [ "  ";
         (match mname with | Just s -> s | Nothing -> "noname" end);
-        " @ " ^ show data_member_location;
+        " @ " ^ (match mdata_member_location with Nothing -> "nodatamemberlocation" | Just data_member_location -> show data_member_location end);
         " : " ^ pp_type_info_die c d typ
       ]
 
@@ -4883,10 +4887,10 @@ let pp_struct_union_type_defn c d cupdie =
 
 
 let pp_struct_union_type_member' (am:struct_union_member c_type) : list string = 
-  let (cupdie,mname,ctyp,data_member_location) = am in 
+  let (cupdie,mname,ctyp,mdata_member_location) = am in 
       [ "  ";
         (match mname with | Just s -> s | Nothing -> "noname" end);
-        " @ " ^ show data_member_location;
+        " @ " ^ (match mdata_member_location with Nothing -> "nodatamemberlocation" | Just data_member_location -> show data_member_location end);
         " : " ^ pp_type_info_deep ctyp
       ]
 
