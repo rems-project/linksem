@@ -685,7 +685,7 @@ type struct_union_type_kind =
   | Atk_structure
   | Atk_union
 
-type enumeration_member = cupdie * (maybe string)(*mname*) * natural(*const_value*)
+type enumeration_member = cupdie * (maybe string)(*mname*) * integer(*const_value*)
 
 type c_type_top 't =
   | CT_missing of cupdie
@@ -4747,7 +4747,8 @@ let analyse_type_info_top c (d: dwarf) (r:bool(*recurse into members*)) (cupdie:
                 (fun die' ->
                   let cupdie' = (cu,die::parents,die') in
                   let mname' = find_name_of_die d.d_str die' in
-                  let const_value = strict s (find_natural_attribute_value_of_die c "DW_AT_const_value" die') in
+                  let _ = my_debug5 (s ())in 
+                  let const_value = strict s (find_integer_attribute_value_of_die c "DW_AT_const_value" die') in let _ = my_debug5 "ok" in
                   (cupdie',mname',const_value))
                 members_raw)
       else
