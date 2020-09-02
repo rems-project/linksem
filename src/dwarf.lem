@@ -773,6 +773,7 @@ type sdt_compilation_unit =
   scu_name : string;
   scu_subroutines : list sdt_subroutine;   (* invariant: none inlined(?) *)
   scu_vars : list sdt_variable_or_formal_parameter;
+  scu_pc_ranges : maybe (list (natural*natural));
   |>
 
 type sdt_dwarf =
@@ -2583,7 +2584,8 @@ let find_flag_attribute_value_of_die_using_abstract_origin d (an: string) ((cu,p
 let pp_dwarf_format df = match df with Dwarf32 -> "(32-bit)" | Dwarf64 -> "(64-bit)" end
 
 let pp_unit_header (s:string) (x:compilation_unit_header) : string =
-    "  " ^ s ^ " Unit @ offset " ^ pphex x.cuh_offset ^ ":\n"
+    "**" ^ s ^ " Unit @ offset " ^ pphex x.cuh_offset ^ "\n"
+  ^ "  " ^ s ^ " Unit @ offset " ^ pphex x.cuh_offset ^ ":\n"
   ^ "   Length:        " ^ pphex x.cuh_unit_length ^ " " ^ pp_dwarf_format x.cuh_dwarf_format ^ "\n"
   ^ "   Version:       " ^ show x.cuh_version ^ "\n"
   ^ "   Abbrev Offset: " ^ pphex x.cuh_debug_abbrev_offset ^ "\n"
@@ -5684,6 +5686,15 @@ let evaluate_line_number_program
   List.reverse (Tuple.snd (evaluate_line_number_operations lnp.lnp_header ((initial_line_number_registers lnp.lnp_header),[]) lnp.lnp_operations))
 
 
+let evaluated_line_info_of_compilation_unit d cu evaluated_line_info =
+  let c = p_context_of_d d in
+  let offset = line_number_offset_of_compilation_unit c cu in
+  match List.find (fun (lnh,lnrs) -> lnh.lnh_offset = offset) evaluated_line_info with
+  | Nothing -> Assert_extra.failwith "compilation unit line number offset not found"
+  | Just (lnh,lnrs) ->lnrs
+  end
+
+
 let pp_line_number_registers lnr =
   ""
   ^ "address = " ^        pphex lnr.lnr_address       ^ "\n"
@@ -5968,6 +5979,7 @@ let mk_sdt_compilation_unit (d:dwarf) subprogram_line_extents (cu:compilation_un
     scu_name = strict_mscu (find_name_of_die d.d_str cu.cu_die) "no name" s cupdie;
     scu_subroutines = List.mapMaybe (mk_sdt_subroutine d subprogram_line_extents cu parents') cu.cu_die.die_children; 
     scu_vars = List.mapMaybe (mk_sdt_variable_or_formal_parameter d subprogram_line_extents cu parents') cu.cu_die.die_children;
+    scu_pc_ranges = range_of_die_d d cu cu.cu_die;
     |>
 
    
@@ -6038,8 +6050,8 @@ and pp_sdt_lexical_block (level:natural) (lb:sdt_lexical_block) : string =
   let indent = indent_level true level in
   ""
   ^ indent ^ "cupdie:"         ^ pp_cupdie3 lb.slb_cupdie ^ "\n"
-  ^ indent ^ "vars:"           ^ pp_sdt_list lb.slb_vars (pp_sdt_variable_or_formal_parameter (level+1))
   ^ indent ^ "pc ranges:"      ^ pp_pc_ranges (level+1) lb.slb_pc_ranges
+  ^ indent ^ "vars:"           ^ pp_sdt_list lb.slb_vars (pp_sdt_variable_or_formal_parameter (level+1))
   ^ indent ^ "subroutines :"   ^ pp_sdt_list lb.slb_subroutines (pp_sdt_subroutine (level+1))
   ^ indent ^ "lexical_blocks:" ^ pp_sdt_list lb.slb_lexical_blocks (pp_sdt_lexical_block (level+1))
   ^ "\n"   
@@ -6049,9 +6061,11 @@ let pp_sdt_compilation_unit (level:natural) (cu:sdt_compilation_unit) : string =
   ""
   ^ indent ^ "name:"         ^ cu.scu_name ^ "\n"
   ^ indent ^ "cupdie:"       ^ pp_cupdie3 cu.scu_cupdie ^ "\n"
+  ^ indent ^ "pc ranges:"    ^ pp_pc_ranges (level+1) cu.scu_pc_ranges
   ^ indent ^ "vars:"         ^ pp_sdt_list cu.scu_vars (pp_sdt_variable_or_formal_parameter (level+1))
   ^ indent ^ "subroutines :" ^ pp_sdt_list cu.scu_subroutines (pp_sdt_subroutine (level+1))
-
+  ^ "\n"
+  
 let pp_sdt_dwarf (sdt_d:sdt_dwarf) : string =
   let indent_level = 0 in 
   String.concat "" (List.map (pp_sdt_compilation_unit indent_level) sdt_d.sd_compilation_units)
