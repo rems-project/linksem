@@ -38,16 +38,6 @@ with additional contributions from Thibaut Pérami, Simon Ser, Shaked
 Flur, Robert Norton, Ramana Kumar, Jonathan French, Brian Campbell,
 and Thomas Bauereiss.
 
-## Funding
-
-This software was developed by the University of Cambridge Computer
-Laboratory (Department of Computer Science and Technology), in part
-funded by EPSRC Programme Grant EP/K008528/1 [REMS: Rigorous
-Engineering for Mainstream
-Systems](http://www.cl.cam.ac.uk/~pes20/rems), and in part funded from
-the European Research Council (ERC) under the European Union’s Horizon
-2020 research and innovation programme (grant agreement No 789108,
-"ELVER").
 
 
 ## Directory structure
@@ -141,3 +131,14 @@ where `<flag>` is one of `--file-header`, `--program-headers`, `--section-header
 
 Any infelicities or missing pieces of formalisation should be
 noted in a camldoc-style comment at the top of the relevant Lem file.
+
+## Funding
+
+This software was developed by the University of Cambridge Computer
+Laboratory (Department of Computer Science and Technology), in part
+funded by EPSRC Programme Grant EP/K008528/1 [REMS: Rigorous
+Engineering for Mainstream
+Systems](http://www.cl.cam.ac.uk/~pes20/rems), in part funded from
+the European Research Council (ERC) under the European Union’s Horizon
+2020 research and innovation programme (grant agreement No 789108,
+"ELVER"), and in part funded by Google.

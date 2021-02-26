@@ -7,7 +7,7 @@ directories.
 Copyright (c) 2016, Dominic Mulligan
 Copyright (c) 2018, Stephen Kell
 Copyright (c) 2018, Simon Ser
-Copyright (c) 2016-2020, Peter Sewell
+Copyright (c) 2016-2021, Peter Sewell
 Copyright (c) 2018, Shaked Flur
 Copyright (c) 2018, Robert Norton
 Copyright (c) 2018, Ramana Kumar
@@ -19,10 +19,10 @@ This software was developed by the University of Cambridge Computer
 Laboratory (Department of Computer Science and Technology), in part
 funded by EPSRC Programme Grant EP/K008528/1 [REMS: Rigorous
 Engineering for Mainstream
-Systems](http://www.cl.cam.ac.uk/~pes20/rems), and in part funded from
+Systems](http://www.cl.cam.ac.uk/~pes20/rems), in part funded from
 the European Research Council (ERC) under the European Union’s Horizon
 2020 research and innovation programme (grant agreement No 789108,
-"ELVER").
+"ELVER"), and in part funded by Google.
 
 
 Redistribution and use in source and binary forms, with or without
