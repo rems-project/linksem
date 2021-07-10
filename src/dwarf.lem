@@ -834,9 +834,11 @@ let partialNaturalFromInteger (i:integer) : natural =
 
 val natural_nat_shift_left : natural -> nat -> natural
 declare ocaml    target_rep function natural_nat_shift_left = `Nat_big_num.shift_left`
+declare hol      target_rep function natural_nat_shift_left n m = (naturalPow 2 m) * n
 
 val natural_nat_shift_right : natural -> nat -> natural
 declare ocaml    target_rep function natural_nat_shift_right = `Nat_big_num.shift_right`
+declare hol      target_rep function natural_nat_shift_right n m = n / (naturalPow 2 m)
 
 
 (** ************************************************************ *)
