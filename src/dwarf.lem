@@ -2234,6 +2234,26 @@ let parse_and_pp_operations c cuh bs =
 
 (** attribute values: pp and parsing *)
 
+val pp_attribute_value_plain :  attribute_value -> string
+let pp_attribute_value_plain av =
+  match av with
+  | AV_addr x -> "AV_addr " ^ pphex x
+  | AV_block n bs -> "AV_block " ^ show n ^ " " ^ ppbytes bs
+  | AV_constantN n bs -> "AV_constantN " ^ show n ^ " " ^ ppbytes bs
+  | AV_constant_SLEB128 i -> "AV_constant_SLEB128 " ^ show i
+  | AV_constant_ULEB128 n -> "AV_constant_ULEB128 " ^ show n
+  | AV_exprloc n bs ->
+    String.concat " " ["AV_exprloc"; show n; ppbytes bs]
+  | AV_flag b -> "AV_flag " ^ show b
+  | AV_ref n -> "AV_ref " ^ pphex n
+  | AV_ref_addr n -> "AV_ref_addr " ^ pphex n
+  | AV_ref_sig8 n -> "AV_ref_sig8 " ^ pphex n
+  | AV_sec_offset n -> "AV_sec_offset " ^ pphex  n
+  | AV_string bs -> string_of_byte_sequence bs
+  | AV_strp n -> "AV_sec_offset " ^ pphex n ^ " "
+  end
+
+   
 val pp_attribute_value : p_context -> compilation_unit_header -> byte_sequence -> natural (*attribute tag*) -> attribute_value -> string
 let pp_attribute_value c cuh str at av =
   match av with
@@ -2425,7 +2445,7 @@ let natural_of_constant_attribute_value die c av : natural =
   | AV_constantN n bs -> n
   | AV_constant_ULEB128 n -> n
   | AV_block n bs -> (natural_of_bytes c.endianness bs)
-  | _ -> Assert_extra.failwith ("natural_of_constant_attribute_value fail at " ^ pp_pos die.die_offset)
+  | _ -> Assert_extra.failwith ("natural_of_constant_attribute_value fail at " ^ pp_pos die.die_offset ^ " with av= " ^ pp_attribute_value_plain av)
   end
 
 let integer_of_constant_attribute_value c av : integer =
