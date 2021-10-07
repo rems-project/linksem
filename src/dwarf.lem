@@ -2506,6 +2506,14 @@ let find_integer_attribute_value_of_die c (an: string) (die:die) : maybe integer
 let find_flag_attribute_value_of_die (an: string) (die:die) : maybe bool =  
   Maybe.map bool_of_flag_attribute_value (find_attribute_value an die)
 
+
+let find_flag_attribute_value_of_die_default_false (an: string) (die:die) : bool =  
+  match find_flag_attribute_value_of_die an die with
+  | Just b -> b
+  | Nothing -> false
+  end
+   
+  
   
 let find_name_of_die str die : maybe string =
   find_string_attribute_value_of_die "DW_AT_name" str die
@@ -4761,7 +4769,8 @@ let analyse_type_info_top c (d: dwarf) (r:bool(*recurse into members*)) (cupdie:
 
   else if die.die_abbreviation_declaration.ad_tag = tag_encode "DW_TAG_subroutine_type" then
 
-    let prototyped = strict s (find_flag_attribute_value_of_die "DW_AT_prototyped" die) in
+  (*    let prototyped = strict s (find_flag_attribute_value_of_die "DW_AT_prototyped" die) in*)
+    let prototyped = find_flag_attribute_value_of_die_default_false "DW_AT_prototyped" die in
     
     let mresult_type = mtyp in 
     
