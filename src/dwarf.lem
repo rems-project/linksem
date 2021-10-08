@@ -2440,12 +2440,18 @@ let string_of_string_attribute_value str av : string =
   | _ -> "find_string_attribute_value_of_die AV not understood"
   end
 
-let natural_of_constant_attribute_value die c av : natural =
+let maybe_natural_of_constant_attribute_value die1 c av : maybe natural = 
   match av with
-  | AV_constantN n bs -> n
-  | AV_constant_ULEB128 n -> n
-  | AV_block n bs -> (natural_of_bytes c.endianness bs)
-  | _ -> Assert_extra.failwith ("natural_of_constant_attribute_value fail at " ^ pp_pos die.die_offset ^ " with av= " ^ pp_attribute_value_plain av)
+  | AV_constantN n bs -> Just n
+  | AV_constant_ULEB128 n -> Just n
+  | AV_block n bs -> Just (natural_of_bytes c.endianness bs)
+  | _ -> Nothing
+  end
+
+let natural_of_constant_attribute_value die1 c av : natural =
+  match maybe_natural_of_constant_attribute_value die1 c av with
+  | Just n -> n 
+  | Nothing -> Assert_extra.failwith ("natural_of_constant_attribute_value fail at " ^ (pp_pos die1.die_offset ^ (" with av= " ^ pp_attribute_value_plain av)))
   end
 
 let integer_of_constant_attribute_value c av : integer =
@@ -4728,7 +4734,17 @@ let analyse_type_info_top c (d: dwarf) (r:bool(*recurse into members*)) (cupdie:
       let subranges = List.filter (fun die' -> die'.die_abbreviation_declaration.ad_tag = tag_encode "DW_TAG_subrange_type") die.die_children in
       List.map
         (fun die' ->
-          let mcount = find_natural_attribute_value_of_die c "DW_AT_count" die' in
+          (*WAS: let mcount = find_natural_attribute_value_of_die c "DW_AT_count" die' in*)
+          let mcount =
+            match find_attribute_value "DW_AT_count" die' with
+            | Nothing -> Nothing
+            | Just av ->
+               match maybe_natural_of_constant_attribute_value die' c av with
+               | Nothing -> Nothing
+               (* DWARF seems to sometimes use an AV_ref* attribute value for DW_AT_count, referring to a variable die, for a VLA length. In this case for the moment we will just forget the length information, which is what this clause does *) 
+               | Just n -> Just n
+               end
+            end in         
           let msubrange_type = find_DW_AT_type_of_die c d cu d.d_str die' in
           (mcount, msubrange_type))
         subranges in 
