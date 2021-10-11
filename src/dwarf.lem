@@ -3147,7 +3147,7 @@ let parse_range_list_item c (cuh: compilation_unit_header) : parser (maybe range
           if a1=0 && a2=0 then
             PR_success Nothing pc'
           else if a1 = max_address cuh.cuh_address_size then
-            let x = RLI_base <| base_address=a1 |> in
+            let x = RLI_base <| base_address=a2 |> in
             PR_success (Just x) pc'
           else
             let x =
