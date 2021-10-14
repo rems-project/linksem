@@ -1,6 +1,7 @@
 *.cmi
 *.cmo
 *.cmx
+*.cmt
 
 src/**/*.o
 
