@@ -1384,6 +1384,8 @@ let base_type_attribute_encodings = [
   ("DW_ATE_decimal_float"   , natural_of_hex "0x0f");
   ("DW_ATE_UTF"             , natural_of_hex "0x10");
   ("DW_ATE_lo_user"         , natural_of_hex "0x80");
+  ("DW_ATE_signed_capability_hack_a0"         , natural_of_hex "0xa0");
+  ("DW_ATE_unsigned_capability_hack_a1"         , natural_of_hex "0xa1");
   ("DW_ATE_hi_user"         , natural_of_hex "0xff")
   ]
                                   
