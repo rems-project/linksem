@@ -60,7 +60,11 @@ $(INSTALLDIR)/linksem_zarith/META $(INSTALLDIR)/linksem_num/META: $(INSTALLDIR)/
 	  build_$*/linksem.a\
 	  build_$*/*.cmi \
 	  build_$*/*.cmx \
-	  build_$*/*.cmt
+	  build_$*/*.cmt \
+	  $(ALL_UTIL_ML) \
+	  $(patsubst %.lem,%.ml,$(LEM_ELF_SRC)) \
+	  $(patsubst %.lem,%.ml,$(LEM_ABI_SRC)) \
+	  $(patsubst %.lem,%.ml,$(LEM_LINK_SRC))
 	touch $@
 
 .PHONY: install_zarith install_num
