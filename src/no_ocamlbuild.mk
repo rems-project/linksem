@@ -6,6 +6,8 @@ default: main_elf main_elf.opt main_link main_link.opt copy_elf copy_elf.opt
 
 include lem.mk
 
+OCAMLFLAGS += -bin-annot
+
 ocaml: main_elf copy_elf
 
 scratch scratch.opt: OCAML_LEM_SRC += $(patsubst %.lem,%.ml,$(LEM_ELF_SRC)) \
@@ -43,6 +45,7 @@ build_zarith/linksem.cmxa build_num/linksem.cmxa: build_%/linksem.cmxa: $(ALL_UT
 	ocamlfind ocamlopt -a -o "$@" $(OCAMLFLAGS) $(patsubst %.ml,%.cmx,$(ML_SOURCES))
 	mv $(patsubst %.ml,%.cmi,$(ML_SOURCES)) "$(dir $@)"
 	mv $(patsubst %.ml,%.cmx,$(ML_SOURCES)) "$(dir $@)"
+	mv $(patsubst %.ml,%.cmt,$(ML_SOURCES)) "$(dir $@)"
 	cp META.$* "$(dir $@)"/META
 
 INSTALLDIR := $(shell ocamlfind printconf destdir)
@@ -56,7 +59,12 @@ $(INSTALLDIR)/linksem_zarith/META $(INSTALLDIR)/linksem_num/META: $(INSTALLDIR)/
 	  $^ \
 	  build_$*/linksem.a\
 	  build_$*/*.cmi \
-	  build_$*/*.cmx
+	  build_$*/*.cmx \
+	  build_$*/*.cmt \
+	  $(ALL_UTIL_ML) \
+	  $(patsubst %.lem,%.ml,$(LEM_ELF_SRC)) \
+	  $(patsubst %.lem,%.ml,$(LEM_ABI_SRC)) \
+	  $(patsubst %.lem,%.ml,$(LEM_LINK_SRC))
 	touch $@
 
 .PHONY: install_zarith install_num
@@ -108,11 +116,11 @@ clean: lem-clean
 	rm -rf build_zarith build_num
 	rm -f main_elf main_link main_elf.opt main_link.opt copy_elf copy_elf.opt
 	rm -rf *~
-	rm -f *.cmi *.cmo *.cmx *.o
-	rm -f abis/*.cmi abis/*.cmo abis/*.cmx abis/*.o
-	rm -f abis/*/*.cmi abis/*/*.cmo abis/*/*.cmx abis/*/*.o
-	rm -f adaptors/*.cmi adaptors/*.cmo adaptors/*.cmx adaptors/*.o
-	rm -f gnu_extensions/*.cmi gnu_extensions/*.cmo gnu_extensions/*.cmx gnu_extensions/*.o
+	rm -f *.cmi *.cmo *.cmx *.cmt *.o
+	rm -f abis/*.cmi abis/*.cmo abis/*.cmx abis/*.cmt abis/*.o
+	rm -f abis/*/*.cmi abis/*/*.cmo abis/*/*.cmx abis/*/*.cmt abis/*/*.o
+	rm -f adaptors/*.cmi adaptors/*.cmo adaptors/*.cmx adaptors/*.cmt adaptors/*.o
+	rm -f gnu_extensions/*.cmi gnu_extensions/*.cmo gnu_extensions/*.cmx gnu_extensions/*.cmt gnu_extensions/*.o
 
 stacktrace:
 	export OCAMLRUNPARAM=b; \
