@@ -109,7 +109,7 @@ val string_of_nat : nat -> string
     | m -> "S(" ^ string_of_nat (m - 1) ^ ")"
   end
   *)
-declare ocaml    target_rep function string_of_nat = `Pervasives.string_of_int`
+declare ocaml    target_rep function string_of_nat = `Stdlib.string_of_int`
 declare isabelle target_rep function string_of_nat = `LemExtraDefs.nat_to_string`
 declare hol      target_rep function string_of_nat = `num_to_dec_string`
 
