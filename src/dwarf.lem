@@ -2651,6 +2651,7 @@ let parse_compilation_unit_header c : parser compilation_unit_header =
                 (parse_uintDwarfN c df) (* debug abbrev offset *)
                 (parse_uint8) (* address_size *))))
       (fun (offset,((df,ul), (v, (dao, as')))) ->
+        (*let _ = my_debug4 ("dao " ^ pphex dao) in *)
         <|
         cuh_offset = offset;
         cuh_dwarf_format = df;
@@ -2889,7 +2890,7 @@ let parse_compilation_unit c (debug_str_section_body: byte_sequence) (debug_abbr
         | PR_success cuh pc' -> (cuh,pc')
         end in
 
-(*let _ = my_debug4 (pp_compilation_unit_header cuh) in*)
+let _ = my_debug4 (pp_compilation_unit_header cuh) in
 
       if cuh.cuh_unit_length = 0 then PR_success Nothing pc' else
       
