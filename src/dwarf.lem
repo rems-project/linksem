@@ -1580,6 +1580,14 @@ let max_address (as': natural) : natural =
   | _ -> Assert_extra.failwith "max_address size not 4 or 8"
   end
 
+let range_address (as': natural) : natural =
+  match as' with
+  | 4 -> natural_of_hex "0x100000000"
+  | 8 -> natural_of_hex "0x10000000000000000"
+  | _ -> Assert_extra.failwith "range_address size not 4 or 8"
+  end
+
+   
 
 (** lookup of encodings *)
 
@@ -5622,9 +5630,9 @@ let evaluate_line_number_operation
     (lno: line_number_operation)
     : line_number_registers * list line_number_registers =
 
-  let new_address s operation_advance = s.lnr_address +
+  let new_address s operation_advance = (s.lnr_address +
       lnh.lnh_minimum_instruction_length *
-      ((s.lnr_op_index + operation_advance)/lnh.lnh_maximum_operations_per_instruction) in
+         ((s.lnr_op_index + operation_advance)/lnh.lnh_maximum_operations_per_instruction)) mod (range_address 8) (* TODO: this should be taken from the compilation unit header address_size for DWARF<=4 or the line number header for DWARF5*)  in
   let new_op_index s operation_advance =
     (s.lnr_op_index + operation_advance) mod lnh.lnh_maximum_operations_per_instruction in
 
