@@ -52,11 +52,13 @@ INSTALLDIR := $(shell ocamlfind printconf destdir)
 LINKSEMRELEASE := 0.8
 LINKSEMVERSION := $(shell git describe --dirty --always || echo $(LINKSEMRELEASE))
 
-$(INSTALLDIR)/linksem_zarith/META $(INSTALLDIR)/linksem_num/META: $(INSTALLDIR)/linksem_%/META: build_%/linksem.cma build_%/linksem.cmxa
-	-ocamlfind remove -destdir $(INSTALLDIR) linksem_$*
-	ocamlfind install -destdir $(INSTALLDIR) -patch-version "$(LINKSEMVERSION)" linksem_$* \
+.PHONY: install_zarith install_num
+install_zarith install_num: install_%:
+	-ocamlfind remove -destdir "$(INSTALLDIR)" linksem_$*
+	ocamlfind install -destdir "$(INSTALLDIR)" -patch-version "$(LINKSEMVERSION)" linksem_$* \
 	  build_$*/META \
-	  $^ \
+	  build_$*/linksem.cma \
+	  build_$*/linksem.cmxa \
 	  build_$*/linksem.a\
 	  build_$*/*.cmi \
 	  build_$*/*.cmx \
@@ -67,16 +69,13 @@ $(INSTALLDIR)/linksem_zarith/META $(INSTALLDIR)/linksem_num/META: $(INSTALLDIR)/
 	  $(patsubst %.lem,%.ml,$(LEM_LINK_SRC))
 	touch $@
 
-.PHONY: install_zarith install_num
-install_zarith install_num: install_%: $(INSTALLDIR)/linksem_%/META
-
-$(INSTALLDIR)/linksem/META: META
-	-ocamlfind remove -destdir $(INSTALLDIR) linksem
-	ocamlfind install -destdir $(INSTALLDIR) -patch-version "$(LINKSEMVERSION)" linksem META
-	touch $@
 
 .PHONY: install
-install: $(INSTALLDIR)/linksem/META install_zarith install_num
+install: install_zarith install_num
+	-ocamlfind remove -destdir "$(INSTALLDIR)" linksem
+	ocamlfind install -destdir "$(INSTALLDIR)" -patch-version "$(LINKSEMVERSION)" linksem META
+	touch $@
+
 
 LOCALINSTALDIR := local
 .PHONY: local-install
@@ -86,9 +85,9 @@ local-install:
 
 .PHONY: uninstall
 uninstall:
-	-ocamlfind remove -destdir $(INSTALLDIR) linksem
-	-ocamlfind remove -destdir $(INSTALLDIR) linksem_zarith
-	-ocamlfind remove -destdir $(INSTALLDIR) linksem_num
+	-ocamlfind remove -destdir "$(INSTALLDIR)" linksem
+	-ocamlfind remove -destdir "$(INSTALLDIR)" linksem_zarith
+	-ocamlfind remove -destdir "$(INSTALLDIR)" linksem_num
 
 
 copy_elf main_elf main_link: OCAMLFIND_PACKAGES += -package unix -package str
