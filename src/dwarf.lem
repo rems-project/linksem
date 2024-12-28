@@ -378,18 +378,18 @@ let pad_no_reloc n rels =
 end
 
 (* TODO strict mode? *)
-val reloc_map_to_reloc_list' : Map.map elf64_addr (abstract_relocation reloc_target_data) -> natural -> natural -> list next_reloc
-let rec reloc_map_to_reloc_list' rels i l =
+val reloc_map_to_reloc_list' : Map.map elf64_addr (abstract_relocation reloc_target_data) -> natural -> natural -> list next_reloc -> list next_reloc
+let rec reloc_map_to_reloc_list' rels i l acc =
   if i = l then
-    []
+    List.reverse acc
   else
     match Map.lookup (elf64_addr_of_natural i) rels with
-    | Nothing -> pad_no_reloc 1 (reloc_map_to_reloc_list' rels (i+1) l)
-    | Just x -> Reloc x :: reloc_map_to_reloc_list' rels (i + reloc_width_bytes x.arel_target) l
+    | Nothing -> reloc_map_to_reloc_list' rels (i+1) l (pad_no_reloc 1 acc)
+    | Just x -> reloc_map_to_reloc_list' rels (i + reloc_width_bytes x.arel_target) l (Reloc x :: acc)
     end
 
 let reloc_map_to_reloc_list rels l =
-  reloc_map_to_reloc_list' rels 0 l
+  reloc_map_to_reloc_list' rels 0 l []
 
 let construct_rel_byte_sequence bs rel =
   <| rbs_bytes = bs ; rbs_relocs = reloc_map_to_reloc_list rel (Byte_sequence.length bs) |>
