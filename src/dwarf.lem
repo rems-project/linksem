@@ -169,6 +169,44 @@ let sym_add x y=
     | _ -> Unknown
   end
 
+class ( MaybeMinus 'a )
+  val mminus : 'a -> 'a -> maybe 'a
+end
+
+instance (MaybeMinus natural)
+  let mminus = fun x y -> if x >= y then Just (x - y) else Nothing
+end
+
+instance (MaybeMinus integer)
+  let mminus = fun x y -> Just (x-y)
+end
+
+val sym_minus : forall 'a. MaybeMinus 'a, NumMinus 'a => (sym 'a -> sym 'a -> sym 'a)
+let sym_minus x y=
+  match (x, y) with
+    | (Absolute x, Absolute y) -> Absolute (x - y)
+    | (Offset (s, x), Absolute y) ->
+        match mminus x y with
+        | Just v -> Offset (s, v)
+        | Nothing -> Unknown
+        end
+    | (Offset (s, x), Offset (t, y)) ->
+        if s = t then
+          match mminus x y with
+          | Just v -> Absolute v
+          | Nothing -> Unknown  
+          end
+        else
+          Unknown
+    | _ -> Unknown
+  end
+
+val sym_natural_minus : sym_natural -> sym_natural -> sym_natural
+let sym_natural_minus = sym_minus
+
+val sym_integer_minus : sym_integer -> sym_integer -> sym_integer
+let sym_integer_minus = sym_minus
+
 val sym_bind : forall 'a. sym 'a -> ('a -> sym 'a) -> sym 'a
 let sym_bind x f = match x with
   | Absolute x -> f x
@@ -205,11 +243,11 @@ instance forall 'a. Show 'a => (Show (sym 'a))
 end
 
 instance forall 'a. NumAdd 'a => (NumAdd (sym 'a))
-  let (+) =  sym_add
+  let (+) = sym_add
 end
 
-instance forall 'a. NumMinus 'a => (NumMinus (sym 'a))
-  let (-) = sym_map2 (-)
+instance forall 'a. MaybeMinus 'a, NumMinus 'a => (NumMinus (sym 'a))
+  let (-) = sym_minus
 end
 
 instance forall 'a. NumMult 'a => (NumMult (sym 'a))
