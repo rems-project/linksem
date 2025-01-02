@@ -48,6 +48,7 @@ let section_with_offset f sidx offset =
   | Just sec -> return (BinOp(Section sec.elf64_section_name_as_string, Add, Const (integerFromNatural (natural_of_elf64_addr offset))))
 end
 
+(* TODO handle special shndx *)
 let symbolic_address_from_elf64_symbol_table_entry f ste =
   section_with_offset f ste.elf64_st_shndx ste.elf64_st_value
 
