@@ -192,13 +192,7 @@ let obtain_abi_specific_string_of_reloc_type mach =
 val interpret_data_relocation : natural -> relocation_interpreter reloc_target_data
 let interpret_data_relocation mach ef symtab_map sidx rel =
   if mach = elf_ma_aarch64 then
-    abi_aarch64_relocation_to_abstract ef symtab_map sidx rel >>= fun arels ->
-    map_mapM (fun arel ->
-      aarch64_relocation_target_to_data_target arel.arel_target >>= fun target ->
-      return <| arel_value = arel.arel_value
-              ; arel_target = target
-              |>
-    ) arels
+    aarch64_data_relocation_interpreter ef symtab_map sidx rel
   else
     Error.fail "Unsupported machine"
 

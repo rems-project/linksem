@@ -143,3 +143,12 @@ let aarch64_relocation_target_to_data_target = function
   | Data64 -> return Elf_symbolic.Data64
   | _ -> fail "Not a data relocation"
 end
+
+let aarch64_data_relocation_interpreter ef symtab_map sidx rel =
+  abi_aarch64_relocation_to_abstract ef symtab_map sidx rel >>= fun arels ->
+  map_mapM (fun arel ->
+    aarch64_relocation_target_to_data_target arel.arel_target >>= fun target ->
+    return <| arel_value = arel.arel_value
+            ; arel_target = target
+            |>
+  ) arels
