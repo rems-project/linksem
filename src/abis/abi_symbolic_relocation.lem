@@ -28,6 +28,9 @@ let rec eval_op_exp op: error symbolic_expression =
         eval_op_exp x >>= fun a ->
         eval_op_exp y >>= fun b ->
         return (BinOp (a, Sub, b))
+    | Apply(Page, x) ->
+        eval_op_exp x >>= fun a ->
+        return (BinOp (a, And, UnOp (Not, Const 4095 (*0xFFF*))))
     | _ -> fail "Not supported"
   end
 

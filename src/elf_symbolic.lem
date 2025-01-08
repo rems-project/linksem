@@ -24,12 +24,16 @@ open import Elf_interpreted_section
 type binary_operation
   = Add
   | Sub
+  | And
+
+type unary_operation = | Not
 
 (* TODO *)
 type symbolic_expression
   = Section of string
   | Const of integer
   | BinOp of (symbolic_expression * binary_operation * symbolic_expression)
+  | UnOp of (unary_operation * symbolic_expression)
   | AssertRange of (symbolic_expression * integer * integer)
   | Mask of (symbolic_expression * natural * natural)
 
@@ -37,6 +41,9 @@ let rec pp_sym_expr sx = match sx with
   | Section s -> s
   | Const x -> show x
   | BinOp (a, Add, b) -> "(" ^ (pp_sym_expr a) ^ "+" ^ (pp_sym_expr b) ^ ")"
+  | BinOp (a, Sub, b) -> "(" ^ (pp_sym_expr a) ^ "-" ^ (pp_sym_expr b) ^ ")"
+  | BinOp (a, Sub, b) -> "(" ^ (pp_sym_expr a) ^ "&" ^ (pp_sym_expr b) ^ ")"
+  | UnOp (Not, b) -> "(" ^ "~" ^ (pp_sym_expr b) ^ ")"
   | AssertRange (x, a, b) -> pp_sym_expr x ^ "!" (*TODO*)
   | Mask (x, a, b) -> pp_sym_expr x ^ "[" ^ (show a) ^ ":" ^ (show b) ^ "]"
 end
