@@ -42,7 +42,7 @@ let rec pp_sym_expr sx = match sx with
   | Const x -> show x
   | BinOp (a, Add, b) -> "(" ^ (pp_sym_expr a) ^ "+" ^ (pp_sym_expr b) ^ ")"
   | BinOp (a, Sub, b) -> "(" ^ (pp_sym_expr a) ^ "-" ^ (pp_sym_expr b) ^ ")"
-  | BinOp (a, Sub, b) -> "(" ^ (pp_sym_expr a) ^ "&" ^ (pp_sym_expr b) ^ ")"
+  | BinOp (a, And, b) -> "(" ^ (pp_sym_expr a) ^ "&" ^ (pp_sym_expr b) ^ ")"
   | UnOp (Not, b) -> "(" ^ "~" ^ (pp_sym_expr b) ^ ")"
   | AssertRange (x, a, b) -> pp_sym_expr x ^ "!" (*TODO*)
   | Mask (x, a, b) -> pp_sym_expr x ^ "[" ^ (show a) ^ ":" ^ (show b) ^ "]"
