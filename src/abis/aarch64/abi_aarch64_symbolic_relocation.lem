@@ -54,7 +54,7 @@ let abi_aarch64_apply_relocation_symbolic rel s_val p_val ef =
       	let addr   = rel.elf64_ra_offset in
       	return (Map.singleton addr
           <| rel_desc_operation = result
-           ; rel_desc_range = Just (~2**31, 2**32)
+           ; rel_desc_range = Just (~(2**31), 2**32)
            ; rel_desc_mask = (31, 0)
            ; rel_desc_target = Data32
            |>
@@ -76,7 +76,7 @@ let abi_aarch64_apply_relocation_symbolic rel s_val p_val ef =
       	let addr   = rel.elf64_ra_offset in
       	return (Map.singleton addr
           <| rel_desc_operation = result
-           ; rel_desc_range = Just (~2**31, 2**32)
+           ; rel_desc_range = Just (~(2**31), 2**32)
            ; rel_desc_mask = (31, 0)
            ; rel_desc_target = Data32
            |>
@@ -86,7 +86,7 @@ let abi_aarch64_apply_relocation_symbolic rel s_val p_val ef =
       	let addr   = rel.elf64_ra_offset in
       	return (Map.singleton addr
           <| rel_desc_operation = result
-           ; rel_desc_range = Just (~2**32, 2**32)
+           ; rel_desc_range = Just (~(2**32), 2**32)
            ; rel_desc_mask = (32, 12)
            ; rel_desc_target = ADRP
            |>
@@ -126,7 +126,7 @@ let abi_aarch64_apply_relocation_symbolic rel s_val p_val ef =
       	let addr   = rel.elf64_ra_offset in
       	return (Map.singleton addr
           <| rel_desc_operation = result
-           ; rel_desc_range = Just (~2**27, 2**27)
+           ; rel_desc_range = Just (~(2**27), 2**27)
            ; rel_desc_mask = (27, 2)
            ; rel_desc_target = CALL
            |>
