@@ -1,4 +1,5 @@
 open import Num
+open import Maybe
 
 open import Error
 
@@ -10,7 +11,8 @@ open import Elf_symbolic
 
 
 type relocation_description 'res 'tar =
-  <| rel_desc_operation : (relocation_operator_expression 'res * integer_bit_width * can_fail 'res)
+  <| rel_desc_operation : (relocation_operator_expression 'res)
+   ; rel_desc_range     : maybe (integer * integer)
    ; rel_desc_mask      : (natural * natural)
    ; rel_desc_target    : 'tar
    |>
@@ -36,15 +38,13 @@ let rec eval_op_exp op: error symbolic_expression =
 
 
 let eval_relocation desc =
-  let (exp, bit_width, can_fail) = desc.rel_desc_operation in
-  let (lo, hi) = desc.rel_desc_mask in
+  let (hi, lo) = desc.rel_desc_mask in
   
-  eval_op_exp exp >>= fun value ->
-    match can_fail with
-    | CanFail -> return (AssertRange(value, 0, 0)) (*todo*)
-    | CannotFail -> return value
-    | CanFailOnTest -> fail "Not supported"
+  eval_op_exp desc.rel_desc_operation >>= fun value ->
+    match desc.rel_desc_range with
+    | Just (min, max) -> return (AssertRange(value, min, max))
+    | Nothing -> return value
     end
   >>= fun value ->
-    return <| arel_value = Mask(value, lo, hi) ; arel_target = desc.rel_desc_target |>
+    return <| arel_value = Mask(value, hi, lo) ; arel_target = desc.rel_desc_target |>
 

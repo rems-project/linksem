@@ -42,7 +42,8 @@ let abi_aarch64_apply_relocation_symbolic rel s_val p_val ef =
       	let result = Plus(Lift s_val, Lift a_val) in
       	let addr   = rel.elf64_ra_offset in
       	return (Map.singleton addr
-          <| rel_desc_operation = (result, I64, CannotFail)
+          <| rel_desc_operation = result
+           ; rel_desc_range = Nothing
            ; rel_desc_mask = (63, 0)
            ; rel_desc_target = Data64
            |>
@@ -52,7 +53,8 @@ let abi_aarch64_apply_relocation_symbolic rel s_val p_val ef =
       	let result = Plus(Lift s_val, Lift a_val) in
       	let addr   = rel.elf64_ra_offset in
       	return (Map.singleton addr
-          <| rel_desc_operation = (result, I32, CanFail)
+          <| rel_desc_operation = result
+           ; rel_desc_range = Just (~2**31, 2**32)
            ; rel_desc_mask = (31, 0)
            ; rel_desc_target = Data32
            |>
@@ -62,7 +64,8 @@ let abi_aarch64_apply_relocation_symbolic rel s_val p_val ef =
       	let result = Minus(Plus(Lift s_val, Lift a_val), Lift p_val) in
       	let addr   = rel.elf64_ra_offset in
       	return (Map.singleton addr
-          <| rel_desc_operation = (result, I64, CannotFail)
+          <| rel_desc_operation = result
+           ; rel_desc_range = Nothing
            ; rel_desc_mask = (63, 0)
            ; rel_desc_target = Data64
            |>
@@ -72,7 +75,8 @@ let abi_aarch64_apply_relocation_symbolic rel s_val p_val ef =
       	let result = Minus(Plus(Lift s_val, Lift a_val), Lift p_val) in
       	let addr   = rel.elf64_ra_offset in
       	return (Map.singleton addr
-          <| rel_desc_operation = (result, I32, CanFail)
+          <| rel_desc_operation = result
+           ; rel_desc_range = Just (~2**31, 2**32)
            ; rel_desc_mask = (31, 0)
            ; rel_desc_target = Data32
            |>
@@ -81,7 +85,8 @@ let abi_aarch64_apply_relocation_symbolic rel s_val p_val ef =
       	let result = Minus(Apply(Page, Plus(Lift s_val, Lift a_val)), Apply(Page, Lift p_val)) in
       	let addr   = rel.elf64_ra_offset in
       	return (Map.singleton addr
-          <| rel_desc_operation = (result, I32, CanFail)
+          <| rel_desc_operation = result
+           ; rel_desc_range = Just (~2**32, 2**32)
            ; rel_desc_mask = (32, 12)
            ; rel_desc_target = ADRP
            |>
@@ -90,7 +95,8 @@ let abi_aarch64_apply_relocation_symbolic rel s_val p_val ef =
       	let result = Plus(Lift s_val, Lift a_val) in
       	let addr   = rel.elf64_ra_offset in
       	return (Map.singleton addr
-          <| rel_desc_operation = (result, I32, CannotFail)
+          <| rel_desc_operation = result
+           ; rel_desc_range = Nothing
            ; rel_desc_mask = (11, 0)
            ; rel_desc_target = ADD
            |>
@@ -99,7 +105,8 @@ let abi_aarch64_apply_relocation_symbolic rel s_val p_val ef =
       	let result = Plus(Lift s_val, Lift a_val) in
       	let addr   = rel.elf64_ra_offset in
       	return (Map.singleton addr
-          <| rel_desc_operation = (result, I32, CannotFail)
+          <| rel_desc_operation = result
+           ; rel_desc_range = Nothing
            ; rel_desc_mask = (11, 2)
            ; rel_desc_target = LDST
            |>
@@ -108,7 +115,8 @@ let abi_aarch64_apply_relocation_symbolic rel s_val p_val ef =
       	let result = Plus(Lift s_val, Lift a_val) in
       	let addr   = rel.elf64_ra_offset in
       	return (Map.singleton addr
-          <| rel_desc_operation = (result, I32, CannotFail)
+          <| rel_desc_operation = result
+           ; rel_desc_range = Nothing
            ; rel_desc_mask = (11, 3)
            ; rel_desc_target = LDST
            |>
@@ -117,7 +125,8 @@ let abi_aarch64_apply_relocation_symbolic rel s_val p_val ef =
       	let result = Minus(Plus(Lift s_val, Lift a_val), Lift p_val) in
       	let addr   = rel.elf64_ra_offset in
       	return (Map.singleton addr
-          <| rel_desc_operation = (result, I27, CanFail)
+          <| rel_desc_operation = result
+           ; rel_desc_range = Just (~2**27, 2**27)
            ; rel_desc_mask = (27, 2)
            ; rel_desc_target = CALL
            |>
