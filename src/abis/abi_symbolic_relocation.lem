@@ -13,6 +13,7 @@ open import Elf_symbolic
 type relocation_description 'res 'tar =
   <| rel_desc_operation : (relocation_operator_expression 'res)
    ; rel_desc_range     : maybe (integer * integer)
+   ; rel_desc_alignment_bits : natural
    ; rel_desc_mask      : (natural * natural)
    ; rel_desc_target    : 'tar
    |>
@@ -44,6 +45,11 @@ let eval_relocation desc =
     match desc.rel_desc_range with
     | Just (min, max) -> return (AssertRange(value, min, max))
     | Nothing -> return value
+    end
+  >>= fun value ->
+    match desc.rel_desc_alignment_bits with
+    | 0 -> return value
+    | x -> return (AssertAlignment(value, x))
     end
   >>= fun value ->
     return <| arel_value = Mask(value, hi, lo) ; arel_target = desc.rel_desc_target |>

@@ -35,6 +35,7 @@ type symbolic_expression
   | BinOp of (symbolic_expression * binary_operation * symbolic_expression)
   | UnOp of (unary_operation * symbolic_expression)
   | AssertRange of (symbolic_expression * integer * integer)
+  | AssertAlignment of (symbolic_expression * natural)
   | Mask of (symbolic_expression * natural * natural)
 
 let rec pp_sym_expr sx = match sx with
@@ -45,6 +46,7 @@ let rec pp_sym_expr sx = match sx with
   | BinOp (a, And, b) -> "(" ^ (pp_sym_expr a) ^ "&" ^ (pp_sym_expr b) ^ ")"
   | UnOp (Not, b) -> "(" ^ "~" ^ (pp_sym_expr b) ^ ")"
   | AssertRange (x, a, b) -> pp_sym_expr x ^ "!" (*TODO*)
+  | AssertAlignment (x, a) -> pp_sym_expr x ^ "!" (*TODO*)
   | Mask (x, a, b) -> pp_sym_expr x ^ "[" ^ (show a) ^ ":" ^ (show b) ^ "]"
 end
 

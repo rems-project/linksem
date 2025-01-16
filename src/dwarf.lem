@@ -176,6 +176,7 @@ let rec sym_integer_of_symbolic_expression x : sym_integer = match x with
   | BinOp (x, Add, y) -> (sym_integer_of_symbolic_expression x) + (sym_integer_of_symbolic_expression y)
   | BinOp (x, Sub, y) -> (sym_integer_of_symbolic_expression x) - (sym_integer_of_symbolic_expression y)
   | AssertRange (x, _, _) -> sym_integer_of_symbolic_expression x (*TODO*)
+  | AssertAlignment (x, _) -> sym_integer_of_symbolic_expression x (*TODO*)
   | Mask (x, _, _) -> sym_integer_of_symbolic_expression x (*TODO*)
 end
 
