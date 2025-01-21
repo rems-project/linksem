@@ -151,12 +151,133 @@ declare ocaml    target_rep function natural_nat_shift_left = `Nat_big_num.shift
 val natural_nat_shift_right : natural -> nat -> natural
 declare ocaml    target_rep function natural_nat_shift_right = `Nat_big_num.shift_right`
 
-type sym_natural = natural 
-type sym_integer = integer
+(* Symbolic types *)
+type sym 'a = 
+  | Offset of (string * 'a)
+  | Absolute of 'a
+  | Unknown
 
-let sym_unwrap sym_val ctx = sym_val
+type sym_natural = sym natural 
+type sym_integer = sym integer
 
-let pp_sym ppf = ppf
+val sym_add : forall 'a. NumAdd 'a => (sym 'a -> sym 'a -> sym 'a)
+let sym_add x y=
+  match (x, y) with
+    | (Absolute x, Absolute y) -> Absolute (x + y)
+    | (Offset (s, x), Absolute y) -> Offset (s, x + y)
+    | (Absolute x, Offset (s, y)) -> Offset (s, x + y)
+    | _ -> Unknown
+  end
+
+class ( MaybeMinus 'a )
+  val mminus : 'a -> 'a -> maybe 'a
+end
+
+instance (MaybeMinus natural)
+  let mminus = fun x y -> if x >= y then Just (x - y) else Nothing
+end
+
+instance (MaybeMinus integer)
+  let mminus = fun x y -> Just (x-y)
+end
+
+val sym_minus : forall 'a. MaybeMinus 'a, NumMinus 'a => (sym 'a -> sym 'a -> sym 'a)
+let sym_minus x y=
+  match (x, y) with
+    | (Absolute x, Absolute y) -> Absolute (x - y)
+    | (Offset (s, x), Absolute y) ->
+        match mminus x y with
+        | Just v -> Offset (s, v)
+        | Nothing -> Unknown
+        end
+    | (Offset (s, x), Offset (t, y)) ->
+        if s = t then
+          match mminus x y with
+          | Just v -> Absolute v
+          | Nothing -> Unknown  
+          end
+        else
+          Unknown
+    | _ -> Unknown
+  end
+
+val sym_natural_minus : sym_natural -> sym_natural -> sym_natural
+let sym_natural_minus = sym_minus
+
+val sym_integer_minus : sym_integer -> sym_integer -> sym_integer
+let sym_integer_minus = sym_minus
+
+val sym_bind : forall 'a. sym 'a -> ('a -> sym 'a) -> sym 'a
+let sym_bind x f = match x with
+  | Absolute x -> f x
+  | _ -> Unknown
+end
+
+let sym_map f x = sym_bind x (fun x -> Absolute(f x))
+
+let sym_map2 f x y = sym_bind x (fun x -> sym_map (f x) y)
+
+(* TODO add everywhere or handle differently *)
+let simplify = function
+  | Offset (s, x) -> match toCharList s with
+    | #'.'::#'d'::#'e'::#'b'::#'u'::#'g'::_ -> Absolute x (* HACK should be lookup in context *)
+    | _ -> Offset (s, x)
+  end
+  | x -> x
+end
+
+let sym_unwrap sym_val ctx = match simplify sym_val with
+  | Absolute x -> x
+  | Offset (s, x) -> Assert_extra.failwith ("sym_unwrap (Offset from " ^ s ^ ") in " ^ ctx)
+  | Unknown -> Assert_extra.failwith ("sym_unwrap Unknown in " ^ ctx)
+end
+
+let pp_sym ppf = function
+| Absolute x -> ppf x
+| Offset (s, x) -> s ^ "+" ^ ppf x
+| Unknown -> "Unknown"
+end
+
+instance forall 'a. Show 'a => (Show (sym 'a))
+  let show = pp_sym show
+end
+
+instance forall 'a. NumAdd 'a => (NumAdd (sym 'a))
+  let (+) = sym_add
+end
+
+instance forall 'a. MaybeMinus 'a, NumMinus 'a => (NumMinus (sym 'a))
+  let (-) = sym_minus
+end
+
+instance forall 'a. NumMult 'a => (NumMult (sym 'a))
+  let ( * ) = sym_map2 ( * )
+end
+
+instance forall 'a. NumDivision 'a => (NumDivision (sym 'a))
+  let (/) = sym_map2 (/)
+end
+
+instance forall 'a. NumRemainder 'a => (NumRemainder (sym 'a))
+  let (mod) = sym_map2 (mod)
+end
+
+let sym_comp f a b = match (simplify a, simplify b) with
+  | (Absolute a, Absolute b) -> f a b
+  | (Offset (s, a), Offset(t, b)) -> if s = t then
+      f a b
+    else
+      Assert_extra.failwith ("offsets of different sections " ^ s ^ " and " ^ t)
+  | _ -> Assert_extra.failwith "sym_comp" (* TODO should probably figure out better errors*)
+end
+
+instance forall 'a. Ord 'a => (Ord (sym 'a))
+  let compare = sym_comp compare
+  let (<) = sym_comp (<)
+  let (<=) = sym_comp (<=)
+  let (>) = sym_comp (>)
+  let (>=) = sym_comp (>=)
+end
 
 (* instance forall 'a. Ord 'a, Show 'a => (Ord (sym 'a))
   let compare = (fun x -> fun y -> compare (sym_unwrap x ((show x) ^ "compare" ^ (show y))) (sym_unwrap y ((show x) ^ "compare" ^ (show y))))
@@ -166,13 +287,34 @@ let pp_sym ppf = ppf
   let (>=) = (fun x -> fun y -> (sym_unwrap x ((show x) ^ ">=" ^ (show y))) >= (sym_unwrap y ((show x) ^ ">=" ^ (show y))))
 end *)
 
-let sym_eq a b = a = b
 
-(* some arbitrary concrete section addresses *)
-let rec sym_integer_of_symbolic_expression x : sym_integer = match x with
-  | Section ".data" -> 1000000
-  | Section s -> 0
-  | Const x -> x
+class ( NumeralSym 'a ) 
+  val fromNumeralSym : numeral -> sym 'a 
+end
+
+instance (NumeralSym integer)
+  let fromNumeralSym = fun x -> Absolute (fromNumeral x)
+end
+
+instance (NumeralSym natural)
+  let fromNumeralSym = fun x -> Absolute (fromNumeral x)
+end
+
+instance forall 'a. NumeralSym 'a => (Numeral (sym 'a))
+  let fromNumeral = fromNumeralSym
+end
+
+val sym_eq : forall 'a. Eq 'a => sym 'a -> sym 'a -> bool
+let sym_eq a b = match (simplify a, simplify b) with
+| (Absolute x, Absolute y) -> x = y
+| (Offset (s,x), Offset (t, y)) -> s=t && x=y
+| _ -> Assert_extra.failwith "sym_eq"
+end
+
+
+let rec sym_integer_of_symbolic_expression x = match x with
+  | Section s -> Offset (s, 0)
+  | Const x -> Absolute x
   | BinOp (x, Add, y) -> (sym_integer_of_symbolic_expression x) + (sym_integer_of_symbolic_expression y)
   | BinOp (x, Sub, y) -> (sym_integer_of_symbolic_expression x) - (sym_integer_of_symbolic_expression y)
   | AssertRange (x, _, _) -> sym_integer_of_symbolic_expression x (*TODO*)
@@ -180,32 +322,43 @@ let rec sym_integer_of_symbolic_expression x : sym_integer = match x with
   | Mask (x, _, _) -> sym_integer_of_symbolic_expression x (*TODO*)
 end
 
-let sym_natural_of_symbolic_expression x : sym_natural = partialNaturalFromInteger (sym_integer_of_symbolic_expression x)
+let sym_natural_of_symbolic_expression x =
+  match sym_integer_of_symbolic_expression x with
+  | Offset (s, x) -> Offset (s, partialNaturalFromInteger x)
+  | Absolute x -> Absolute (partialNaturalFromInteger x)
+  | Unknown -> Unknown
+end
 
-let sym_natural_land = natural_land
-let sym_natural_lxor = natural_lxor
-let sym_natural_lor = natural_lor
+let sym_natural_land = sym_map2 natural_land
+let sym_natural_lxor = sym_map2 natural_lxor
+let sym_natural_lor = sym_map2 natural_lor
 
-let integerFromSymNatural = integerFromNatural
+let integerFromSymNatural = function
+  | Absolute x -> integerFromNatural x
+  | _ -> Assert_extra.failwith "integerFromSymNatural"
+end
 
-let natFromSymNatural = natFromNatural
+let natFromSymNatural = function
+  | Absolute x -> natFromNatural x
+  | _ -> Assert_extra.failwith "integerFromSymNatural"
+end
 
-let symNaturalFromNat x = naturalFromNat x
+let symNaturalFromNat x = Absolute (naturalFromNat x)
 
-let sym_natural_of_hex x = natural_of_hex x
+let sym_natural_of_hex x = Absolute(natural_of_hex x)
 
-let sym_natural_of_byte x = natural_of_byte x
+let sym_natural_of_byte x = Absolute(natural_of_byte x)
 
-let symNaturalPow x y = naturalPow x y
+let symNaturalPow x y = sym_map (fun x -> naturalPow x y) x
 
-let symNaturalFromInteger x = naturalFromInteger x
+let symNaturalFromInteger x = Absolute(naturalFromInteger x)
 
 let index_sym_natural l n = index_natural l (sym_unwrap n "index_sym_natural")
 
-let partialSymNaturalFromInteger i = partialNaturalFromInteger i
+let partialSymNaturalFromInteger i = Absolute (partialNaturalFromInteger i)
 
-let sym_natural_nat_shift_left x sh = natural_nat_shift_left x sh
-let sym_natural_nat_shift_right x sh = natural_nat_shift_right x sh
+let sym_natural_nat_shift_left x sh = sym_map (fun x -> natural_nat_shift_left x sh) x
+let sym_natural_nat_shift_right x sh = sym_map (fun x -> natural_nat_shift_right x sh) x
 
 (* byte sequence *)
 
@@ -1692,7 +1845,7 @@ let natural_of_bytes en bs =
   | Big -> natural_of_bytes_big 0 bs
   end
 
-let sym_natural_of_bytes en bs = natural_of_bytes en bs
+let sym_natural_of_bytes en bs = Absolute (natural_of_bytes en bs)
 
 
 (* TODO: generalise *)
@@ -1974,7 +2127,7 @@ let pr_post_map p f = fun (pc: parse_context) -> pr_map f (p pc)
 
 
 val pr_with_pos : forall 'a. (parser 'a) -> (parser (sym_natural * 'a))
-let pr_with_pos p = fun pc -> pr_map (fun x -> ( pc.pc_offset,x)) (p pc)
+let pr_with_pos p = fun pc -> pr_map (fun x -> (Absolute pc.pc_offset,x)) (p pc)
 
 
 val parse_pair : forall 'a 'b. (parser 'a) -> (parser 'b) -> (parser ('a * 'b))
@@ -2101,7 +2254,7 @@ let parse_string : parser (rel_byte_sequence) =
     match rbs_find_byte pc.pc_bytes bzero with
       | Nothing -> PR_fail "parse_string" pc
       | Just n ->
-          pr_bind (parse_n_bytes ( n) pc) (fun res pc -> (*todo find byte should respect relocs*)
+          pr_bind (parse_n_bytes (Absolute n) pc) (fun res pc -> (*todo find byte should respect relocs*)
           pr_bind (parse_byte pc) (fun _ pc ->
           pr_return res pc))
     end
@@ -2123,7 +2276,7 @@ let parse_uint8 : parser sym_natural=
     match rbs_read_char pc.pc_bytes with
       | Success (b, bytes) ->
           let v = natural_of_byte b in
-          PR_success ( v) (<| pc_bytes = bytes; pc_offset = pc.pc_offset + 1 |>)
+          PR_success (Absolute v) (<| pc_bytes = bytes; pc_offset = pc.pc_offset + 1 |>)
       | _ -> PR_fail "parse_uint32 not given enough bytes" pc
     end
 
@@ -2143,7 +2296,7 @@ let parse_uint16 c : parser sym_natural=
             natural_of_byte b0 + 256*natural_of_byte b1
           else
             natural_of_byte b1 + 256*natural_of_byte b0 in
-          PR_success ( v) (<| pc_bytes = bytes'; pc_offset = pc.pc_offset + 2 |>)
+          PR_success (Absolute v) (<| pc_bytes = bytes'; pc_offset = pc.pc_offset + 2 |>)
       | _ -> PR_fail "parse_uint32 not given enough bytes" pc
       end
 
@@ -2157,7 +2310,7 @@ let parse_uint32 c : parser sym_natural=
             natural_of_byte b0 + 256*natural_of_byte b1 + 256*256*natural_of_byte b2 + 256*256*256*natural_of_byte b3
           else
             natural_of_byte b3 + 256*natural_of_byte b2 + 256*256*natural_of_byte b1 + 256*256*256*natural_of_byte b0 in
-          PR_success ( v) (<| pc_bytes = bytes'; pc_offset = pc.pc_offset + 4 |>)
+          PR_success (Absolute v) (<| pc_bytes = bytes'; pc_offset = pc.pc_offset + 4 |>)
       | Success (ReadReloc r, bytes') ->
           if r.arel_target = Data32 then
             PR_success (sym_natural_of_symbolic_expression r.arel_value) (<| pc_bytes = bytes'; pc_offset = pc.pc_offset + 4 |>)
@@ -2179,7 +2332,7 @@ let parse_uint64 c : parser sym_natural=
             natural_of_byte b7 + 256*natural_of_byte b6 + 256*256*natural_of_byte b5 + 256*256*256*natural_of_byte b4
               + (256*256*256*256*(natural_of_byte b3 + 256*natural_of_byte b2 + 256*256*natural_of_byte b1 + 256*256*256*natural_of_byte b0))
           in
-          PR_success ( v) (<| pc_bytes = bytes'; pc_offset = pc.pc_offset + 8 |>)
+          PR_success (Absolute v) (<| pc_bytes = bytes'; pc_offset = pc.pc_offset + 8 |>)
       | Success (ReadReloc r, bytes') ->
         if r.arel_target = Data64 then
           PR_success (sym_natural_of_symbolic_expression r.arel_value) (<| pc_bytes = bytes'; pc_offset = pc.pc_offset + 8 |>)
@@ -2197,7 +2350,7 @@ let partialTwosComplementNaturalFromInteger (i:integer) (half: natural) (all:int
   else if i >= (0-integerFromNatural half) && i < 0 then partialNaturalFromInteger (all + i)
   else Assert_extra.failwith "partialTwosComplementNaturalFromInteger"
 
-let partialTwosComplementSymNaturalFromInteger i half all = partialTwosComplementNaturalFromInteger i half all
+let partialTwosComplementSymNaturalFromInteger i half all = sym_map (fun x -> partialTwosComplementNaturalFromInteger i x all) half
 
 let parse_sint8 : parser integer =
   pr_post_map (parse_uint8) (fun n -> integerFromTwosComplementNatural (sym_unwrap n "parse_sint8") 128 256)
@@ -2230,7 +2383,7 @@ let rec parse_ULEB128' (acc: natural) (shift_factor: natural) : parser natural =
 
 let parse_ULEB128 : parser sym_natural =
   fun (pc:parse_context) ->
-   pr_map (fun x ->  x) (parse_ULEB128' 0 1 pc)
+   pr_map (fun x -> Absolute x) (parse_ULEB128' 0 1 pc)
 
 let rec parse_SLEB128' (acc: natural) (shift_factor: natural) : parser (bool * natural * natural) =
     fun (pc:parse_context) ->
@@ -3088,7 +3241,7 @@ let rec parse_die c str cuh find_abbreviation_declaration =
               (fun dies pc''' ->
                 PR_success (Just ( let die =
                   <|
-                  die_offset =  pc.pc_offset;
+                  die_offset = Absolute pc.pc_offset;
                   die_abbreviation_code = abbreviation_code;
                   die_abbreviation_declaration = ad;
                   die_attribute_values = avs;
@@ -3155,7 +3308,7 @@ let _ = my_debug4 (pp_compilation_unit_header cuh) in
       let abbreviations_table =
         match parse_abbreviations_table c pc_abbrev with
         | PR_fail s pc_abbrev' -> Assert_extra.failwith ("parse_abbrevations_table fail: " ^ pp_parse_fail s pc_abbrev')
-        | PR_success at pc_abbrev' -> <| at_offset= pc_abbrev.pc_offset; at_table= at|>
+        | PR_success at pc_abbrev' -> <| at_offset=Absolute pc_abbrev.pc_offset; at_table= at|>
         end in
 
       let _ = my_debug4 (pp_abbreviations_table abbreviations_table) in
@@ -3214,7 +3367,7 @@ let parse_type_unit c (debug_str_section_body: rel_byte_sequence) (debug_abbrev_
       let abbreviations_table =
         match parse_abbreviations_table c pc_abbrev with
         | PR_fail s pc_abbrev' -> Assert_extra.failwith ("parse_abbrevations_table fail: " ^ pp_parse_fail s pc_abbrev')
-        | PR_success at pc_abbrev' -> <| at_offset= pc_abbrev.pc_offset; at_table= at|>
+        | PR_success at pc_abbrev' -> <| at_offset=Absolute pc_abbrev.pc_offset; at_table= at|>
         end in
 
       (* let _ = my_debug4 (pp_abbreviations_table abbreviations_table) in *)
@@ -3329,7 +3482,7 @@ let parse_location_list c cuh : parser (maybe location_list) =
       else
         pr_post_map1
           (parse_list (parse_location_list_item c cuh) pc)
-          (fun llis -> (Just ( pc.pc_offset, llis)))
+          (fun llis -> (Just (Absolute pc.pc_offset, llis)))
 
 let parse_location_list_list c cuh : parser location_list_list =
     parse_list (parse_location_list c cuh)
@@ -3432,7 +3585,7 @@ let parse_range_list c cuh : parser (maybe (list range_list)) =
       else
         pr_post_map1
           (parse_list (parse_range_list_item c cuh) pc)
-          (fun rlis -> (Just (expand_range_list_suffixes cuh ( pc.pc_offset, rlis))))
+          (fun rlis -> (Just (expand_range_list_suffixes cuh (Absolute pc.pc_offset, rlis))))
 
 let parse_range_list_list c cuh : parser range_list_list =
     pr_map2 List.concat (parse_list (parse_range_list c cuh))
@@ -3601,7 +3754,7 @@ let parse_call_frame_instruction c cuh : parser (maybe call_frame_instruction) =
             end
           else
             if high_bits = unsigned_char_of_natural 64 then
-              PR_success (Just (DW_CFA_advance_loc ( low_bits))) pc'
+              PR_success (Just (DW_CFA_advance_loc (Absolute low_bits))) pc'
             else if high_bits = unsigned_char_of_natural 192 then
               PR_success (Just (DW_CFA_restore low_bits)) pc'
             else
@@ -3692,7 +3845,7 @@ let parse_initial_location c cuh mss mas' : parser ((maybe sym_natural) * sym_na
 
 let parse_call_frame_instruction_bytes offset' ul =
   fun (pc: parse_context) ->
-    parse_n_bytes (ul - ( pc.pc_offset - offset')) pc
+    parse_n_bytes (ul - (Absolute pc.pc_offset - offset')) pc
 
 let parse_frame_info_element c cuh (fi: list frame_info_element) : parser frame_info_element =
   parse_dependent
@@ -3916,8 +4069,8 @@ let parse_line_number_header c (comp_dir:maybe string) : parser line_number_head
                   (parse_triple
                      (parse_uintDwarfN c df) (* header_length *)
                      (parse_uint8)           (* minimum_instruction_length *)
-                     (if v< 4 then     (* maximum_operations_per_instruction*)(*  NOT IN DWARF 2 or 3; in DWARF 4*)
-                        (parse_uint8_constant ( 1))
+                     (if v<Absolute 4 then     (* maximum_operations_per_instruction*)(*  NOT IN DWARF 2 or 3; in DWARF 4*)
+                        (parse_uint8_constant (Absolute 1))
                       else
                         (parse_uint8)           
                      ))
@@ -3930,7 +4083,7 @@ let parse_line_number_header c (comp_dir:maybe string) : parser line_number_head
           (fun ((v,(((hl,(minil,maxopi))),(dis,(lb,(lr,ob)))))) ->
             pr_post_map
               (parse_triple
-                 (pr_post_map (parse_n_bytes (ob- 1)) (fun bs -> List.map sym_natural_of_byte (byte_list_of_rel_byte_sequence bs)))  (* standard_opcode_lengths *)
+                 (pr_post_map (parse_n_bytes (ob-Absolute 1)) (fun bs -> List.map sym_natural_of_byte (byte_list_of_rel_byte_sequence bs)))  (* standard_opcode_lengths *)
                  ((*pr_return [[]]*) parse_list parse_non_empty_string) (* include_directories *)
                  (parse_list parse_line_number_file_entry) (* file names *)
               )
@@ -4242,7 +4395,7 @@ let extract_section_body (f:elf_file) (ri:relocation_interpreter reloc_target_da
           ) f32.elf32_file_interpreted_sections in
       match sections with
       | [section] ->
-          let section_addr = sym_natural_of_symbolic_expression (Section section_name) in
+          let section_addr = Offset (section_name, 0) in
           let section_body = section.Elf_interpreted_section.elf32_section_body in
           (* let _ = my_debug4 (section_name ^ (": \n" ^ (Elf_interpreted_section.string_of_elf32_interpreted_section section ^ "\n"
            *                ^ "  body = " ^ ppbytes2 0 section_body ^ "\n"))) in *)
@@ -4265,7 +4418,7 @@ let extract_section_body (f:elf_file) (ri:relocation_interpreter reloc_target_da
           ) f64.elf64_file_interpreted_sections in
       match sections with
       | [section] ->
-          let section_addr = sym_natural_of_symbolic_expression (Section section_name) in
+          let section_addr = Offset (section_name, 0) in
           let section_body = section.Elf_interpreted_section.elf64_section_body in
           let _ = my_debug "extracted section body" in
           match extract_elf64_relocations_for_section f64 ri section_name with
@@ -4526,13 +4679,13 @@ let rec evaluate_operation_list (c:p_context) (dloc: location_list_list) (evalua
             end
         | (OpSem_opcode_lit base, []) ->
             if op.op_code >= base && op.op_code < base + 32 then
-              push_memory_address ( (op.op_code - base)) s.s_stack
+              push_memory_address (Absolute (op.op_code - base)) s.s_stack
             else
               Fail "OpSem_opcode_lit opcode not within [base,base+32)"
         | (OpSem_reg, []) ->
             (* TODO: unclear whether this should push the register id or not *)
             let r = op.op_code - vDW_OP_reg0 in
-            Success <| s with s_stack = ( r) :: s.s_stack; s_value = SL_register r |>
+            Success <| s with s_stack = (Absolute r) :: s.s_stack; s_value = SL_register r |>
         | (OpSem_breg, [OAV_integer i]) ->
             let r = op.op_code - vDW_OP_breg0 in
             bregxi r i
@@ -5369,7 +5522,7 @@ if there's a DW_AT_location that's a location list (DW_FORM_sec_offset/AV_sec_of
 
 if there's a DW_AT_location that's a location expression (DW_FORM_exprloc/AV_exprloc or DW_block/AV_block), look for the closest enclosing range:
  - DW_AT_low_pc (AV_addr) and no DW_AT_high_pc or DW_AT_ranges: just the singleton address
- - DW_AT_low_pc (AV_addr) and DW_AT_high_pc (either an  AV_addr or an offset AV_constantN/AV_constant_SLEB128/AV_constantULEB128) : that range
+ - DW_AT_low_pc (AV_addr) and DW_AT_high_pc (either an absolute AV_addr or an offset AV_constantN/AV_constant_SLEB128/AV_constantULEB128) : that range
  - DW_AT_ranges (DW_FORM_sec_offset/AV_sec_offset) : get a range list from .debug_ranges; interpret wrt the applicable base address of the compilation unit
  - for compilation units: a DW_AT_ranges together with a DW_AT_low_pc to specify the default base address to use in interpeting location and range lists
 
@@ -5902,7 +6055,7 @@ let evaluate_line_number_operation
 
   match lno with
   | DW_LN_special adjusted_opcode ->
-      let adjusted_opcode =  adjusted_opcode in (* TODO probably doesn't have to be symbolic *)
+      let adjusted_opcode = Absolute adjusted_opcode in (* TODO probably doesn't have to be symbolic *)
       let operation_advance = adjusted_opcode / lnh.lnh_line_range in
       let line_increment = lnh.lnh_line_base + integerFromSymNatural (adjusted_opcode mod lnh.lnh_line_range) in
       let s' =
@@ -5949,7 +6102,7 @@ let evaluate_line_number_operation
       let s' = <| s with lnr_basic_block = true |> in (s', lnrs)
   | DW_LNS_const_add_pc           ->
       let opcode = 255 in
-      let adjusted_opcode =  (opcode - lnh.lnh_opcode_base) in
+      let adjusted_opcode = Absolute (opcode - lnh.lnh_opcode_base) in
       let operation_advance = adjusted_opcode / lnh.lnh_line_range in
       let s' =
         <| s with
@@ -6661,7 +6814,7 @@ let pp_inlined_subroutines ds iss =
 
 let pp_inlined_subroutine_by_range ds ((n1,n2),((m:sym_natural),(n:sym_natural)),is) =
   pphex_sym n1 ^ " " ^ pphex_sym n2 ^ " "
-  ^ (if n<>( 1) then "("^show m^" of "^show n^") " else "")
+  ^ (if n<>(Absolute 1) then "("^show m^" of "^show n^") " else "")
   ^  pp_inlined_subroutine_header ds is 
   ^"\n"
   ^ (if m=0 then pp_inlined_subroutine_const_params ds.ds_dwarf is else "")
@@ -6679,7 +6832,7 @@ let pp_inlined_subroutines_by_range ds iss =
 let rec words_of_rel_byte_sequence (addr:sym_natural) (bs:rel_byte_sequence) (acc:list (sym_natural * sym_natural)) : list (sym_natural * sym_natural) =
   match rbs_read_4_bytes_be bs with
   | Success (ReadValue (b0,b1,b2,b3), bs') -> (*TODO*)
-     let i : sym_natural =  (natural_of_byte b0 + 256*natural_of_byte b1 + 65536*natural_of_byte b2 + 65536*256*natural_of_byte b3) in
+     let i : sym_natural = Absolute (natural_of_byte b0 + 256*natural_of_byte b1 + 65536*natural_of_byte b2 + 65536*256*natural_of_byte b3) in
      words_of_rel_byte_sequence (addr+4) bs' ((addr,i)::acc)
   | Fail _ -> List.reverse acc
   end
