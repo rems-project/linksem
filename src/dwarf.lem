@@ -4433,7 +4433,7 @@ let extract_section_body (f:elf_file) (ri:relocation_interpreter reloc_target_da
 let extract_section_body_without_relocations f section_name strict =
   let err_on_relocation ef symtab_map sidx rel = Assert_extra.failwith "Relocation found while extracting a section without relocations" in
   let (c, addr, body) = extract_section_body f err_on_relocation section_name strict in
-  (c, sym_unwrap addr "", rbs_unwrap body)
+  (c, addr, rbs_unwrap body)
 
 val extract_dwarf : elf_file -> relocation_interpreter reloc_target_data -> maybe dwarf
 let extract_dwarf f ri =
