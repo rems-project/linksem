@@ -207,7 +207,7 @@ let sym_natural_minus = sym_minus
 val sym_integer_minus : sym_integer -> sym_integer -> sym_integer
 let sym_integer_minus = sym_minus
 
-val sym_bind : forall 'a. sym 'a -> ('a -> sym 'a) -> sym 'a
+val sym_bind : forall 'a 'b. sym 'a -> ('a -> sym 'b) -> sym 'b
 let sym_bind x f = match x with
   | Absolute x -> f x
   | _ -> Unknown
@@ -333,14 +333,11 @@ let sym_natural_land = sym_map2 natural_land
 let sym_natural_lxor = sym_map2 natural_lxor
 let sym_natural_lor = sym_map2 natural_lor
 
-let integerFromSymNatural = function
-  | Absolute x -> integerFromNatural x
-  | _ -> Assert_extra.failwith "integerFromSymNatural"
-end
+let symIntegerFromSymNatural = sym_map integerFromNatural
 
 let natFromSymNatural = function
   | Absolute x -> natFromNatural x
-  | _ -> Assert_extra.failwith "integerFromSymNatural"
+  | _ -> Assert_extra.failwith "symIntegerFromSymNatural"
 end
 
 let symNaturalFromNat x = Absolute (naturalFromNat x)
@@ -351,11 +348,11 @@ let sym_natural_of_byte x = Absolute(natural_of_byte x)
 
 let symNaturalPow x y = sym_map (fun x -> naturalPow x y) x
 
-let symNaturalFromInteger x = Absolute(naturalFromInteger x)
+let symNaturalFromSymInteger = sym_map naturalFromInteger
 
 let index_sym_natural l n = index_natural l (sym_unwrap n "index_sym_natural")
 
-let partialSymNaturalFromInteger i = Absolute (partialNaturalFromInteger i)
+let partialSymNaturalFromSymInteger = sym_map partialNaturalFromInteger
 
 let sym_natural_nat_shift_left x sh = sym_map (fun x -> natural_nat_shift_left x sh) x
 let sym_natural_nat_shift_right x sh = sym_map (fun x -> natural_nat_shift_right x sh) x
@@ -571,7 +568,7 @@ type operation_argument_type =
 
 type operation_argument_value =
   | OAV_natural of sym_natural
-  | OAV_integer of integer
+  | OAV_integer of sym_integer
   | OAV_block of sym_natural * rel_byte_sequence
 
 type operation_stack = list sym_natural
@@ -685,7 +682,7 @@ type attribute_value =  (* following Figure 3 *)
   | AV_addr of sym_natural
   | AV_block of sym_natural * rel_byte_sequence
   | AV_constantN of sym_natural * rel_byte_sequence
-  | AV_constant_SLEB128 of integer
+  | AV_constant_SLEB128 of sym_integer
   | AV_constant_ULEB128 of sym_natural
   | AV_exprloc of sym_natural * rel_byte_sequence
   | AV_flag of bool
@@ -793,7 +790,7 @@ type cfa_block = rel_byte_sequence
 type cfa_delta = sym_natural
 type cfa_offset = sym_natural
 type cfa_register = sym_natural
-type cfa_sfoffset = integer
+type cfa_sfoffset = sym_integer
 
 type call_frame_argument_type =
   | CFAT_address
@@ -856,7 +853,7 @@ type cie =
     cie_address_size: maybe sym_natural;
     cie_segment_size: maybe sym_natural;
     cie_code_alignment_factor: sym_natural;
-    cie_data_alignment_factor: integer;
+    cie_data_alignment_factor: sym_integer;
     cie_return_address_register: cfa_register;
     cie_initial_instructions_bytes: rel_byte_sequence;
     cie_initial_instructions: list call_frame_instruction;
@@ -885,7 +882,7 @@ type frame_info = list frame_info_element
 
 type cfa_rule =
   | CR_undefined
-  | CR_register of cfa_register * integer
+  | CR_register of cfa_register * sym_integer
   | CR_expression of single_location_description
 
 type register_rule =
@@ -893,9 +890,9 @@ type register_rule =
          (By convention, it is not preserved by a callee.)*)
   | RR_same_value (*This register has not been modified from the previous frame. (By convention,
           it is preserved by the callee, but the callee has not modified it.)*)
-  | RR_offset of integer (* The previous value of this register is saved at the address CFA+N where CFA
+  | RR_offset of sym_integer (* The previous value of this register is saved at the address CFA+N where CFA
          is the current CFA value and N is a signed offset.*)
-  | RR_val_offset of integer (* The previous value of this register is the value CFA+N where CFA is the
+  | RR_val_offset of sym_integer (* The previous value of this register is the value CFA+N where CFA is the
              current CFA value and N is a signed offset.*)
   | RR_register of sym_natural (* The previous value of this register is stored in another register numbered R.*)
   | RR_expression of single_location_description (* The previous value of this register is located at the address produced by
@@ -938,7 +935,7 @@ type line_number_argument_type =
 type line_number_argument_value =
   | LNAV_address of sym_natural
   | LNAV_ULEB128 of sym_natural
-  | LNAV_SLEB128 of integer
+  | LNAV_SLEB128 of sym_integer
   | LNAV_uint16 of sym_natural
   | LNAV_string of rel_byte_sequence (* not including terminating null *)
 
@@ -946,7 +943,7 @@ type line_number_operation =
   (* standard *)
   | DW_LNS_copy
   | DW_LNS_advance_pc of sym_natural
-  | DW_LNS_advance_line of integer
+  | DW_LNS_advance_line of sym_integer
   | DW_LNS_set_file of sym_natural
   | DW_LNS_set_column of sym_natural
   | DW_LNS_negate_stmt
@@ -982,7 +979,7 @@ type line_number_header =
     lnh_minimum_instruction_length: sym_natural;
     lnh_maximum_operations_per_instruction: sym_natural;
     lnh_default_is_stmt: bool;
-    lnh_line_base: integer;
+    lnh_line_base: sym_integer;
     lnh_line_range: sym_natural;
     lnh_opcode_base: sym_natural;
     lnh_standard_opcode_lengths: list sym_natural;
@@ -1085,7 +1082,7 @@ type struct_union_type_kind =
   | Atk_structure
   | Atk_union
 
-type enumeration_member = cupdie * (maybe string)(*mname*) * integer(*const_value*)
+type enumeration_member = cupdie * (maybe string)(*mname*) * sym_integer(*const_value*)
 
 type c_type_top 't =
   | CT_missing of cupdie
@@ -1128,7 +1125,7 @@ type sdt_variable_or_formal_parameter =
   svfp_kind : variable_or_formal_parameter_kind;
   svfp_type : maybe c_type;
   svfp_abstract_origin : maybe sdt_variable_or_formal_parameter;  (* invariant: non-Nothing iff inlined *)
-  svfp_const_value : maybe integer;
+  svfp_const_value : maybe sym_integer;
   svfp_external : bool;
   svfp_declaration : bool;
   svfp_locations : maybe (list (sym_natural * sym_natural * list operation (*the parsed single_location_description*)));
@@ -1186,7 +1183,7 @@ type sdt_dwarf =
 type inlined_subroutine_const_param =
   <|
   iscp_abstract_origin: compilation_unit * (list die) * die;
-  iscp_value: integer;
+  iscp_value: sym_integer;
   |>
 
 type inlined_subroutine =
@@ -1460,9 +1457,9 @@ let operation_encodings = [
 ("DW_OP_abs",                 sym_natural_of_hex "0x19", []                         , OpSem_unary (fun ac v -> if v < ac.ac_half then Just v else if v=ac.ac_max then Nothing else Just (ac.ac_all-v))); (*0*)
 ("DW_OP_and",                 sym_natural_of_hex "0x1a", []                         , OpSem_binary (fun ac v1 v2 -> Just (sym_natural_land v1 v2))); (*0*)
 ("DW_OP_div",                 sym_natural_of_hex "0x1b", []                         , OpSem_not_supported) (*TODO*); (*0*)
-("DW_OP_minus",               sym_natural_of_hex "0x1c", []                         , OpSem_binary (fun ac v1 v2 -> Just (partialSymNaturalFromInteger ((integerFromSymNatural v1 - integerFromSymNatural v2) mod (integerFromSymNatural ac.ac_all))))); (*0*)
+("DW_OP_minus",               sym_natural_of_hex "0x1c", []                         , OpSem_binary (fun ac v1 v2 -> Just (partialSymNaturalFromSymInteger ((symIntegerFromSymNatural v1 - symIntegerFromSymNatural v2) mod (symIntegerFromSymNatural ac.ac_all))))); (*0*)
 ("DW_OP_mod",                 sym_natural_of_hex "0x1d", []                         , OpSem_binary (fun ac v1 v2 -> Just (v1 mod v2))); (*0*)
-("DW_OP_mul",                 sym_natural_of_hex "0x1e", []                         , OpSem_binary (fun ac v1 v2 -> Just (partialSymNaturalFromInteger ((integerFromSymNatural v1 * integerFromSymNatural v2) mod (integerFromSymNatural ac.ac_all))))); (*0*)
+("DW_OP_mul",                 sym_natural_of_hex "0x1e", []                         , OpSem_binary (fun ac v1 v2 -> Just (partialSymNaturalFromSymInteger ((symIntegerFromSymNatural v1 * symIntegerFromSymNatural v2) mod (symIntegerFromSymNatural ac.ac_all))))); (*0*)
 ("DW_OP_neg",                 sym_natural_of_hex "0x1f", []                         , OpSem_unary (fun ac v -> if v < ac.ac_half then Just (ac.ac_max - v) else if v=ac.ac_half then Nothing else Just (ac.ac_all - v))); (*0*)
 ("DW_OP_not",                 sym_natural_of_hex "0x20", []                         , OpSem_unary (fun ac v -> Just (sym_natural_lxor v ac.ac_max))); (*0*)
 ("DW_OP_or",                  sym_natural_of_hex "0x21", []                         , OpSem_binary (fun ac v1 v2 -> Just (sym_natural_lor v1 v2))); (*0*)
@@ -2342,27 +2339,25 @@ let parse_uint64 c : parser sym_natural=
       end
 
 
-let integerFromTwosComplementNatural (n:natural) (half: natural) (all:integer) : integer =
-  if n < half then integerFromNatural n else integerFromNatural n - all
+let integerFromTwosComplementNatural (n:sym_natural) (half: sym_natural) (all:sym_integer) : sym_integer =
+  if n < half then symIntegerFromSymNatural n else symIntegerFromSymNatural n - all
 
-let partialTwosComplementNaturalFromInteger (i:integer) (half: natural) (all:integer) : natural =
-  if i >=0 && i < integerFromNatural half then partialNaturalFromInteger i
-  else if i >= (0-integerFromNatural half) && i < 0 then partialNaturalFromInteger (all + i)
+let partialTwosComplementNaturalFromInteger (i:sym_integer) (half: sym_natural) (all:sym_integer) : sym_natural =
+  if i >=0 && i < symIntegerFromSymNatural half then partialSymNaturalFromSymInteger i
+  else if i >= (0-symIntegerFromSymNatural half) && i < 0 then partialSymNaturalFromSymInteger (all + i)
   else Assert_extra.failwith "partialTwosComplementNaturalFromInteger"
 
-let partialTwosComplementSymNaturalFromInteger i half all = sym_map (fun x -> partialTwosComplementNaturalFromInteger i x all) half
+let parse_sint8 : parser sym_integer =
+  pr_post_map (parse_uint8) (fun n -> integerFromTwosComplementNatural n 128 256)
 
-let parse_sint8 : parser integer =
-  pr_post_map (parse_uint8) (fun n -> integerFromTwosComplementNatural (sym_unwrap n "parse_sint8") 128 256)
+let parse_sint16 c : parser sym_integer =
+  pr_post_map (parse_uint16 c) (fun n -> integerFromTwosComplementNatural n (128*256) (256*256))
 
-let parse_sint16 c : parser integer =
-  pr_post_map (parse_uint16 c) (fun n -> integerFromTwosComplementNatural (sym_unwrap n "parse_sint16") (128*256) (256*256))
+let parse_sint32 c : parser sym_integer =
+  pr_post_map (parse_uint32 c) (fun n -> integerFromTwosComplementNatural n (128*256*256*256) (256*256*256*256))
 
-let parse_sint32 c : parser integer =
-  pr_post_map (parse_uint32 c) (fun n -> integerFromTwosComplementNatural (sym_unwrap n "parse_sint32") (128*256*256*256) (256*256*256*256))
-
-let parse_sint64 c : parser integer =
-  pr_post_map (parse_uint64 c) (fun n -> integerFromTwosComplementNatural (sym_unwrap n "parse_sint64") (128*256*256*256*256*256*256*256) (256*256*256*256*256*256*256*256))
+let parse_sint64 c : parser sym_integer =
+  pr_post_map (parse_uint64 c) (fun n -> integerFromTwosComplementNatural n (128*256*256*256*256*256*256*256) (256*256*256*256*256*256*256*256))
 
 let rec parse_ULEB128' (acc: natural) (shift_factor: natural) : parser natural =
     fun (pc:parse_context) ->
@@ -2404,9 +2399,9 @@ let rec parse_SLEB128' (acc: natural) (shift_factor: natural) : parser (bool * n
           PR_fail "parse_SLEB128' not given enough bytes" pc
       end
 
-let parse_SLEB128 : parser integer =
+let parse_SLEB128 : parser sym_integer =
     pr_post_map (parse_SLEB128' 0 1) (fun (positive, shift_factor, acc) ->
-      if positive then integerFromNatural acc else integerFromNatural acc - integerFromNatural shift_factor)
+      Absolute (if positive then integerFromNatural acc else integerFromNatural acc - integerFromNatural shift_factor))
 
 let parse_nonzero_ULEB128_pair : parser (maybe (sym_natural*sym_natural)) =
   let _ = my_debug "nonzero_ULEB128_pair " in
@@ -2538,7 +2533,7 @@ let pp_debug_str_entry (str: rel_byte_sequence) (n: sym_natural) : string =
 let pp_operation_argument_value (oav:operation_argument_value) : string =
   match oav with
   | OAV_natural n -> pphex_sym n
-  | OAV_integer n -> pphex_integer n (* show n*)
+  | OAV_integer n -> pp_sym pphex_integer n (* show n*)
   | OAV_block n bs -> pphex_sym n ^ " " ^ ppbytes bs
   end
 
@@ -2863,12 +2858,12 @@ let natural_of_constant_attribute_value die1 c av : sym_natural =
   | Nothing -> Assert_extra.failwith ("natural_of_constant_attribute_value fail at " ^ (pp_pos die1.die_offset ^ (" with av= " ^ pp_attribute_value_plain av)))
   end
 
-let integer_of_constant_attribute_value c av : integer =
+let integer_of_constant_attribute_value c av : sym_integer =
   match av with
-  | AV_constantN n bs -> integerFromSymNatural n
-  | AV_constant_ULEB128 n -> integerFromSymNatural n
+  | AV_constantN n bs -> symIntegerFromSymNatural n
+  | AV_constant_ULEB128 n -> symIntegerFromSymNatural n
   | AV_constant_SLEB128 n -> n
-  | AV_block n bs -> integerFromNatural (natural_of_bytes c.endianness bs)
+  | AV_block n bs -> symIntegerFromSymNatural (sym_natural_of_bytes c.endianness bs)
   | _ -> Assert_extra.failwith ("integer_of_constant_attribute_value fail")
   end
 
@@ -2929,7 +2924,7 @@ let find_natural_attribute_value_of_die c (an: string) (die:die) : maybe sym_nat
       Nothing
   end 
 
-let find_integer_attribute_value_of_die c (an: string) (die:die) : maybe integer =  
+let find_integer_attribute_value_of_die c (an: string) (die:die) : maybe sym_integer =  
   match find_attribute_value an die with
   | Just av ->
      let n = integer_of_constant_attribute_value c av in
@@ -3652,7 +3647,7 @@ let pp_cfa_sfoffset i = show i
 
 let pp_cfa_register r = "r"^show r (*TODO: arch-specific register names *)
 
-let pp_cfa_offset (i:integer) = if i=0 then "" else if i<0 then show i else "+" ^ show i
+let pp_cfa_offset (i:sym_integer) = if i=0 then "" else if i<0 then show i else "+" ^ show i
 
 let pp_cfa_rule (cr:cfa_rule) : string =
   match cr with
@@ -3678,29 +3673,29 @@ let pp_register_rule (rr:register_rule) : string =  (*TODO make this more readel
 let pp_call_frame_instruction i =
   match i with
   | DW_CFA_advance_loc d          -> "DW_CFA_advance_loc" ^ " " ^ pp_cfa_delta d
-  | DW_CFA_offset r n             -> "DW_CFA_offset" ^ " " ^ pp_cfa_register r ^ " " ^ pp_cfa_offset (integerFromSymNatural n)
+  | DW_CFA_offset r n             -> "DW_CFA_offset" ^ " " ^ pp_cfa_register r ^ " " ^ pp_cfa_offset (symIntegerFromSymNatural n)
   | DW_CFA_restore r              -> "DW_CFA_restore" ^ " " ^ pp_cfa_register r
   | DW_CFA_nop                    -> "DW_CFA_nop"
   | DW_CFA_set_loc a              -> "DW_CFA_set_loc" ^ " " ^ pp_cfa_address a
   | DW_CFA_advance_loc1 d         -> "DW_CFA_advance_loc1" ^ " " ^ pp_cfa_delta d
   | DW_CFA_advance_loc2 d         -> "DW_CFA_advance_loc2" ^ " " ^ pp_cfa_delta d
   | DW_CFA_advance_loc4 d         -> "DW_CFA_advance_loc4" ^ " " ^ pp_cfa_delta d
-  | DW_CFA_offset_extended r n    -> "DW_CFA_offset_extended" ^ " " ^ pp_cfa_register r ^ " " ^ pp_cfa_offset (integerFromSymNatural n)
+  | DW_CFA_offset_extended r n    -> "DW_CFA_offset_extended" ^ " " ^ pp_cfa_register r ^ " " ^ pp_cfa_offset (symIntegerFromSymNatural n)
   | DW_CFA_restore_extended r     -> "DW_CFA_restore_extended" ^ " " ^ pp_cfa_register r
   | DW_CFA_undefined r            -> "DW_CFA_undefined" ^ " " ^ pp_cfa_register r
   | DW_CFA_same_value r           -> "DW_CFA_same_value" ^ " " ^ pp_cfa_register r
   | DW_CFA_register r1 r2         -> "DW_CFA_register" ^ " " ^ pp_cfa_register r1 ^ " " ^ pp_cfa_register r2
   | DW_CFA_remember_state         -> "DW_CFA_remember_state"
   | DW_CFA_restore_state          -> "DW_CFA_restore_state"
-  | DW_CFA_def_cfa r n            -> "DW_CFA_def_cfa" ^ " " ^ pp_cfa_register r ^ " " ^ pp_cfa_offset (integerFromSymNatural n)
+  | DW_CFA_def_cfa r n            -> "DW_CFA_def_cfa" ^ " " ^ pp_cfa_register r ^ " " ^ pp_cfa_offset (symIntegerFromSymNatural n)
   | DW_CFA_def_cfa_register r     -> "DW_CFA_def_cfa_register" ^ " " ^ pp_cfa_register r
-  | DW_CFA_def_cfa_offset n       -> "DW_CFA_def_cfa_offset" ^ " " ^ pp_cfa_offset (integerFromSymNatural n)
+  | DW_CFA_def_cfa_offset n       -> "DW_CFA_def_cfa_offset" ^ " " ^ pp_cfa_offset (symIntegerFromSymNatural n)
   | DW_CFA_def_cfa_expression b   -> "DW_CFA_def_cfa_expression" ^ " " ^ pp_cfa_block b
   | DW_CFA_expression r b         -> "DW_CFA_expression" ^ " " ^ pp_cfa_register r ^ " " ^ pp_cfa_block b
   | DW_CFA_offset_extended_sf r i -> "DW_CFA_offset_extended_sf" ^ " " ^ pp_cfa_register r ^ " " ^ pp_cfa_sfoffset i
   | DW_CFA_def_cfa_sf r i         -> "DW_CFA_def_cfa_sf" ^ " " ^ pp_cfa_register r ^ " " ^ pp_cfa_sfoffset i
   | DW_CFA_def_cfa_offset_sf i    -> "DW_CFA_def_cfa_offset_sf" ^ " " ^ pp_cfa_sfoffset i
-  | DW_CFA_val_offset r n         -> "DW_CFA_val_offset" ^ " " ^ pp_cfa_register r ^ " " ^ pp_cfa_offset (integerFromSymNatural n)
+  | DW_CFA_val_offset r n         -> "DW_CFA_val_offset" ^ " " ^ pp_cfa_register r ^ " " ^ pp_cfa_offset (symIntegerFromSymNatural n)
   | DW_CFA_val_offset_sf r i      -> "DW_CFA_val_offset_sf" ^ pp_cfa_register r ^ " " ^ pp_cfa_sfoffset i
   | DW_CFA_val_expression r b     -> "DW_CFA_val_expression" ^ " " ^ pp_cfa_register r ^ " " ^ pp_cfa_block b
   | DW_CFA_AARCH64_negate_ra_state        -> "DW_CFA_AARCH64_negate_ra_state"
@@ -4621,7 +4616,7 @@ let rec evaluate_operation_list (c:p_context) (dloc: location_list_list) (evalua
 
   let bregxi r i =
     match ev.read_register r with
-    | RRR_result v -> push_memory_address (partialSymNaturalFromInteger ((integerFromSymNatural v+i) mod (integerFromSymNatural ac.ac_all))) s.s_stack
+    | RRR_result v -> push_memory_address (partialSymNaturalFromSymInteger ((symIntegerFromSymNatural v+i) mod (symIntegerFromSymNatural ac.ac_all))) s.s_stack
     | RRR_not_currently_available -> Fail "RRR_not_currently_available"
     | RRR_bad_register_number -> Fail ("RRR_bad_register_number " ^ show r)
     end in
@@ -4655,7 +4650,7 @@ let rec evaluate_operation_list (c:p_context) (dloc: location_list_list) (evalua
         | (OpSem_lit, [OAV_natural n]) ->
             push_memory_address n s.s_stack
         | (OpSem_lit, [OAV_integer i]) ->
-            push_memory_address (partialTwosComplementSymNaturalFromInteger i ac.ac_half (integerFromSymNatural ac.ac_all)) s.s_stack
+            push_memory_address (partialTwosComplementNaturalFromInteger i ac.ac_half (symIntegerFromSymNatural ac.ac_all)) s.s_stack
         | (OpSem_stack f, []) ->
             match f ac s.s_stack op.op_argument_values with
             | Just stack' ->
@@ -4703,9 +4698,9 @@ let rec evaluate_operation_list (c:p_context) (dloc: location_list_list) (evalua
                     match l with
                     | SL_simple (SL_memory_address a) ->
                         (*let _ = my_debug5 ("OpSem_fbreg: a = "^ pphex a ^ "\n") in*)
-                        let vi = ((integerFromSymNatural a) + i) mod (integerFromSymNatural ac.ac_all) in
+                        let vi = ((symIntegerFromSymNatural a) + i) mod (symIntegerFromSymNatural ac.ac_all) in
                         (*let _ = my_debug5 ("OpSem_fbreg: v = "^ show vi ^ "\n") in*)
-                        let v = partialSymNaturalFromInteger vi (*ac.ac_half (integerFromSymNatural ac.ac_all)*) in
+                        let v = partialSymNaturalFromSymInteger vi (*ac.ac_half (symIntegerFromSymNatural ac.ac_all)*) in
                         push_memory_address v s.s_stack
                     | _ ->
                         Fail "OpSem_fbreg got a non-SL_simple (SL_memory_address _) result"
@@ -4969,7 +4964,7 @@ let evaluate_call_frame_instruction (fi: frame_info) (cie: cie) (state: cfa_stat
 
   (* CFA Definition Instructions *)
   | DW_CFA_def_cfa r n            ->
-      update_cfa (CR_register r (integerFromSymNatural n))
+      update_cfa (CR_register r (symIntegerFromSymNatural n))
   | DW_CFA_def_cfa_sf r i         ->
       update_cfa (CR_register r (i * cie.cie_data_alignment_factor))
   | DW_CFA_def_cfa_register r     ->
@@ -4988,7 +4983,7 @@ let evaluate_call_frame_instruction (fi: frame_info) (cie: cie) (state: cfa_stat
   | DW_CFA_def_cfa_offset n       ->
       match state.cs_current_row.ctr_cfa with
       | CR_register r i ->
-          update_cfa (CR_register r (integerFromSymNatural n))
+          update_cfa (CR_register r (symIntegerFromSymNatural n))
       | _ -> Assert_extra.failwith "DW_CFA_def_cfa_offset: current rule is not CR_register"
       end
   | DW_CFA_def_cfa_offset_sf i    ->
@@ -5006,13 +5001,13 @@ let evaluate_call_frame_instruction (fi: frame_info) (cie: cie) (state: cfa_stat
   | DW_CFA_same_value r           ->
       update_reg r (RR_same_value)
   | DW_CFA_offset r n             ->
-      update_reg r (RR_offset ((integerFromSymNatural n) * cie.cie_data_alignment_factor))
+      update_reg r (RR_offset ((symIntegerFromSymNatural n) * cie.cie_data_alignment_factor))
   | DW_CFA_offset_extended r n    ->
-      update_reg r (RR_offset ((integerFromSymNatural n) * cie.cie_data_alignment_factor))
+      update_reg r (RR_offset ((symIntegerFromSymNatural n) * cie.cie_data_alignment_factor))
   | DW_CFA_offset_extended_sf r i ->
       update_reg r (RR_offset (i * cie.cie_data_alignment_factor))
   | DW_CFA_val_offset r n         ->
-      update_reg r (RR_val_offset ((integerFromSymNatural n) * cie.cie_data_alignment_factor))
+      update_reg r (RR_val_offset ((symIntegerFromSymNatural n) * cie.cie_data_alignment_factor))
   | DW_CFA_val_offset_sf r i      ->
       update_reg r (RR_val_offset (i * cie.cie_data_alignment_factor))
   | DW_CFA_register r1 r2         ->
@@ -5543,7 +5538,7 @@ let range_of_die c cuh str (dranges: range_list_list) (cu_base_address: sym_natu
   | (Just (AV_addr n),  Nothing,                       Nothing               ) -> Just [(n,n+1)]   (* unclear if this case is used? *)
   | (Just (AV_addr n1), Just (AV_addr n2),             Nothing               ) -> Just [(n1,n2)]
   | (Just (AV_addr n1), Just (AV_constant_ULEB128 n2), Nothing               ) -> Just [(n1, n1+n2)] (* should be mod all? *)
-  | (Just (AV_addr n1), Just (AV_constant_SLEB128 i2), Nothing               ) -> Just [(n1, symNaturalFromInteger (integerFromSymNatural n1 + i2))] (* should be mod all? *)
+  | (Just (AV_addr n1), Just (AV_constant_SLEB128 i2), Nothing               ) -> Just [(n1, symNaturalFromSymInteger (symIntegerFromSymNatural n1 + i2))] (* should be mod all? *)
   | (Just (AV_addr n1), Just (AV_constantN _ _),       Nothing               ) -> Assert_extra.failwith "AV_constantN in range_of_die"
         
   | (Just (AV_addr n1), Just (AV_block n bs),          Nothing               ) -> let n2 = sym_natural_of_bytes c.endianness bs in Just [(n1, n1+n2)] (* should be mod all? *) (* signed or unsigned interp? *)
@@ -6053,10 +6048,10 @@ let evaluate_line_number_operation
   match lno with
   | DW_LN_special adjusted_opcode ->
       let operation_advance = adjusted_opcode / lnh.lnh_line_range in
-      let line_increment = lnh.lnh_line_base + integerFromSymNatural (adjusted_opcode mod lnh.lnh_line_range) in
+      let line_increment = lnh.lnh_line_base + symIntegerFromSymNatural (adjusted_opcode mod lnh.lnh_line_range) in
       let s' =
         <| s with
-         lnr_line = partialSymNaturalFromInteger ((integerFromSymNatural s.lnr_line) + line_increment);
+         lnr_line = partialSymNaturalFromSymInteger ((symIntegerFromSymNatural s.lnr_line) + line_increment);
          lnr_address = new_address s operation_advance;
          lnr_op_index = new_op_index s operation_advance;
       |> in
@@ -6087,7 +6082,7 @@ let evaluate_line_number_operation
       |> in
       (s', lnrs)
   | DW_LNS_advance_line line_increment ->
-      let s' = <| s with lnr_line = partialSymNaturalFromInteger ((integerFromSymNatural s.lnr_line) + line_increment) |> in (s', lnrs)
+      let s' = <| s with lnr_line = partialSymNaturalFromSymInteger ((symIntegerFromSymNatural s.lnr_line) + line_increment) |> in (s', lnrs)
   | DW_LNS_set_file n             ->
       let s' = <| s with lnr_file = n |> in (s', lnrs)
   | DW_LNS_set_column n           ->
