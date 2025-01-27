@@ -258,8 +258,34 @@ instance forall 'a. NumDivision 'a => (NumDivision (sym 'a))
   let (/) = sym_map2 (/)
 end
 
-instance forall 'a. NumRemainder 'a => (NumRemainder (sym 'a))
-  let (mod) = sym_map2 (mod)
+class ( ModSym 'a ) 
+  val sym_mod: sym 'a -> sym 'a -> sym 'a 
+end
+
+(* TODO this is hacky *)
+instance (ModSym integer)
+  let sym_mod x y = if match y with
+    | Absolute(y) -> y >= integerFromNatural (natural_of_hex "0x10000000000000000")
+    | _ -> false
+  end then
+    x
+  else
+    sym_map2 (mod) x y
+end
+
+instance (ModSym natural)
+  let sym_mod x y = if match y with
+    | Absolute(y) -> y >= natural_of_hex "0x10000000000000000"
+    | _ -> false
+  end then
+    x
+  else
+    sym_map2 (mod) x y
+end
+
+
+instance forall 'a. ModSym 'a => (NumRemainder (sym 'a))
+  let (mod) = sym_mod
 end
 
 let sym_comp f a b = match (simplify a, simplify b) with
