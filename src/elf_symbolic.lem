@@ -101,11 +101,8 @@ let extract_elf64_relocations_for_section' f1 interp sidx =
     Elf_relocation.read_elf64_relocation_a_section' endian rels >>= fun rels ->
     Elf_file.get_elf64_symbol_table_by_index f1 lnk >>= fun symtab ->
     let symtab_map = symbol_map_from_elf64_symtab f1 symtab in
-    let _ = print_endline "symtab_map generated" in
     mapM (interp f1 symtab_map sidx) rels >>= fun rel_maps ->
-    let _ = print_endline "relocations computed" in
     let rel_map = Map.fromList (List.concatMap Map_extra.toList rel_maps) in
-    let _ = print_endline "why is this slow?" in
     if Map.size rel_map <> List.length rels then
       fail "Multiple relocations at the same location"
     else

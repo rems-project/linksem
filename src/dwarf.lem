@@ -128,8 +128,8 @@ declare ocaml target_rep function print_endline = `print_endline`
 let my_debug s = () (*print_endline s*)
 let my_debug2 s = () (*print_endline s*)
 let my_debug3 s = () (*print_endline s*)
-let my_debug4 s = print_endline s
-let my_debug5 s = print_endline s
+let my_debug4 s = () (*print_endline s*)
+let my_debug5 s = () (*print_endline s*)
 
 (** ************************************************************ *)
 (** **  missing pervasives  ************************************ *)
