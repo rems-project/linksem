@@ -21,7 +21,7 @@ type aarch64_relocation_target
   | Data32
   | ADRP
   | ADD
-  | LDST
+  | LDST of int
   | CALL
 
 (* TODO fix sizes and stuff *)
@@ -116,7 +116,7 @@ let abi_aarch64_apply_relocation_symbolic rel s_val p_val ef =
            ; rel_desc_range = Nothing
            ; rel_desc_alignment_bits = 2
            ; rel_desc_mask = (11, 2)
-           ; rel_desc_target = LDST
+           ; rel_desc_target = LDST 2
            |>
         )
       else if rel_type = r_aarch64_ldst64_abs_lo12_nc then
@@ -127,7 +127,7 @@ let abi_aarch64_apply_relocation_symbolic rel s_val p_val ef =
            ; rel_desc_range = Nothing
            ; rel_desc_alignment_bits = 3
            ; rel_desc_mask = (11, 3)
-           ; rel_desc_target = LDST
+           ; rel_desc_target = LDST 3
            |>
         )
       else if rel_type = r_aarch64_call26 then
