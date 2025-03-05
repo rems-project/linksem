@@ -1,0 +1,108 @@
+open import Byte_sequence
+open import Sym
+open import Num
+open import Map
+open import Set
+open import Error
+open import Maybe
+open import Bool
+open import Basic_classes
+
+(* ================= *)
+(* sym_byte_sequence *)
+(* ================= *)
+
+type symbolic_bytes =
+<| sb_width : natural
+ ; sb_value : sym_natural
+ |>
+
+type sym_byte_sequence =
+<| sbs_bytes    : byte_sequence
+ ; sbs_symbolic : Map.map natural symbolic_bytes
+ ; sbs_pos      : natural
+ |>
+
+let sym_read_char bs =
+  if Map.member bs.sbs_pos bs.sbs_symbolic then
+    Assert_extra.failwith "Read char: is symbolic"
+  else
+    read_char bs.sbs_bytes >>= fun (c, bs') ->
+      return (c, <| sbs_bytes=bs'; sbs_symbolic = bs.sbs_symbolic; sbs_pos = bs.sbs_pos + 1 |>)
+
+let sym_read_2_bytes_be bs0 =
+  sym_read_char bs0 >>= fun (b0, bs1) ->
+  sym_read_char bs1 >>= fun (b1, bs2) ->
+  return ((b0, b1), bs2)
+
+let sym_read_4_bytes_be bs0 =
+  sym_read_char bs0 >>= fun (b0, bs1) ->
+  sym_read_char bs1 >>= fun (b1, bs2) ->
+  sym_read_char bs2 >>= fun (b2, bs3) ->
+  sym_read_char bs3 >>= fun (b3, bs4) ->
+  return ((b0, b1, b2, b3), bs4)
+
+let sym_read_8_bytes_be bs0 =
+  sym_read_char bs0 >>= fun (b0, bs1) ->
+  sym_read_char bs1 >>= fun (b1, bs2) ->
+  sym_read_char bs2 >>= fun (b2, bs3) ->
+  sym_read_char bs3 >>= fun (b3, bs4) ->
+  sym_read_char bs4 >>= fun (b4, bs5) ->
+  sym_read_char bs5 >>= fun (b5, bs6) ->
+  sym_read_char bs6 >>= fun (b6, bs7) ->
+  sym_read_char bs7 >>= fun (b7, bs8) ->
+  return ((b0, b1, b2, b3, b4, b5, b6, b7), bs8)
+
+let sym_dropbytes n bs =
+  dropbytes n bs.sbs_bytes >>= fun bs' ->
+    return <| sbs_bytes=bs'; sbs_symbolic=bs.sbs_symbolic; sbs_pos=bs.sbs_pos |>
+
+let sym_takebytes n bs =
+  takebytes n bs.sbs_bytes >>= fun bs' ->
+    return <| sbs_bytes=bs'; sbs_symbolic=bs.sbs_symbolic; sbs_pos=bs.sbs_pos+n |>
+
+let sym_partition idx bs0 =
+  sym_takebytes idx bs0 >>= fun l ->
+  sym_dropbytes idx bs0 >>= fun r ->
+  return (l, r)
+
+let sym_bs_length bs =
+  length bs.sbs_bytes
+
+let sym_expect_const bs =
+  let sym_positions = Map.domain bs.sbs_symbolic in
+  let len = sym_bs_length bs in
+  if Set.any (fun x -> x >= bs.sbs_pos && x < bs.sbs_pos + len) sym_positions then
+    Assert_extra.failwith "Byte sequence is symbolic"
+  else
+    bs.sbs_bytes
+
+let sym_bs_construct bs sym =
+  <| sbs_bytes=bs; sbs_symbolic=sym; sbs_pos=0 |>
+
+
+(* Symboli reads *)
+
+type read_result 'a =
+  | Bytes of 'a
+  | Sym of sym_natural
+
+let sym_read_4_bytes_be_symbolic bs =
+  match Map.lookup bs.sbs_pos bs.sbs_symbolic with
+  | Nothing -> sym_read_4_bytes_be bs >>= fun (b, bs') ->
+      return (Bytes b, bs')
+  | Just <| sb_width=4; sb_value=v |> ->
+      sym_dropbytes 4 bs >>= fun bs' ->
+      return (Sym v, bs')
+  | _ -> Assert_extra.failwith "Reading misaligned symbolic value"
+  end
+
+let sym_read_8_bytes_be_symbolic bs =
+  match Map.lookup bs.sbs_pos bs.sbs_symbolic with
+  | Nothing -> sym_read_8_bytes_be bs >>= fun (b, bs') ->
+      return (Bytes b, bs')
+  | Just <| sb_width=8; sb_value=v |> ->
+      sym_dropbytes 8 bs >>= fun bs' ->
+      return (Sym v, bs')
+  | _ -> Assert_extra.failwith "Reading misaligned symbolic value"
+  end
