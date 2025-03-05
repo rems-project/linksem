@@ -7,6 +7,11 @@ open import Error
 open import Maybe
 open import Bool
 open import Basic_classes
+open import Show
+open import String
+
+(* TODO fast implementation *)
+
 
 (* ================= *)
 (* sym_byte_sequence *)
@@ -24,11 +29,13 @@ type sym_byte_sequence =
  |>
 
 let sym_read_char bs =
-  if Map.member bs.sbs_pos bs.sbs_symbolic then
-    Assert_extra.failwith "Read char: is symbolic"
-  else
-    read_char bs.sbs_bytes >>= fun (c, bs') ->
-      return (c, <| sbs_bytes=bs'; sbs_symbolic = bs.sbs_symbolic; sbs_pos = bs.sbs_pos + 1 |>)
+  read_char bs.sbs_bytes >>= fun (c, bs') ->
+    match Map.lookup bs.sbs_pos bs.sbs_symbolic with
+    | Just n -> Assert_extra.failwith
+        ("Read char: is symbolic (width: " ^ show n.sb_width ^ ") " ^ show n.sb_value)
+    | Nothing ->
+        return (c, <| sbs_bytes=bs'; sbs_symbolic = bs.sbs_symbolic; sbs_pos = bs.sbs_pos + 1 |>)
+  end
 
 let sym_read_2_bytes_be bs0 =
   sym_read_char bs0 >>= fun (b0, bs1) ->
@@ -55,11 +62,11 @@ let sym_read_8_bytes_be bs0 =
 
 let sym_dropbytes n bs =
   dropbytes n bs.sbs_bytes >>= fun bs' ->
-    return <| sbs_bytes=bs'; sbs_symbolic=bs.sbs_symbolic; sbs_pos=bs.sbs_pos |>
+    return <| sbs_bytes=bs'; sbs_symbolic=bs.sbs_symbolic; sbs_pos=bs.sbs_pos+n |>
 
 let sym_takebytes n bs =
   takebytes n bs.sbs_bytes >>= fun bs' ->
-    return <| sbs_bytes=bs'; sbs_symbolic=bs.sbs_symbolic; sbs_pos=bs.sbs_pos+n |>
+    return <| sbs_bytes=bs'; sbs_symbolic=bs.sbs_symbolic; sbs_pos=bs.sbs_pos |>
 
 let sym_partition idx bs0 =
   sym_takebytes idx bs0 >>= fun l ->
@@ -69,10 +76,13 @@ let sym_partition idx bs0 =
 let sym_bs_length bs =
   length bs.sbs_bytes
 
-let sym_expect_const bs =
+let symbolic_bytes_in_range off len bs =
   let sym_positions = Map.domain bs.sbs_symbolic in
+  Set.any (fun x -> x >= bs.sbs_pos + off && x < bs.sbs_pos + off + len) sym_positions
+
+let sym_bs_expect_const bs =
   let len = sym_bs_length bs in
-  if Set.any (fun x -> x >= bs.sbs_pos && x < bs.sbs_pos + len) sym_positions then
+  if symbolic_bytes_in_range 0 len bs then
     Assert_extra.failwith "Byte sequence is symbolic"
   else
     bs.sbs_bytes
@@ -80,7 +90,31 @@ let sym_expect_const bs =
 let sym_bs_construct bs sym =
   <| sbs_bytes=bs; sbs_symbolic=sym; sbs_pos=0 |>
 
+let sym_find_byte bs b =
+  match find_byte bs.sbs_bytes b with
+  | Nothing -> 
+    if symbolic_bytes_in_range 0 (sym_bs_length bs) bs then
+      Assert_extra.failwith "Find encountered symbolic bytes"
+    else
+      Nothing
+  | Just n ->
+    if symbolic_bytes_in_range 0 (n+1) bs then
+      Assert_extra.failwith "Find encountered symbolic bytes"
+    else
+      Just n
+  end
 
+let sym_bs_empty = sym_bs_construct Byte_sequence.empty Map.empty
+
+let byte_list_of_sym_byte_sequence rbs = 
+  byte_list_of_byte_sequence (sym_bs_expect_const rbs)
+
+let string_of_sym_byte_sequence rbs =
+  string_of_byte_sequence (sym_bs_expect_const rbs)
+
+instance (Show sym_byte_sequence)
+  let show = string_of_sym_byte_sequence
+end
 (* Symboli reads *)
 
 type read_result 'a =
@@ -106,3 +140,12 @@ let sym_read_8_bytes_be_symbolic bs =
       return (Sym v, bs')
   | _ -> Assert_extra.failwith "Reading misaligned symbolic value"
   end
+
+let sym_ppbytes bs =
+  let symmsg =
+    if symbolic_bytes_in_range 0 (sym_bs_length bs) bs then
+      "With symbolic bytes! " (*TODO print them*)
+    else
+      ""
+  in
+  symmsg ^ (show (List.map (fun x -> show x) (byte_list_of_byte_sequence bs.sbs_bytes)))

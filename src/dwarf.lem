@@ -194,175 +194,46 @@ let sym_natural_nat_shift_right x sh = sym_natural_map (fun x -> natural_nat_shi
 
 (* byte sequence *)
 
-type next_reloc =
-  | NoReloc of natural
-  | Reloc of abstract_relocation reloc_target_data
+type rel_byte_sequence = sym_byte_sequence
 
-let pp_relocs relocs =
-  let f = function
-  | NoReloc -> "NoReloc"
-  | Reloc x -> match x.arel_target with
-    | Data32 -> "Data32 "
-    | Data64 -> "Data64 "
-    end ^ pp_sym_expr x.arel_value
-  end in
-  "[" ^ String.concat "," (List.map f relocs) ^ "]"
+let rbs_length = sym_bs_length
 
+let rbs_unwrap = sym_bs_expect_const
 
-type rel_byte_sequence =
-  <| rbs_bytes  : byte_sequence
-   ; rbs_relocs : list next_reloc
-   |>
-  
-type read_result 'a =
-  | ReadValue of 'a
-  | ReadReloc of abstract_relocation reloc_target_data
-
-let read_result_unwrap = function
-  | ReadValue x -> x
-  | ReadReloc _ -> Assert_extra.failwith "read_result_unwrap"
-end
-
-let rbs_length rbs = Byte_sequence.length rbs.rbs_bytes
-
-let rbs_no_reloc (bs : byte_sequence) : rel_byte_sequence =
-  <| rbs_bytes = bs
-   ; rbs_relocs = [NoReloc (Byte_sequence.length bs)] |>
-
-let rbs_unwrap bs =
-  match bs.rbs_relocs with
-  | [NoReloc n] -> bs.rbs_bytes
-  | [] -> 
-    let _ = my_debug ("Bytes should be empty:" ^ (show bs.rbs_bytes)) in
-    bs.rbs_bytes
-  | x -> Assert_extra.failwith ("rbs_unwrap: has relocations " ^ (pp_relocs x))
-  end
-
-let rel_byte_sequence_of_byte_list l = rbs_no_reloc (byte_sequence_of_byte_list l)
-
-let pad_no_reloc n rels =
-  if n = 0 then
-    rels
-  else match rels with
-  | NoReloc m :: rels -> NoReloc (n+m) :: rels
-  | _ -> NoReloc n :: rels
-end
-
-(* TODO strict mode? *)
-val reloc_map_to_reloc_list' : Map.map elf64_addr (abstract_relocation reloc_target_data) -> natural -> natural -> list next_reloc -> list next_reloc
-let rec reloc_map_to_reloc_list' rels i l acc =
-  if i = l then
-    List.reverse acc
-  else
-    match Map.lookup (elf64_addr_of_natural i) rels with
-    | Nothing -> reloc_map_to_reloc_list' rels (i+1) l (pad_no_reloc 1 acc)
-    | Just x -> reloc_map_to_reloc_list' rels (i + reloc_width_bytes x.arel_target) l (Reloc x :: acc)
-    end
-
-let reloc_map_to_reloc_list rels l =
-  reloc_map_to_reloc_list' rels 0 l []
+let rel_byte_sequence_of_byte_list l = sym_bs_construct (byte_sequence_of_byte_list l) Map.empty
 
 let construct_rel_byte_sequence bs rel =
-  <| rbs_bytes = bs ; rbs_relocs = reloc_map_to_reloc_list rel (Byte_sequence.length bs) |>
+  let rel_list = Map_extra.toList rel in
+  let sym_list = List.map (fun (pos, rel) ->
+    (
+      natural_of_elf64_addr pos,
+      <| sb_width=reloc_width_bytes rel.arel_target
+       ; sb_value=sym_natural_of_symbolic_expression rel.arel_value
+       |>
+    )
+  ) rel_list in
+  let sym_map = Map.fromList sym_list in
+  sym_bs_construct bs sym_map
 
-let rbs_read_char bs =
-  match bs.rbs_relocs with
-  | NoReloc n :: rels ->
-    read_char bs.rbs_bytes >>= fun (c,bs') ->
-      return (c, <| rbs_bytes = bs' ; rbs_relocs = pad_no_reloc (n-1) rels |>)
-  | _ -> fail "rbs_read_char: has reloaction"
-  end
+let rbs_read_char = sym_read_char
 
-let rbs_read_2_bytes_be bs =
-  match bs.rbs_relocs with
-  | NoReloc n :: rels ->
-    if n < 2 then
-      fail "rbs_read_2_bytes_be: has reloaction"
-    else
-      read_2_bytes_be bs.rbs_bytes >>= fun (b2,bs') ->
-        return (b2, <| rbs_bytes = bs' ; rbs_relocs = pad_no_reloc (n-2) rels |>)
-  | _ -> fail "rbs_read_2_bytes_be: has reloaction"
-  end
+let rbs_read_2_bytes_be = sym_read_2_bytes_be
 
-let rbs_read_4_bytes_be bs =
-  match bs.rbs_relocs with
-  | NoReloc n :: rels ->
-    if n < 4 then
-      fail "rbs_read_4_bytes_be: has misaligned reloaction"
-    else
-      read_4_bytes_be bs.rbs_bytes >>= fun (b4,bs') ->
-        return (ReadValue b4, <| rbs_bytes = bs' ; rbs_relocs = pad_no_reloc (n-4) rels |>)
-  | Reloc rel :: rels ->
-    if reloc_width_bytes rel.arel_target <> 4 then
-      fail "rbs_read_4_bytes_be: has misaligned reloaction"
-    else
-      dropbytes 4 bs.rbs_bytes >>= fun bs' ->
-        return (ReadReloc rel, <| rbs_bytes = bs' ; rbs_relocs = rels |>)
-  | _ -> fail "rbs_read_4_bytes_be: has misaligned reloaction"
-  end
+let rbs_read_4_bytes_be = sym_read_4_bytes_be
 
-let rbs_read_8_bytes_be bs =
-  match bs.rbs_relocs with
-  | NoReloc n :: rels ->
-    if n < 8 then
-      fail "rbs_read_8_bytes_be: has misaligned reloaction"
-    else
-      read_8_bytes_be bs.rbs_bytes >>= fun (b8,bs') ->
-        return (ReadValue b8, <| rbs_bytes = bs' ; rbs_relocs = pad_no_reloc (n-8) rels |>)
-  | Reloc rel :: rels ->
-    if reloc_width_bytes rel.arel_target <> 8 then
-      fail "rbs_read_8_bytes_be: has misaligned reloaction"
-    else
-      dropbytes 8 bs.rbs_bytes >>= fun bs' ->
-        return (ReadReloc rel, <| rbs_bytes = bs' ; rbs_relocs = rels |>)
-  | _ -> fail "rbs_read_8_bytes_be: has misaligned reloaction"
-  end
+let rbs_read_8_bytes_be = sym_read_8_bytes_be
 
-let rec reloc_list_partition n relocs = match (n, relocs) with
-  | (0, relocs) -> return ([], relocs)
-  | (n, NoReloc m :: relocs) -> if m > n then
-      return ([NoReloc n], pad_no_reloc (m - n) relocs)
-    else
-      reloc_list_partition (n-m) relocs >>= fun (a, b) ->
-      return (pad_no_reloc m a, b)
-  | (n, Reloc r :: relocs) ->
-    let m = reloc_width_bytes r.arel_target in
-    if m > n then
-      fail "reloc_list_partition: partition inside relocation"
-    else
-      reloc_list_partition (n-m) relocs >>= fun (a, b) ->
-      return (Reloc r :: a, b)
-  | (n, []) -> fail "reloc_list_partition: cannot take more bytes than are contained in sequence"
-end
+let rbs_partition = sym_partition
 
-let rbs_partition n rbs =
-  partition n rbs.rbs_bytes >>= fun (bs1, bs2) ->
-  reloc_list_partition n rbs.rbs_relocs >>= fun (r1, r2) ->
-  return (<| rbs_bytes = bs1 ; rbs_relocs = r1 |>, <| rbs_bytes = bs2 ; rbs_relocs = r2 |>)
-
-let rbs_takebytes n rbs =
-  rbs_partition n rbs >>= fun(x,_) -> return x
+let rbs_takebytes = sym_takebytes
     
-let rbs_dropbytes n rbs =
-  rbs_partition n rbs >>= fun(_,x) -> return x
+let rbs_dropbytes = sym_dropbytes
 
-let rbs_find_byte rbs b =
-  Maybe.bind (find_byte rbs.rbs_bytes b) (fun n ->
-    let errmsg = "rbs_find_byte: relocations before byte found" in
-    match rbs.rbs_relocs with
-    | NoReloc m :: _ -> if m >= n then Just n else Assert_extra.failwith errmsg
-    | _ -> Assert_extra.failwith errmsg
-  end)
+let rbs_find_byte = sym_find_byte
 
-let byte_list_of_rel_byte_sequence rbs = 
-  byte_list_of_byte_sequence (rbs_unwrap rbs)
+let byte_list_of_rel_byte_sequence = byte_list_of_sym_byte_sequence
 
-let string_of_rel_byte_sequence rbs =
-  string_of_byte_sequence (rbs_unwrap rbs)
-
-instance (Show rel_byte_sequence)
-  let show = string_of_rel_byte_sequence
-end
+let string_of_rel_byte_sequence = string_of_sym_byte_sequence
 
 (** ************************************************************ *)
 (** **  dwarf representation types  **************************** *)
@@ -1757,8 +1628,7 @@ declare coq      target_rep function abs n = (`Zpred` (`Zpos` (`P_of_succ_nat` n
 
 let pphex_integer n = if n<0 then "-" ^ pphex (abs n) else pphex (abs n)
 
-let ppbytes bs = show (List.map (fun x -> show x) (byte_list_of_byte_sequence bs.rbs_bytes))
-(* let ppbytes bs = show (List.map (fun x -> show x) (byte_list_of_rel_byte_sequence bs)) *)
+let ppbytes = sym_ppbytes
 
 let rec ppbytes2 n bs =
   match rbs_read_char bs with
@@ -2136,18 +2006,15 @@ let parse_uint16 c : parser sym_natural=
 let parse_uint32 c : parser sym_natural=
     fun (pc:parse_context) ->
       let _ = my_debug "uint32 " in
-      match rbs_read_4_bytes_be pc.pc_bytes with
-      | Success (ReadValue (b0,b1,b2,b3),bytes') ->
+      match sym_read_4_bytes_be_symbolic pc.pc_bytes with
+      | Success (Bytes (b0,b1,b2,b3),bytes') ->
           let v = if c.endianness=Little then
             natural_of_byte b0 + 256*natural_of_byte b1 + 256*256*natural_of_byte b2 + 256*256*256*natural_of_byte b3
           else
             natural_of_byte b3 + 256*natural_of_byte b2 + 256*256*natural_of_byte b1 + 256*256*256*natural_of_byte b0 in
           PR_success (sym_natural_const v) (<| pc_bytes = bytes'; pc_offset = pc.pc_offset + 4 |>)
-      | Success (ReadReloc r, bytes') ->
-          if r.arel_target = Data32 then
-            PR_success (sym_natural_of_symbolic_expression r.arel_value) (<| pc_bytes = bytes'; pc_offset = pc.pc_offset + 4 |>)
-          else
-            PR_fail "parse_uint32 wrong relocation type" pc
+      | Success (Sym n, bytes') ->
+          PR_success n (<| pc_bytes = bytes'; pc_offset = pc.pc_offset + 4 |>)
       | _ -> PR_fail "parse_uint32 not given enough bytes" pc
       end
 
@@ -2155,8 +2022,8 @@ let parse_uint32 c : parser sym_natural=
 let parse_uint64 c : parser sym_natural=
     fun (pc:parse_context) ->
       let _ = my_debug "uint64 " in
-      match rbs_read_8_bytes_be pc.pc_bytes with
-      | Success (ReadValue (b0,b1,b2,b3,b4,b5,b6,b7),bytes') -> (*TODO*)
+      match sym_read_8_bytes_be_symbolic pc.pc_bytes with
+      | Success (Bytes (b0,b1,b2,b3,b4,b5,b6,b7),bytes') -> (*TODO*)
           let v = if c.endianness=Little then
             natural_of_byte b0 + 256*natural_of_byte b1 + 256*256*natural_of_byte b2 + 256*256*256*natural_of_byte b3
               + (256*256*256*256*(natural_of_byte b4 + 256*natural_of_byte b5 + 256*256*natural_of_byte b6 + 256*256*256*natural_of_byte b7))
@@ -2165,11 +2032,8 @@ let parse_uint64 c : parser sym_natural=
               + (256*256*256*256*(natural_of_byte b3 + 256*natural_of_byte b2 + 256*256*natural_of_byte b1 + 256*256*256*natural_of_byte b0))
           in
           PR_success (sym_natural_const v) (<| pc_bytes = bytes'; pc_offset = pc.pc_offset + 8 |>)
-      | Success (ReadReloc r, bytes') ->
-        if r.arel_target = Data64 then
-          PR_success (sym_natural_of_symbolic_expression r.arel_value) (<| pc_bytes = bytes'; pc_offset = pc.pc_offset + 8 |>)
-        else
-          PR_fail "parse_uint64 wrong relocation type" pc
+      | Success (Sym n, bytes') ->
+          PR_success n (<| pc_bytes = bytes'; pc_offset = pc.pc_offset + 8 |>)
       | _ -> PR_fail "parse_uint64 not given enough bytes" pc
       end
 
@@ -4233,7 +4097,7 @@ let extract_section_body (f:elf_file) (ri:relocation_interpreter reloc_target_da
           if strict then
             Assert_extra.failwith ("" ^ section_name ^ " section not present")
           else
-            (c,0,<| rbs_bytes = Byte_sequence.empty ; rbs_relocs = [] |>)
+            (c,0,sym_bs_empty)
       | _ -> Assert_extra.failwith ("multiple " ^ section_name ^ " sections present")
       end
 
@@ -4260,7 +4124,7 @@ let extract_section_body (f:elf_file) (ri:relocation_interpreter reloc_target_da
           if strict then
             Assert_extra.failwith ("" ^ section_name ^ " section not present")
           else
-            (c,0,<| rbs_bytes = Byte_sequence.empty ; rbs_relocs = [] |>)
+            (c,0,sym_bs_empty)
       | _ -> Assert_extra.failwith ("multiple " ^ section_name ^ " sections present")
       end
   end
@@ -6656,8 +6520,8 @@ let pp_inlined_subroutines_by_range ds iss =
 
 
 let rec words_of_rel_byte_sequence (addr:sym_natural) (bs:rel_byte_sequence) (acc:list (sym_natural * sym_natural)) : list (sym_natural * sym_natural) =
-  match rbs_read_4_bytes_be bs with
-  | Success (ReadValue (b0,b1,b2,b3), bs') -> (*TODO*)
+  match sym_read_4_bytes_be_symbolic bs with
+  | Success (Bytes (b0,b1,b2,b3), bs') -> (*TODO allow symbolic? *)
      let i : sym_natural = sym_natural_const (natural_of_byte b0 + 256*natural_of_byte b1 + 65536*natural_of_byte b2 + 65536*256*natural_of_byte b3) in
      words_of_rel_byte_sequence (addr+4) bs' ((addr,i)::acc)
   | Fail _ -> List.reverse acc
