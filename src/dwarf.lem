@@ -4051,8 +4051,6 @@ let parse_dwarf c
   let pc_frame = <|pc_bytes = debug_frame_section_body; pc_offset = 0  |> in
 
   let fi =
-    let _ = my_debug5 ("debug_frame_section_body:\n" ^ ppbytes2 0 debug_frame_section_body) in
-
     match parse_frame_info c cuh_default pc_frame with
     | PR_fail s pc_info' ->  Assert_extra.failwith ("parse_frame_info: " ^ pp_parse_fail s pc_info')
     | PR_success fi pc_loc' -> fi
