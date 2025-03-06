@@ -207,9 +207,10 @@ let construct_rel_byte_sequence bs rel =
   let sym_list = List.map (fun (pos, rel) ->
     (
       natural_of_elf64_addr pos,
-      <| sb_width=reloc_width_bytes rel.arel_target
-       ; sb_value=sym_natural_of_symbolic_expression rel.arel_value
-       |>
+      (
+        reloc_width_bytes rel.arel_target,
+        sym_natural_of_symbolic_expression rel.arel_value
+      )
     )
   ) rel_list in
   let sym_map = Map.fromList sym_list in
