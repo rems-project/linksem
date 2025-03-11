@@ -171,9 +171,7 @@ let sym_natural_land = sym_natural_map2 natural_land
 let sym_natural_lxor = sym_natural_map2 natural_lxor
 let sym_natural_lor = sym_natural_map2 natural_lor
 
-let symIntegerFromSymNatural = symIntegerFromNatural
-
-let natFromSymNatural x = natFromNatural (sym_natural_expect_const x (*"symIntegerFromSymNatural"*))
+let natFromSymNatural x = natFromNatural (sym_natural_expect_const x (*"symIntegerFromNatural"*))
 
 let symNaturalFromNat x = sym_natural_const (naturalFromNat x)
 
@@ -183,26 +181,16 @@ let sym_natural_of_byte x = sym_natural_const (natural_of_byte x)
 
 let symNaturalPow x y = sym_natural_map (fun x -> naturalPow x y) x
 
-let symNaturalFromSymInteger = partialSymNaturalFromInteger
-
 let index_sym_natural l n = index_natural l (sym_natural_expect_const n (*"index_sym_natural"*))
-
-let partialSymNaturalFromSymInteger = partialSymNaturalFromInteger
 
 let sym_natural_nat_shift_left x sh = sym_natural_map (fun x -> natural_nat_shift_left x sh) x
 let sym_natural_nat_shift_right x sh = sym_natural_map (fun x -> natural_nat_shift_right x sh) x
 
 (* byte sequence *)
 
-type rel_byte_sequence = sym_byte_sequence
+let sym_byte_sequence_of_byte_list l = sym_bs_construct (byte_sequence_of_byte_list l) Map.empty
 
-let rbs_length = sym_bs_length
-
-let rbs_unwrap = sym_bs_expect_const
-
-let rel_byte_sequence_of_byte_list l = sym_bs_construct (byte_sequence_of_byte_list l) Map.empty
-
-let construct_rel_byte_sequence bs rel =
+let construct_sym_byte_sequence bs rel =
   let rel_list = Map_extra.toList rel in
   let sym_list = List.map (fun (pos, rel) ->
     (
@@ -215,26 +203,6 @@ let construct_rel_byte_sequence bs rel =
   ) rel_list in
   let sym_map = Map.fromList sym_list in
   sym_bs_construct bs sym_map
-
-let rbs_read_char = sym_read_char
-
-let rbs_read_2_bytes_be = sym_read_2_bytes_be
-
-let rbs_read_4_bytes_be = sym_read_4_bytes_be
-
-let rbs_read_8_bytes_be = sym_read_8_bytes_be
-
-let rbs_partition = sym_partition
-
-let rbs_takebytes = sym_takebytes
-    
-let rbs_dropbytes = sym_dropbytes
-
-let rbs_find_byte = sym_find_byte
-
-let byte_list_of_rel_byte_sequence = byte_list_of_sym_byte_sequence
-
-let string_of_rel_byte_sequence = string_of_sym_byte_sequence
 
 (** ************************************************************ *)
 (** **  dwarf representation types  **************************** *)
@@ -276,7 +244,7 @@ type operation_argument_type =
 type operation_argument_value =
   | OAV_natural of sym_natural
   | OAV_integer of sym_integer
-  | OAV_block of sym_natural * rel_byte_sequence
+  | OAV_block of sym_natural * sym_byte_sequence
 
 type operation_stack = list sym_natural
 
@@ -322,7 +290,7 @@ type operation =
 type simple_location =
   | SL_memory_address of sym_natural
   | SL_register of sym_natural
-  | SL_implicit of rel_byte_sequence  (* used for implicit and stack values *)
+  | SL_implicit of sym_byte_sequence  (* used for implicit and stack values *)
   | SL_empty
 
 type composite_location_piece =
@@ -387,17 +355,17 @@ type abbreviations_table =
 
 type attribute_value =  (* following Figure 3 *)
   | AV_addr of sym_natural
-  | AV_block of sym_natural * rel_byte_sequence
-  | AV_constantN of sym_natural * rel_byte_sequence
+  | AV_block of sym_natural * sym_byte_sequence
+  | AV_constantN of sym_natural * sym_byte_sequence
   | AV_constant_SLEB128 of sym_integer
   | AV_constant_ULEB128 of sym_natural
-  | AV_exprloc of sym_natural * rel_byte_sequence
+  | AV_exprloc of sym_natural * sym_byte_sequence
   | AV_flag of bool
   | AV_ref of sym_natural
   | AV_ref_addr of sym_natural (* dwarf_format dependent *)
   | AV_ref_sig8 of sym_natural
   | AV_sec_offset of sym_natural
-  | AV_string of rel_byte_sequence (* not including terminating null *)
+  | AV_string of sym_byte_sequence (* not including terminating null *)
   | AV_strp of sym_natural (* dwarf_format dependent *)
 
 
@@ -452,7 +420,7 @@ type type_units = list type_unit
 
 (* .debug_loc section *)
 
-type single_location_description = rel_byte_sequence
+type single_location_description = sym_byte_sequence
 
 type location_list_entry =
     <|
@@ -493,7 +461,7 @@ type range_list_list = list range_list
 (* .debug_frame section: call frame instructions *)
 
 type cfa_address = sym_natural
-type cfa_block = rel_byte_sequence
+type cfa_block = sym_byte_sequence
 type cfa_delta = sym_natural
 type cfa_offset = sym_natural
 type cfa_register = sym_natural
@@ -556,13 +524,13 @@ type cie =
     cie_length: sym_natural;
     cie_id: sym_natural;
     cie_version: sym_natural;
-    cie_augmentation: rel_byte_sequence; (* not including terminating null *)
+    cie_augmentation: sym_byte_sequence; (* not including terminating null *)
     cie_address_size: maybe sym_natural;
     cie_segment_size: maybe sym_natural;
     cie_code_alignment_factor: sym_natural;
     cie_data_alignment_factor: sym_integer;
     cie_return_address_register: cfa_register;
-    cie_initial_instructions_bytes: rel_byte_sequence;
+    cie_initial_instructions_bytes: sym_byte_sequence;
     cie_initial_instructions: list call_frame_instruction;
   |>
 
@@ -574,7 +542,7 @@ type fde =
     fde_initial_location_segment_selector: maybe sym_natural;
     fde_initial_location_address: sym_natural;
     fde_address_range: sym_natural;
-    fde_instructions_bytes: rel_byte_sequence;
+    fde_instructions_bytes: sym_byte_sequence;
     fde_instructions: list call_frame_instruction;
   |>
 
@@ -644,7 +612,7 @@ type line_number_argument_value =
   | LNAV_ULEB128 of sym_natural
   | LNAV_SLEB128 of sym_integer
   | LNAV_uint16 of sym_natural
-  | LNAV_string of rel_byte_sequence (* not including terminating null *)
+  | LNAV_string of sym_byte_sequence (* not including terminating null *)
 
 type line_number_operation =
   (* standard *)
@@ -663,14 +631,14 @@ type line_number_operation =
   (* extended *)
   | DW_LNE_end_sequence
   | DW_LNE_set_address of sym_natural
-  | DW_LNE_define_file of rel_byte_sequence * sym_natural * sym_natural * sym_natural
+  | DW_LNE_define_file of sym_byte_sequence * sym_natural * sym_natural * sym_natural
   | DW_LNE_set_discriminator of sym_natural
   (* special *)
   | DW_LN_special of sym_natural (* the adjusted opcode *)
 
 type line_number_file_entry =
     <|
-    lnfe_path: rel_byte_sequence;
+    lnfe_path: sym_byte_sequence;
     lnfe_directory_index: sym_natural;
     lnfe_last_modification: sym_natural;
     lnfe_length: sym_natural;
@@ -690,7 +658,7 @@ type line_number_header =
     lnh_line_range: sym_natural;
     lnh_opcode_base: sym_natural;
     lnh_standard_opcode_lengths: list sym_natural;
-    lnh_include_directories: list (rel_byte_sequence);
+    lnh_include_directories: list (sym_byte_sequence);
     lnh_file_entries: list line_number_file_entry;
     lnh_comp_dir: maybe string; (* passed down from cu DW_AT_comp_dir *)
   |>
@@ -729,7 +697,7 @@ type unpacked_decl = unpacked_file_entry * nat(*line*) * string(*subprogram name
 type dwarf =
     <|
     d_endianness: Endianness.endianness; (* from the ELF *)
-    d_str: rel_byte_sequence;
+    d_str: sym_byte_sequence;
     d_compilation_units: compilation_units;
     d_type_units: type_units;
     d_loc: location_list_list;
@@ -1164,9 +1132,9 @@ let operation_encodings = [
 ("DW_OP_abs",                 sym_natural_of_hex "0x19", []                         , OpSem_unary (fun ac v -> if v < ac.ac_half then Just v else if v=ac.ac_max then Nothing else Just (ac.ac_all-v))); (*0*)
 ("DW_OP_and",                 sym_natural_of_hex "0x1a", []                         , OpSem_binary (fun ac v1 v2 -> Just (sym_natural_land v1 v2))); (*0*)
 ("DW_OP_div",                 sym_natural_of_hex "0x1b", []                         , OpSem_not_supported) (*TODO*); (*0*)
-("DW_OP_minus",               sym_natural_of_hex "0x1c", []                         , OpSem_binary (fun ac v1 v2 -> Just (partialSymNaturalFromSymInteger ((symIntegerFromSymNatural v1 - symIntegerFromSymNatural v2) mod (symIntegerFromSymNatural ac.ac_all))))); (*0*)
+("DW_OP_minus",               sym_natural_of_hex "0x1c", []                         , OpSem_binary (fun ac v1 v2 -> Just (partialSymNaturalFromInteger ((symIntegerFromNatural v1 - symIntegerFromNatural v2) mod (symIntegerFromNatural ac.ac_all))))); (*0*)
 ("DW_OP_mod",                 sym_natural_of_hex "0x1d", []                         , OpSem_binary (fun ac v1 v2 -> Just (v1 mod v2))); (*0*)
-("DW_OP_mul",                 sym_natural_of_hex "0x1e", []                         , OpSem_binary (fun ac v1 v2 -> Just (partialSymNaturalFromSymInteger ((symIntegerFromSymNatural v1 * symIntegerFromSymNatural v2) mod (symIntegerFromSymNatural ac.ac_all))))); (*0*)
+("DW_OP_mul",                 sym_natural_of_hex "0x1e", []                         , OpSem_binary (fun ac v1 v2 -> Just (partialSymNaturalFromInteger ((symIntegerFromNatural v1 * symIntegerFromNatural v2) mod (symIntegerFromNatural ac.ac_all))))); (*0*)
 ("DW_OP_neg",                 sym_natural_of_hex "0x1f", []                         , OpSem_unary (fun ac v -> if v < ac.ac_half then Just (ac.ac_max - v) else if v=ac.ac_half then Nothing else Just (ac.ac_all - v))); (*0*)
 ("DW_OP_not",                 sym_natural_of_hex "0x20", []                         , OpSem_unary (fun ac v -> Just (sym_natural_lxor v ac.ac_max))); (*0*)
 ("DW_OP_or",                  sym_natural_of_hex "0x21", []                         , OpSem_binary (fun ac v1 v2 -> Just (sym_natural_lor v1 v2))); (*0*)
@@ -1518,9 +1486,9 @@ let rec myfiltermaybe f xs =
 
 
 
-val bytes_of_natural: endianness -> natural (*size*) -> natural (*value*) -> rel_byte_sequence
+val bytes_of_natural: endianness -> natural (*size*) -> natural (*value*) -> sym_byte_sequence
 let bytes_of_natural en size n =
-  rel_byte_sequence_of_byte_list (
+  sym_byte_sequence_of_byte_list (
   if size = 8 then
     bytes_of_elf64_xword en (elf64_xword_of_natural n)
   else if size = 4 then
@@ -1531,18 +1499,18 @@ let bytes_of_natural en size n =
 let bytes_of_sym_natural en size n = bytes_of_natural en (sym_natural_expect_const size (*"bytes_of_sym_natural size"*)) (sym_natural_expect_const n (*"bytes_of_sym_natural n"*))
 
 let rec natural_of_bytes_little bs : natural =
-  match rbs_read_char bs with
+  match sym_read_char bs with
   | Fail _ -> 0
   | Success (b, bs') -> natural_of_byte b + 256 * natural_of_bytes_little bs'
   end
 
 let rec natural_of_bytes_big acc bs =
-  match rbs_read_char bs with
+  match sym_read_char bs with
   | Fail _ -> acc
   | Success (b, bs') -> natural_of_bytes_big (natural_of_byte b + 256 * acc) bs'
 end
 
-val natural_of_bytes: endianness -> rel_byte_sequence -> natural
+val natural_of_bytes: endianness -> sym_byte_sequence -> natural
 let natural_of_bytes en bs =
   match en with
   | Little -> natural_of_bytes_little bs
@@ -1632,7 +1600,7 @@ let pphex_integer n = if n<0 then "-" ^ pphex (abs n) else pphex (abs n)
 let ppbytes = sym_ppbytes
 
 let rec ppbytes2 n bs =
-  match rbs_read_char bs with
+  match sym_read_char bs with
     | Fail _ -> ""
     | Success (x,xs') -> "<" ^ pphex n ^ ">  " ^ show x ^ "\n" ^ ppbytes2 (n+1) xs'
   end
@@ -1776,7 +1744,7 @@ let base_type_attribute_encode (s: string) : sym_natural =
 
 (* parsing combinators *)
 
-type parse_context = <| pc_bytes: rel_byte_sequence; pc_offset: natural |>
+type parse_context = <| pc_bytes: sym_byte_sequence; pc_offset: natural |>
 
 type parse_result 'a =
   | PR_success of 'a * parse_context
@@ -1902,7 +1870,7 @@ let rec parse_parser_list ps =
 val parse_maybe : forall 'a. parser 'a -> parser (maybe 'a)
 let parse_maybe p =
   fun pc ->
-    match rbs_length pc.pc_bytes with
+    match sym_bs_length pc.pc_bytes with
     | 0 -> pr_return Nothing pc
     | _ ->
         match p pc with
@@ -1925,7 +1893,7 @@ let parse_demaybe s p =
 val parse_restrict_length : forall 'a. sym_natural -> parser 'a -> parser 'a
 let parse_restrict_length n p =
   fun pc ->
-    match rbs_partition (sym_natural_expect_const n (*"parse_strict_length"*)) pc.pc_bytes with
+    match sym_partition (sym_natural_expect_const n (*"parse_strict_length"*)) pc.pc_bytes with
     | Fail _ -> Assert_extra.failwith "parse_restrict_length not given enough bytes"
     | Success (xs,ys) ->
         let pc' = <| pc_bytes = xs; pc_offset = pc.pc_offset |> in
@@ -1937,24 +1905,24 @@ let parse_restrict_length n p =
 
 let parse_byte : parser(byte) =
   fun (pc:parse_context) ->
-    match rbs_read_char pc.pc_bytes with
+    match sym_read_char pc.pc_bytes with
     | Fail _ -> PR_fail "parse_byte" pc
     | Success (b,bs) -> PR_success b (<|pc_bytes=bs; pc_offset= pc.pc_offset + 1 |> )
     end
 
-let parse_n_bytes (n:sym_natural) : parser (rel_byte_sequence) =
+let parse_n_bytes (n:sym_natural) : parser (sym_byte_sequence) =
   fun (pc:parse_context) ->
-    match rbs_partition (sym_natural_expect_const n (*"parse_n_bytes"*)) pc.pc_bytes with
+    match sym_partition (sym_natural_expect_const n (*"parse_n_bytes"*)) pc.pc_bytes with
       | Fail _ -> PR_fail ("parse_n_bytes n=" ^ pphex_sym n) pc
       | Success (xs,bs) ->
-          PR_success xs (<|pc_bytes=bs; pc_offset= pc.pc_offset + (rbs_length xs) |> )
+          PR_success xs (<|pc_bytes=bs; pc_offset= pc.pc_offset + (sym_bs_length xs) |> )
     end
 
 let bzero = byte_of_natural 0
 
-let parse_string : parser (rel_byte_sequence) =
+let parse_string : parser (sym_byte_sequence) =
   fun (pc:parse_context) ->
-    match rbs_find_byte pc.pc_bytes bzero with
+    match sym_find_byte pc.pc_bytes bzero with
       | Nothing -> PR_fail "parse_string" pc
       | Just n ->
           pr_bind (parse_n_bytes (sym_natural_const n) pc) (fun res pc -> (*todo find byte should respect relocs*)
@@ -1963,10 +1931,10 @@ let parse_string : parser (rel_byte_sequence) =
     end
 
 (* parse a null-terminated string; return Nothing if it is empty, Just s otherwise *)
-let parse_non_empty_string : parser (maybe rel_byte_sequence) =
+let parse_non_empty_string : parser (maybe sym_byte_sequence) =
   fun (pc:parse_context) ->
   pr_bind (parse_string pc) (fun str pc ->
-    if rbs_length str = 0 then
+    if sym_bs_length str = 0 then
       pr_return Nothing pc
     else
       pr_return (Just str) pc)
@@ -1976,7 +1944,7 @@ let parse_non_empty_string : parser (maybe rel_byte_sequence) =
 let parse_uint8 : parser sym_natural=
   fun (pc:parse_context) ->
     let _ = my_debug "uint8 " in
-    match rbs_read_char pc.pc_bytes with
+    match sym_read_char pc.pc_bytes with
       | Success (b, bytes) ->
           let v = natural_of_byte b in
           PR_success (sym_natural_const v) (<| pc_bytes = bytes; pc_offset = pc.pc_offset + 1 |>)
@@ -1993,7 +1961,7 @@ let parse_uint8_constant (v:sym_natural) : parser sym_natural=
 let parse_uint16 c : parser sym_natural=
     fun (pc:parse_context) ->
       let _ = my_debug "uint16 " in
-      match rbs_read_2_bytes_be pc.pc_bytes with
+      match sym_read_2_bytes_be pc.pc_bytes with
       | Success ((b0,b1),bytes') ->
           let v = if c.endianness=Little then
             natural_of_byte b0 + 256*natural_of_byte b1
@@ -2040,11 +2008,11 @@ let parse_uint64 c : parser sym_natural=
 
 
 let integerFromTwosComplementNatural (n:sym_natural) (half: sym_natural) (all:sym_integer) : sym_integer =
-  if n < half then symIntegerFromSymNatural n else symIntegerFromSymNatural n - all
+  if n < half then symIntegerFromNatural n else symIntegerFromNatural n - all
 
 let partialTwosComplementNaturalFromInteger (i:sym_integer) (half: sym_natural) (all:sym_integer) : sym_natural =
-  if i >=0 && i < symIntegerFromSymNatural half then partialSymNaturalFromSymInteger i
-  else if i >= (0-symIntegerFromSymNatural half) && i < 0 then partialSymNaturalFromSymInteger (all + i)
+  if i >=0 && i < symIntegerFromNatural half then partialSymNaturalFromInteger i
+  else if i >= (0-symIntegerFromNatural half) && i < 0 then partialSymNaturalFromInteger (all + i)
   else Assert_extra.failwith "partialTwosComplementNaturalFromInteger"
 
 let parse_sint8 : parser sym_integer =
@@ -2062,7 +2030,7 @@ let parse_sint64 c : parser sym_integer =
 let rec parse_ULEB128' (acc: natural) (shift_factor: natural) : parser natural =
     fun (pc:parse_context) ->
       let _ = my_debug "ULEB128' " in
-      match rbs_read_char pc.pc_bytes with
+      match sym_read_char pc.pc_bytes with
       | Success (b,bytes') ->
           let n = natural_of_byte b in
           let acc' = (natural_land n 127) * shift_factor + acc in
@@ -2083,7 +2051,7 @@ let parse_ULEB128 : parser sym_natural =
 let rec parse_SLEB128' (acc: natural) (shift_factor: natural) : parser (bool * natural * natural) =
     fun (pc:parse_context) ->
       let _ = my_debug "SLEB128' " in
-      match rbs_read_char pc.pc_bytes with
+      match sym_read_char pc.pc_bytes with
       | Success (b,bytes') ->
           let n = natural_of_byte b in
           let acc' = acc + (natural_land n 127) * shift_factor in
@@ -2212,20 +2180,20 @@ let parse_abbreviations_table c =
 
 (** debug_str entry *)
 
-let rec null_terminated_bs (bs: rel_byte_sequence) : rel_byte_sequence =
-  match rbs_find_byte bs bzero with
+let rec null_terminated_bs (bs: sym_byte_sequence) : sym_byte_sequence =
+  match sym_find_byte bs bzero with
   | Just i ->
-      match rbs_takebytes i bs with
+      match sym_takebytes i bs with
         | Success bs' -> bs'
         | Fail _ -> Assert_extra.failwith "find_byte or take_byte is broken"
       end
   | Nothing -> bs
   end
 
-let pp_debug_str_entry (str: rel_byte_sequence) (n: sym_natural) : string =
-  match rbs_dropbytes (sym_natural_expect_const n (*"pp_debug_str_entry"*)) str with
+let pp_debug_str_entry (str: sym_byte_sequence) (n: sym_natural) : string =
+  match sym_dropbytes (sym_natural_expect_const n (*"pp_debug_str_entry"*)) str with
   | Fail _ -> "strp beyond .debug_str extent"
-  | Success bs -> string_of_rel_byte_sequence (null_terminated_bs bs)
+  | Success bs -> string_of_sym_byte_sequence (null_terminated_bs bs)
   end
 
 (** operations: pp and parsing *)
@@ -2319,20 +2287,20 @@ let parse_operations_bs c cuh bs : list operation =
   match parse_operations c cuh pc with
   | PR_fail s pc' -> Assert_extra.failwith ("parse_operations_bs fail: " ^ pp_parse_fail s pc')
   | PR_success ops pc' ->
-     let _ = if rbs_length pc'.pc_bytes <> 0 then Assert_extra.failwith ("parse_operations_bs extra non-parsed bytes") else () in
+     let _ = if sym_bs_length pc'.pc_bytes <> 0 then Assert_extra.failwith ("parse_operations_bs extra non-parsed bytes") else () in
      ops
   end
 
 
 
-val parse_and_pp_operations : p_context -> compilation_unit_header -> rel_byte_sequence -> string
+val parse_and_pp_operations : p_context -> compilation_unit_header -> sym_byte_sequence -> string
 let parse_and_pp_operations c cuh bs =
   let pc = <|pc_bytes = bs; pc_offset = 0  |> in
   match parse_operations c cuh pc with
   | PR_fail s pc' -> "parse_operations fail: " ^ pp_parse_fail s pc'
   | PR_success ops pc' ->
       pp_operations ops
-      ^ if rbs_length pc'.pc_bytes <> 0 then " Warning: extra non-parsed bytes" else ""
+      ^ if sym_bs_length pc'.pc_bytes <> 0 then " Warning: extra non-parsed bytes" else ""
   end
 
 
@@ -2353,12 +2321,12 @@ let pp_attribute_value_plain av =
   | AV_ref_addr n -> "AV_ref_addr " ^ pphex_sym n
   | AV_ref_sig8 n -> "AV_ref_sig8 " ^ pphex_sym n
   | AV_sec_offset n -> "AV_sec_offset " ^ pphex_sym  n
-  | AV_string bs -> string_of_rel_byte_sequence bs
+  | AV_string bs -> string_of_sym_byte_sequence bs
   | AV_strp n -> "AV_sec_offset " ^ pphex_sym n ^ " "
   end
 
    
-val pp_attribute_value : p_context -> compilation_unit_header -> rel_byte_sequence -> sym_natural (*attribute tag*) -> attribute_value -> string
+val pp_attribute_value : p_context -> compilation_unit_header -> sym_byte_sequence -> sym_natural (*attribute tag*) -> attribute_value -> string
 let pp_attribute_value c cuh str at av =
   match av with
   | AV_addr x -> "AV_addr " ^ pphex_sym x
@@ -2374,12 +2342,12 @@ let pp_attribute_value c cuh str at av =
   | AV_ref_addr n -> "AV_ref_addr " ^ pphex_sym n
   | AV_ref_sig8 n -> "AV_ref_sig8 " ^ pphex_sym n
   | AV_sec_offset n -> "AV_sec_offset " ^ pphex_sym  n
-  | AV_string bs -> string_of_rel_byte_sequence bs
+  | AV_string bs -> string_of_sym_byte_sequence bs
   | AV_strp n -> "AV_sec_offset " ^ pphex_sym n ^ " "
       ^ pp_debug_str_entry str n
   end
 
-val pp_attribute_value_like_objdump : p_context -> compilation_unit_header -> rel_byte_sequence -> sym_natural (*attribute tag*) -> attribute_value -> string
+val pp_attribute_value_like_objdump : p_context -> compilation_unit_header -> sym_byte_sequence -> sym_natural (*attribute tag*) -> attribute_value -> string
 let pp_attribute_value_like_objdump c cuh str at av =
   match av with
   | AV_addr x -> (*"AV_addr " ^*) pphex_sym x
@@ -2398,7 +2366,7 @@ let pp_attribute_value_like_objdump c cuh str at av =
   | AV_ref_sig8 n -> "AV_ref_sig8 " ^ pphex_sym n
   | AV_sec_offset n -> (*"AV_sec_offset " ^*) pphex_sym  n
      ^ if at = attribute_encode "DW_AT_location" then " (location list)"  else ""
-  | AV_string bs -> string_of_rel_byte_sequence bs
+  | AV_string bs -> string_of_sym_byte_sequence bs
   | AV_strp n -> (*"AV_sec_offset " ^ pphex_sym n ^ " "
                    ^ pp_debug_str_entry str n*)
       "(indirect string, offset: "^pphex_sym n ^ "): " ^ pp_debug_str_entry str n
@@ -2539,7 +2507,7 @@ let find_dies (p:die->bool) (d: dwarf) : list cupdie =
 
 let string_of_string_attribute_value str av : string =
   match av with
-  | AV_string bs -> string_of_rel_byte_sequence bs
+  | AV_string bs -> string_of_sym_byte_sequence bs
   | AV_strp n -> pp_debug_str_entry str n
   | _ -> "find_string_attribute_value_of_die AV not understood"
   end
@@ -2560,10 +2528,10 @@ let natural_of_constant_attribute_value die1 c av : sym_natural =
 
 let integer_of_constant_attribute_value c av : sym_integer =
   match av with
-  | AV_constantN n bs -> symIntegerFromSymNatural n
-  | AV_constant_ULEB128 n -> symIntegerFromSymNatural n
+  | AV_constantN n bs -> symIntegerFromNatural n
+  | AV_constant_ULEB128 n -> symIntegerFromNatural n
   | AV_constant_SLEB128 n -> n
-  | AV_block n bs -> symIntegerFromSymNatural (sym_natural_of_bytes c.endianness bs)
+  | AV_block n bs -> symIntegerFromNatural (sym_natural_of_bytes c.endianness bs)
   | _ -> Assert_extra.failwith ("integer_of_constant_attribute_value fail")
   end
 
@@ -2820,7 +2788,7 @@ let indent_level_plus_one indent level =
   else
     " "^"   "
       
-let pp_die_attribute c (cuh:compilation_unit_header) (str : rel_byte_sequence) (indent:bool) (level: natural) (((at: sym_natural), (af: sym_natural)), ((pos: sym_natural),(av:attribute_value))) : string =
+let pp_die_attribute c (cuh:compilation_unit_header) (str : sym_byte_sequence) (indent:bool) (level: natural) (((at: sym_natural), (af: sym_natural)), ((pos: sym_natural),(av:attribute_value))) : string =
   indent_level_plus_one indent level ^ pp_pos pos  ^ "   "
   ^ right_space_padded_to 18 (pp_attribute_encoding at) ^ ": "
   ^
@@ -2832,7 +2800,7 @@ let pp_die_attribute c (cuh:compilation_unit_header) (str : rel_byte_sequence) (
       pp_attribute_value_like_objdump c cuh str at av
       ^ "\n"
           
-val pp_die : p_context -> compilation_unit_header -> rel_byte_sequence -> bool -> natural -> bool -> die -> string
+val pp_die : p_context -> compilation_unit_header -> sym_byte_sequence -> bool -> natural -> bool -> die -> string
 let rec pp_die c cuh str indent level (pp_children:bool) die =
   indent_level indent level ^ "<" ^ show level ^ ">"
   ^ pp_pos die.die_offset
@@ -2846,7 +2814,7 @@ let rec pp_die c cuh str indent level (pp_children:bool) die =
     ^
       if pp_children then String.concat "" (List.map (pp_die c cuh str indent (level +1) pp_children) die.die_children) else ""
 
-val pp_die_abbrev : p_context -> compilation_unit_header -> rel_byte_sequence -> natural -> bool -> (list die) -> die -> string
+val pp_die_abbrev : p_context -> compilation_unit_header -> sym_byte_sequence -> natural -> bool -> (list die) -> die -> string
 let rec pp_die_abbrev c cuh str level (pp_children:bool) parents die =
   indent_level true level
   ^ pp_tag_encoding die.die_abbreviation_declaration.ad_tag
@@ -2862,7 +2830,7 @@ let rec pp_die_abbrev c cuh str level (pp_children:bool) parents die =
 
 
 (* condensed pp for variables *)
-val pp_die_abbrev_var : p_context -> dwarf -> compilation_unit -> rel_byte_sequence -> bool -> (list die) -> die -> (string (*name*) * string (*offset*) * string (*kind*))
+val pp_die_abbrev_var : p_context -> dwarf -> compilation_unit -> sym_byte_sequence -> bool -> (list die) -> die -> (string (*name*) * string (*offset*) * string (*kind*))
 let rec pp_die_abbrev_var c d cu str (pp_children:bool) parents die =
   (*   (indent_level true level*)
   (*  ^ pp_tag_encoding die.die_abbreviation_declaration.ad_tag*)
@@ -2879,7 +2847,7 @@ let rec pp_die_abbrev_var c d cu str (pp_children:bool) parents die =
   )
 
 (* condensed pp for variable parents *)
-val pp_die_abbrev_var_parent : p_context -> dwarf -> compilation_unit -> rel_byte_sequence -> die -> string
+val pp_die_abbrev_var_parent : p_context -> dwarf -> compilation_unit -> sym_byte_sequence -> die -> string
 let pp_die_abbrev_var_parent c d cu str die =
   (*   (indent_level true level*)
   (*  ^ pp_tag_encoding die.die_abbreviation_declaration.ad_tag*)
@@ -2894,7 +2862,7 @@ let pp_die_abbrev_var_parent c d cu str die =
   
   
 
-val pp_die_abbrev_var_parents : p_context -> dwarf -> compilation_unit -> rel_byte_sequence -> list die -> string
+val pp_die_abbrev_var_parents : p_context -> dwarf -> compilation_unit -> sym_byte_sequence -> list die -> string
 let pp_die_abbrev_var_parents c d cu str parents =
     String.concat ":" (List.map (fun die -> pp_die_abbrev_var_parent c d cu str die) parents)
 
@@ -2908,7 +2876,7 @@ let pp_die_abbrev_var_parents c d cu str parents =
     
 
 
-val parse_die : p_context -> rel_byte_sequence -> compilation_unit_header -> (sym_natural->abbreviation_declaration) -> parser (maybe die)
+val parse_die : p_context -> sym_byte_sequence -> compilation_unit_header -> (sym_natural->abbreviation_declaration) -> parser (maybe die)
 let rec parse_die c str cuh find_abbreviation_declaration =
   fun (pc: parse_context) ->
     let _ = my_debug3 ("parse_die called at " ^ pp_parse_context pc ^ "\n") in
@@ -2952,7 +2920,7 @@ let has_attribute (an: string) (die: die) : bool =
 
 (** compilation units: pp and parsing *)
 
-let pp_compilation_unit c (indent:bool) (debug_str_section_body: rel_byte_sequence) cu =
+let pp_compilation_unit c (indent:bool) (debug_str_section_body: sym_byte_sequence) cu =
   ""
 (*  "*** compilation unit header               ***\n"*)
   ^ pp_compilation_unit_header cu.cu_header
@@ -2967,7 +2935,7 @@ let pp_compilation_units c (indent:bool) debug_string_section_body (compilation_
   String.concat "" (List.map (pp_compilation_unit c indent debug_string_section_body) compilation_units)
 
 
-let pp_compilation_unit_abbrev c (debug_str_section_body: rel_byte_sequence) cu =
+let pp_compilation_unit_abbrev c (debug_str_section_body: sym_byte_sequence) cu =
   pp_compilation_unit_header cu.cu_header
 (*  ^ pp_abbreviations_table cu.cu_abbreviations_table*)
   ^ pp_die_abbrev c cu.cu_header debug_str_section_body 0 true [] cu.cu_die
@@ -2980,10 +2948,10 @@ let rec add_die_to_index acc parents die =
   let nacc : die_index = Map.insert die.die_offset (parents,die) acc in
   List.foldl (fun acc ndie -> add_die_to_index acc (die::parents) ndie) nacc die.die_children
 
-let parse_compilation_unit c (debug_str_section_body: rel_byte_sequence) (debug_abbrev_section_body: rel_byte_sequence) : parser (maybe compilation_unit) =
+let parse_compilation_unit c (debug_str_section_body: sym_byte_sequence) (debug_abbrev_section_body: sym_byte_sequence) : parser (maybe compilation_unit) =
     fun (pc:parse_context) ->
 
-      if rbs_length pc.pc_bytes = 0 then PR_success Nothing pc else
+      if sym_bs_length pc.pc_bytes = 0 then PR_success Nothing pc else
 
       let (cuh, pc') =
 
@@ -2996,7 +2964,7 @@ let _ = my_debug4 (pp_compilation_unit_header cuh) in
 
       if cuh.cuh_unit_length = 0 then PR_success Nothing pc' else
       
-      let pc_abbrev = <|pc_bytes = match rbs_dropbytes (sym_natural_expect_const cuh.cuh_debug_abbrev_offset (*"mydrop of pc_abbrev"*)) debug_abbrev_section_body with Success bs -> bs | Fail _ -> Assert_extra.failwith "mydrop of debug_abbrev" end; pc_offset = sym_natural_expect_const cuh.cuh_debug_abbrev_offset (*"mydrop of pc_abbrev"*)|> in
+      let pc_abbrev = <|pc_bytes = match sym_dropbytes (sym_natural_expect_const cuh.cuh_debug_abbrev_offset (*"mydrop of pc_abbrev"*)) debug_abbrev_section_body with Success bs -> bs | Fail _ -> Assert_extra.failwith "mydrop of debug_abbrev" end; pc_offset = sym_natural_expect_const cuh.cuh_debug_abbrev_offset (*"mydrop of pc_abbrev"*)|> in
 
       (* todo: this is reparsing the abbreviations table for each cu *)
       let abbreviations_table =
@@ -3027,14 +2995,14 @@ let _ = my_debug4 (pp_compilation_unit_header cuh) in
           PR_success (Just cu) pc''
       end
 
-let parse_compilation_units c (debug_str_section_body: rel_byte_sequence) (debug_abbrev_section_body: rel_byte_sequence): parser (list compilation_unit)
+let parse_compilation_units c (debug_str_section_body: sym_byte_sequence) (debug_abbrev_section_body: sym_byte_sequence): parser (list compilation_unit)
     =
   parse_list (parse_compilation_unit c debug_str_section_body debug_abbrev_section_body)
 
 
 (** type units: pp and parsing *)
 
-let pp_type_unit c (debug_str_section_body: rel_byte_sequence) tu =
+let pp_type_unit c (debug_str_section_body: sym_byte_sequence) tu =
   pp_type_unit_header tu.tu_header
   ^ pp_abbreviations_table tu.tu_abbreviations_table
   ^ pp_die c tu.tu_header.tuh_cuh debug_str_section_body true 0 true tu.tu_die
@@ -3043,10 +3011,10 @@ let pp_type_units c debug_string_section_body (type_units: list type_unit) : str
   String.concat "" (List.map (pp_type_unit c debug_string_section_body) type_units)
 
 
-let parse_type_unit c (debug_str_section_body: rel_byte_sequence) (debug_abbrev_section_body: rel_byte_sequence) : parser (maybe type_unit) =
+let parse_type_unit c (debug_str_section_body: sym_byte_sequence) (debug_abbrev_section_body: sym_byte_sequence) : parser (maybe type_unit) =
     fun (pc:parse_context) ->
 
-      if rbs_length pc.pc_bytes = 0 then PR_success Nothing pc else
+      if sym_bs_length pc.pc_bytes = 0 then PR_success Nothing pc else
 
       let (tuh, pc') =
         match parse_type_unit_header c pc with
@@ -3056,7 +3024,7 @@ let parse_type_unit c (debug_str_section_body: rel_byte_sequence) (debug_abbrev_
 
       (* let _ = my_debug4 (pp_type_unit_header tuh) in *)
 
-      let pc_abbrev = let n = tuh.tuh_cuh.cuh_debug_abbrev_offset in <|pc_bytes = match rbs_dropbytes (sym_natural_expect_const n (*"mydrop of pc_abbrev"*)) debug_abbrev_section_body with Success bs -> bs | Fail _ -> Assert_extra.failwith "mydrop of debug_abbrev" end; pc_offset = sym_natural_expect_const n (*"mydrop of pc_abbrev"*) |> in
+      let pc_abbrev = let n = tuh.tuh_cuh.cuh_debug_abbrev_offset in <|pc_bytes = match sym_dropbytes (sym_natural_expect_const n (*"mydrop of pc_abbrev"*)) debug_abbrev_section_body with Success bs -> bs | Fail _ -> Assert_extra.failwith "mydrop of debug_abbrev" end; pc_offset = sym_natural_expect_const n (*"mydrop of pc_abbrev"*) |> in
 
       let abbreviations_table =
         match parse_abbreviations_table c pc_abbrev with
@@ -3085,7 +3053,7 @@ let parse_type_unit c (debug_str_section_body: rel_byte_sequence) (debug_abbrev_
           PR_success (Just tu) pc''
       end
 
-let parse_type_units c (debug_str_section_body: rel_byte_sequence) (debug_abbrev_section_body: rel_byte_sequence): parser (list type_unit)
+let parse_type_units c (debug_str_section_body: sym_byte_sequence) (debug_abbrev_section_body: sym_byte_sequence): parser (list type_unit)
       =
     parse_list (parse_type_unit c debug_str_section_body debug_abbrev_section_body)
 
@@ -3171,7 +3139,7 @@ let parse_location_list_item c (cuh: compilation_unit_header) : parser (maybe lo
 
 let parse_location_list c cuh : parser (maybe location_list) =
     fun (pc: parse_context) ->
-      if rbs_length pc.pc_bytes = 0 then
+      if sym_bs_length pc.pc_bytes = 0 then
         PR_success Nothing pc
       else
         pr_post_map1
@@ -3274,7 +3242,7 @@ let rec expand_range_list_suffixes cuh (offset,(rlis: list range_list_item)) : l
 
 let parse_range_list c cuh : parser (maybe (list range_list)) =
     fun (pc: parse_context) ->
-      if rbs_length pc.pc_bytes = 0 then
+      if sym_bs_length pc.pc_bytes = 0 then
         PR_success Nothing pc
       else
         pr_post_map1
@@ -3373,29 +3341,29 @@ let pp_register_rule (rr:register_rule) : string =  (*TODO make this more readel
 let pp_call_frame_instruction i =
   match i with
   | DW_CFA_advance_loc d          -> "DW_CFA_advance_loc" ^ " " ^ pp_cfa_delta d
-  | DW_CFA_offset r n             -> "DW_CFA_offset" ^ " " ^ pp_cfa_register r ^ " " ^ pp_cfa_offset (symIntegerFromSymNatural n)
+  | DW_CFA_offset r n             -> "DW_CFA_offset" ^ " " ^ pp_cfa_register r ^ " " ^ pp_cfa_offset (symIntegerFromNatural n)
   | DW_CFA_restore r              -> "DW_CFA_restore" ^ " " ^ pp_cfa_register r
   | DW_CFA_nop                    -> "DW_CFA_nop"
   | DW_CFA_set_loc a              -> "DW_CFA_set_loc" ^ " " ^ pp_cfa_address a
   | DW_CFA_advance_loc1 d         -> "DW_CFA_advance_loc1" ^ " " ^ pp_cfa_delta d
   | DW_CFA_advance_loc2 d         -> "DW_CFA_advance_loc2" ^ " " ^ pp_cfa_delta d
   | DW_CFA_advance_loc4 d         -> "DW_CFA_advance_loc4" ^ " " ^ pp_cfa_delta d
-  | DW_CFA_offset_extended r n    -> "DW_CFA_offset_extended" ^ " " ^ pp_cfa_register r ^ " " ^ pp_cfa_offset (symIntegerFromSymNatural n)
+  | DW_CFA_offset_extended r n    -> "DW_CFA_offset_extended" ^ " " ^ pp_cfa_register r ^ " " ^ pp_cfa_offset (symIntegerFromNatural n)
   | DW_CFA_restore_extended r     -> "DW_CFA_restore_extended" ^ " " ^ pp_cfa_register r
   | DW_CFA_undefined r            -> "DW_CFA_undefined" ^ " " ^ pp_cfa_register r
   | DW_CFA_same_value r           -> "DW_CFA_same_value" ^ " " ^ pp_cfa_register r
   | DW_CFA_register r1 r2         -> "DW_CFA_register" ^ " " ^ pp_cfa_register r1 ^ " " ^ pp_cfa_register r2
   | DW_CFA_remember_state         -> "DW_CFA_remember_state"
   | DW_CFA_restore_state          -> "DW_CFA_restore_state"
-  | DW_CFA_def_cfa r n            -> "DW_CFA_def_cfa" ^ " " ^ pp_cfa_register r ^ " " ^ pp_cfa_offset (symIntegerFromSymNatural n)
+  | DW_CFA_def_cfa r n            -> "DW_CFA_def_cfa" ^ " " ^ pp_cfa_register r ^ " " ^ pp_cfa_offset (symIntegerFromNatural n)
   | DW_CFA_def_cfa_register r     -> "DW_CFA_def_cfa_register" ^ " " ^ pp_cfa_register r
-  | DW_CFA_def_cfa_offset n       -> "DW_CFA_def_cfa_offset" ^ " " ^ pp_cfa_offset (symIntegerFromSymNatural n)
+  | DW_CFA_def_cfa_offset n       -> "DW_CFA_def_cfa_offset" ^ " " ^ pp_cfa_offset (symIntegerFromNatural n)
   | DW_CFA_def_cfa_expression b   -> "DW_CFA_def_cfa_expression" ^ " " ^ pp_cfa_block b
   | DW_CFA_expression r b         -> "DW_CFA_expression" ^ " " ^ pp_cfa_register r ^ " " ^ pp_cfa_block b
   | DW_CFA_offset_extended_sf r i -> "DW_CFA_offset_extended_sf" ^ " " ^ pp_cfa_register r ^ " " ^ pp_cfa_sfoffset i
   | DW_CFA_def_cfa_sf r i         -> "DW_CFA_def_cfa_sf" ^ " " ^ pp_cfa_register r ^ " " ^ pp_cfa_sfoffset i
   | DW_CFA_def_cfa_offset_sf i    -> "DW_CFA_def_cfa_offset_sf" ^ " " ^ pp_cfa_sfoffset i
-  | DW_CFA_val_offset r n         -> "DW_CFA_val_offset" ^ " " ^ pp_cfa_register r ^ " " ^ pp_cfa_offset (symIntegerFromSymNatural n)
+  | DW_CFA_val_offset r n         -> "DW_CFA_val_offset" ^ " " ^ pp_cfa_register r ^ " " ^ pp_cfa_offset (symIntegerFromNatural n)
   | DW_CFA_val_offset_sf r i      -> "DW_CFA_val_offset_sf" ^ pp_cfa_register r ^ " " ^ pp_cfa_sfoffset i
   | DW_CFA_val_expression r b     -> "DW_CFA_val_expression" ^ " " ^ pp_cfa_register r ^ " " ^ pp_cfa_block b
   | DW_CFA_AARCH64_negate_ra_state        -> "DW_CFA_AARCH64_negate_ra_state"
@@ -3422,7 +3390,7 @@ let parser_of_call_frame_argument_type c cuh (cfat: call_frame_argument_type) : 
 
 let parse_call_frame_instruction c cuh : parser (maybe call_frame_instruction) =
     fun pc ->
-      match rbs_read_char pc.pc_bytes with
+      match sym_read_char pc.pc_bytes with
       | Fail _ -> PR_success Nothing pc
       | Success (b,bs') ->
           let pc' = <| pc_bytes = bs'; pc_offset = pc.pc_offset + 1 |> in
@@ -3463,14 +3431,14 @@ let parse_call_frame_instruction c cuh : parser (maybe call_frame_instruction) =
 let parse_call_frame_instructions c cuh : parser (list call_frame_instruction) =
     parse_list (parse_call_frame_instruction c cuh)
 
-val parse_and_pp_call_frame_instructions : p_context -> compilation_unit_header -> rel_byte_sequence -> string
+val parse_and_pp_call_frame_instructions : p_context -> compilation_unit_header -> sym_byte_sequence -> string
 let parse_and_pp_call_frame_instructions c cuh bs =
   let pc = <|pc_bytes = bs; pc_offset = 0  |> in
   match parse_call_frame_instructions c cuh pc with
   | PR_fail s pc' -> "parse_call_frame_instructions fail: " ^ pp_parse_fail s pc'
   | PR_success is pc' ->
       pp_call_frame_instructions is
-      ^ if rbs_length pc'.pc_bytes <> 0 then " Warning: extra non-parsed bytes" else ""
+      ^ if sym_bs_length pc'.pc_bytes <> 0 then " Warning: extra non-parsed bytes" else ""
   end
 
 
@@ -3487,7 +3455,7 @@ let pp_cie c cuh cie =
   ^ " " ^ pphex_sym cie.cie_id
   ^ " CIE\n"
   ^ "  Version:                " ^ show cie.cie_version ^ "\n"
-  ^ "  Augmentation:           \""^ show (string_of_rel_byte_sequence cie.cie_augmentation) ^ "\"\n"
+  ^ "  Augmentation:           \""^ show (string_of_sym_byte_sequence cie.cie_augmentation) ^ "\"\n"
   ^ "  Code alignment factor: " ^ show cie.cie_code_alignment_factor ^ "\n"
   ^ "  Data alignment factor: " ^ show cie.cie_data_alignment_factor ^ "\n"
   ^ "  Return address column: " ^ show cie.cie_return_address_register ^ "\n"
@@ -3634,7 +3602,7 @@ Hence the following, which should be made more tail-recursive.  *)
 val parse_dependent_list' : forall 'a. (list 'a -> parser 'a) -> list 'a -> parser (list 'a)
 let rec parse_dependent_list' p1 acc =
   fun pc ->
-    if rbs_length pc.pc_bytes = 0 then
+    if sym_bs_length pc.pc_bytes = 0 then
       PR_success (List.reverse acc) pc
     else
       pr_bind
@@ -3654,7 +3622,7 @@ let parse_frame_info c cuh : parser frame_info
 (** line numbers .debug_line, pp and parsing *)
 
 let pp_line_number_file_entry lnfe =
- "lnfe_path = " ^ string_of_rel_byte_sequence lnfe.lnfe_path ^ "\n"
+ "lnfe_path = " ^ string_of_sym_byte_sequence lnfe.lnfe_path ^ "\n"
 ^ "lnfe_directory_index " ^ show lnfe.lnfe_directory_index ^ "\n"
 ^ "lnfe_last_modification = " ^ show lnfe.lnfe_last_modification ^ "\n"
 ^ "lnfe_length = " ^ show lnfe.lnfe_length ^ "\n"
@@ -3674,7 +3642,7 @@ let pp_line_number_header lnh =
 ^ "opcode_base =                        " ^ show lnh.lnh_opcode_base ^ "\n"
 ^ "standard_opcode_lengths =            " ^ show lnh.lnh_standard_opcode_lengths ^ "\n"
 ^ "comp_dir =                           " ^ show lnh.lnh_comp_dir ^ "\n"
-^ "include_directories =                " ^ String.concat ", " (List.map string_of_rel_byte_sequence  lnh.lnh_include_directories) ^ "\n"
+^ "include_directories =                " ^ String.concat ", " (List.map string_of_sym_byte_sequence  lnh.lnh_include_directories) ^ "\n"
 ^ "file_entries =                   \n\n" ^ String.concat "\n" (List.map pp_line_number_file_entry  lnh.lnh_file_entries) ^ "\n"
 
   
@@ -3777,7 +3745,7 @@ let parse_line_number_header c (comp_dir:maybe string) : parser line_number_head
           (fun ((v,(((hl,(minil,maxopi))),(dis,(lb,(lr,ob)))))) ->
             pr_post_map
               (parse_triple
-                 (pr_post_map (parse_n_bytes (ob-sym_natural_const 1)) (fun bs -> List.map sym_natural_of_byte (byte_list_of_rel_byte_sequence bs)))  (* standard_opcode_lengths *)
+                 (pr_post_map (parse_n_bytes (ob-sym_natural_const 1)) (fun bs -> List.map sym_natural_of_byte (byte_list_of_sym_byte_sequence bs)))  (* standard_opcode_lengths *)
                  ((*pr_return [[]]*) parse_list parse_non_empty_string) (* include_directories *)
                  (parse_list parse_line_number_file_entry) (* file names *)
               )
@@ -3902,7 +3870,7 @@ let filename d cu n =
   if n=0 then Nothing else
     match mynth (n - 1) lnp.lnp_header.lnh_file_entries with
     | Just lnfe ->
-       Just (string_of_rel_byte_sequence lnfe.lnfe_path)
+       Just (string_of_sym_byte_sequence lnfe.lnfe_path)
     | Nothing ->
        Assert_extra.failwith ("line number file entry not found")
     end
@@ -3915,11 +3883,11 @@ let unpack_file_entry lnh file : unpacked_file_entry =
          Nothing 
        else
          match mynth (lnfe.lnfe_directory_index - 1) lnh.lnh_include_directories with
-         | Just d -> Just (string_of_rel_byte_sequence d)
+         | Just d -> Just (string_of_sym_byte_sequence d)
          | Nothing -> Just "<unpack_file_entry: directory entry not found>"
          end
      in
-     (lnh.lnh_comp_dir, directory, string_of_rel_byte_sequence lnfe.lnfe_path)
+     (lnh.lnh_comp_dir, directory, string_of_sym_byte_sequence lnfe.lnfe_path)
    | Nothing ->
      (Nothing,Nothing,"<unpack_file_entry: file entry not found>")
    end
@@ -3945,10 +3913,10 @@ let pp_ufe_brief (((mcomp_dir,mdir,file) as ufe) : unpacked_file_entry) : string
   ^ " comp_dir=" ^ match mcomp_dir with | Just s->s|Nothing->"<none>" end
    *)
    
-let parse_line_number_info c str (d_line: rel_byte_sequence) (cu: compilation_unit) : line_number_program =
+let parse_line_number_info c str (d_line: sym_byte_sequence) (cu: compilation_unit) : line_number_program =
   let comp_dir = find_string_attribute_value_of_die "DW_AT_comp_dir" str cu.cu_die in
   let f n =
-    let d_line' = match rbs_dropbytes n d_line with Success xs -> xs | Fail _ -> Assert_extra.failwith "parse_line_number_info drop" end in
+    let d_line' = match sym_dropbytes n d_line with Success xs -> xs | Fail _ -> Assert_extra.failwith "parse_line_number_info drop" end in
     let pc = <| pc_bytes = d_line'; pc_offset = n|> in
     match parse_line_number_program c cu.cu_header comp_dir pc with
     | PR_success lnp pc' ->
@@ -4009,13 +3977,13 @@ let pp_dwarf d =
 
 (* TODO: don't use lists of bytes here! *)
 let parse_dwarf c
-    (debug_info_section_body: rel_byte_sequence)
-    (debug_abbrev_section_body: rel_byte_sequence)
-    (debug_str_section_body: rel_byte_sequence)
-    (debug_loc_section_body: rel_byte_sequence)
-    (debug_ranges_section_body: rel_byte_sequence)
-    (debug_frame_section_body: rel_byte_sequence)
-    (debug_line_section_body: rel_byte_sequence)
+    (debug_info_section_body: sym_byte_sequence)
+    (debug_abbrev_section_body: sym_byte_sequence)
+    (debug_str_section_body: sym_byte_sequence)
+    (debug_loc_section_body: sym_byte_sequence)
+    (debug_ranges_section_body: sym_byte_sequence)
+    (debug_frame_section_body: sym_byte_sequence)
+    (debug_line_section_body: sym_byte_sequence)
     : dwarf =
 
   let pc_info = <|pc_bytes = debug_info_section_body; pc_offset = 0  |> in
@@ -4069,7 +4037,7 @@ let parse_dwarf c
    d_line_info = li;
   |>
 
-val extract_section_body : elf_file -> relocation_interpreter reloc_target_data -> string -> bool -> p_context * sym_natural * rel_byte_sequence
+val extract_section_body : elf_file -> relocation_interpreter reloc_target_data -> string -> bool -> p_context * sym_natural * sym_byte_sequence
 let extract_section_body (f:elf_file) (ri:relocation_interpreter reloc_target_data) (section_name:string) (strict: bool) =
   let (en: Endianness.endianness) =
     match f with
@@ -4115,7 +4083,7 @@ let extract_section_body (f:elf_file) (ri:relocation_interpreter reloc_target_da
           match extract_elf64_relocations_for_section f64 ri section_name with
           | Success relocations ->
               let _ = my_debug "extracted relocations" in
-              let section_body = construct_rel_byte_sequence section_body relocations in
+              let section_body = construct_sym_byte_sequence section_body relocations in
               (c,section_addr,section_body)
           | Fail err -> Assert_extra.failwith ("failed extracting relocations: " ^ err)
           end
@@ -4131,7 +4099,7 @@ let extract_section_body (f:elf_file) (ri:relocation_interpreter reloc_target_da
 let extract_section_body_without_relocations f section_name strict =
   let err_on_relocation ef symtab_map sidx rel = Assert_extra.failwith "Relocation found while extracting a section without relocations" in
   let (c, addr, body) = extract_section_body f err_on_relocation section_name strict in
-  (c, addr, rbs_unwrap body)
+  (c, addr, sym_bs_expect_const body)
 
 val extract_dwarf : elf_file -> relocation_interpreter reloc_target_data -> maybe dwarf
 let extract_dwarf f ri =
@@ -4149,7 +4117,7 @@ let extract_dwarf f ri =
 
   Just d
 
-val extract_text : elf_file -> relocation_interpreter reloc_target_data -> p_context * sym_natural * rel_byte_sequence  (* (p_context, elf32/64_section_addr, elf32/64_section_body) *)
+val extract_text : elf_file -> relocation_interpreter reloc_target_data -> p_context * sym_natural * sym_byte_sequence  (* (p_context, elf32/64_section_addr, elf32/64_section_body) *)
 let extract_text f ri = extract_section_body f ri ".text" true 
 
 
@@ -4314,7 +4282,7 @@ let rec evaluate_operation_list (c:p_context) (dloc: location_list_list) (evalua
 
   let bregxi r i =
     match ev.read_register r with
-    | RRR_result v -> push_memory_address (partialSymNaturalFromSymInteger ((symIntegerFromSymNatural v+i) mod (symIntegerFromSymNatural ac.ac_all))) s.s_stack
+    | RRR_result v -> push_memory_address (partialSymNaturalFromInteger ((symIntegerFromNatural v+i) mod (symIntegerFromNatural ac.ac_all))) s.s_stack
     | RRR_not_currently_available -> Fail "RRR_not_currently_available"
     | RRR_bad_register_number -> Fail ("RRR_bad_register_number " ^ show r)
     end in
@@ -4348,7 +4316,7 @@ let rec evaluate_operation_list (c:p_context) (dloc: location_list_list) (evalua
         | (OpSem_lit, [OAV_natural n]) ->
             push_memory_address n s.s_stack
         | (OpSem_lit, [OAV_integer i]) ->
-            push_memory_address (partialTwosComplementNaturalFromInteger i ac.ac_half (symIntegerFromSymNatural ac.ac_all)) s.s_stack
+            push_memory_address (partialTwosComplementNaturalFromInteger i ac.ac_half (symIntegerFromNatural ac.ac_all)) s.s_stack
         | (OpSem_stack f, []) ->
             match f ac s.s_stack op.op_argument_values with
             | Just stack' ->
@@ -4396,9 +4364,9 @@ let rec evaluate_operation_list (c:p_context) (dloc: location_list_list) (evalua
                     match l with
                     | SL_simple (SL_memory_address a) ->
                         (*let _ = my_debug5 ("OpSem_fbreg: a = "^ pphex a ^ "\n") in*)
-                        let vi = ((symIntegerFromSymNatural a) + i) mod (symIntegerFromSymNatural ac.ac_all) in
+                        let vi = ((symIntegerFromNatural a) + i) mod (symIntegerFromNatural ac.ac_all) in
                         (*let _ = my_debug5 ("OpSem_fbreg: v = "^ show vi ^ "\n") in*)
-                        let v = partialSymNaturalFromSymInteger vi (*ac.ac_half (symIntegerFromSymNatural ac.ac_all)*) in
+                        let v = partialSymNaturalFromInteger vi (*ac.ac_half (symIntegerFromNatural ac.ac_all)*) in
                         push_memory_address v s.s_stack
                     | _ ->
                         Fail "OpSem_fbreg got a non-SL_simple (SL_memory_address _) result"
@@ -4469,12 +4437,12 @@ let rec evaluate_operation_list (c:p_context) (dloc: location_list_list) (evalua
       end
   end
 
-and evaluate_location_description_bytes (c:p_context) (dloc: location_list_list) (evaluated_frame_info: evaluated_frame_info) (cuh: compilation_unit_header) (ac: arithmetic_context) (ev: evaluation_context) (mfbloc: maybe attribute_value) (pc: sym_natural) (bs: rel_byte_sequence) : error single_location =
+and evaluate_location_description_bytes (c:p_context) (dloc: location_list_list) (evaluated_frame_info: evaluated_frame_info) (cuh: compilation_unit_header) (ac: arithmetic_context) (ev: evaluation_context) (mfbloc: maybe attribute_value) (pc: sym_natural) (bs: sym_byte_sequence) : error single_location =
   let parse_context = <|pc_bytes = bs; pc_offset = 0  |> in
   match parse_operations c cuh parse_context with
   | PR_fail s pc' -> Fail ("evaluate_location_description_bytes: parse_operations fail: " ^ pp_parse_fail s pc')
   | PR_success ops pc' ->
-      if rbs_length pc'.pc_bytes <> 0 then
+      if sym_bs_length pc'.pc_bytes <> 0 then
         Fail "evaluate_location_description_bytes: extra non-parsed bytes"
       else
         evaluate_operation_list c dloc evaluated_frame_info  cuh ac ev mfbloc pc initial_state ops
@@ -4662,7 +4630,7 @@ let evaluate_call_frame_instruction (fi: frame_info) (cie: cie) (state: cfa_stat
 
   (* CFA Definition Instructions *)
   | DW_CFA_def_cfa r n            ->
-      update_cfa (CR_register r (symIntegerFromSymNatural n))
+      update_cfa (CR_register r (symIntegerFromNatural n))
   | DW_CFA_def_cfa_sf r i         ->
       update_cfa (CR_register r (i * cie.cie_data_alignment_factor))
   | DW_CFA_def_cfa_register r     ->
@@ -4681,7 +4649,7 @@ let evaluate_call_frame_instruction (fi: frame_info) (cie: cie) (state: cfa_stat
   | DW_CFA_def_cfa_offset n       ->
       match state.cs_current_row.ctr_cfa with
       | CR_register r i ->
-          update_cfa (CR_register r (symIntegerFromSymNatural n))
+          update_cfa (CR_register r (symIntegerFromNatural n))
       | _ -> Assert_extra.failwith "DW_CFA_def_cfa_offset: current rule is not CR_register"
       end
   | DW_CFA_def_cfa_offset_sf i    ->
@@ -4699,13 +4667,13 @@ let evaluate_call_frame_instruction (fi: frame_info) (cie: cie) (state: cfa_stat
   | DW_CFA_same_value r           ->
       update_reg r (RR_same_value)
   | DW_CFA_offset r n             ->
-      update_reg r (RR_offset ((symIntegerFromSymNatural n) * cie.cie_data_alignment_factor))
+      update_reg r (RR_offset ((symIntegerFromNatural n) * cie.cie_data_alignment_factor))
   | DW_CFA_offset_extended r n    ->
-      update_reg r (RR_offset ((symIntegerFromSymNatural n) * cie.cie_data_alignment_factor))
+      update_reg r (RR_offset ((symIntegerFromNatural n) * cie.cie_data_alignment_factor))
   | DW_CFA_offset_extended_sf r i ->
       update_reg r (RR_offset (i * cie.cie_data_alignment_factor))
   | DW_CFA_val_offset r n         ->
-      update_reg r (RR_val_offset ((symIntegerFromSymNatural n) * cie.cie_data_alignment_factor))
+      update_reg r (RR_val_offset ((symIntegerFromNatural n) * cie.cie_data_alignment_factor))
   | DW_CFA_val_offset_sf r i      ->
       update_reg r (RR_val_offset (i * cie.cie_data_alignment_factor))
   | DW_CFA_register r1 r2         ->
@@ -5167,7 +5135,7 @@ let analyse_locations_raw c (d: dwarf) =
 
          let name =
            match av_name with
-           | AV_string bs -> string_of_rel_byte_sequence bs
+           | AV_string bs -> string_of_sym_byte_sequence bs
            | AV_strp n -> pp_debug_str_entry d.d_str n
            | _ -> "av_name AV not understood"
            end in
@@ -5236,7 +5204,7 @@ let range_of_die c cuh str (dranges: range_list_list) (cu_base_address: sym_natu
   | (Just (AV_addr n),  Nothing,                       Nothing               ) -> Just [(n,n+1)]   (* unclear if this case is used? *)
   | (Just (AV_addr n1), Just (AV_addr n2),             Nothing               ) -> Just [(n1,n2)]
   | (Just (AV_addr n1), Just (AV_constant_ULEB128 n2), Nothing               ) -> Just [(n1, n1+n2)] (* should be mod all? *)
-  | (Just (AV_addr n1), Just (AV_constant_SLEB128 i2), Nothing               ) -> Just [(n1, symNaturalFromSymInteger (symIntegerFromSymNatural n1 + i2))] (* should be mod all? *)
+  | (Just (AV_addr n1), Just (AV_constant_SLEB128 i2), Nothing               ) -> Just [(n1, partialSymNaturalFromInteger (symIntegerFromNatural n1 + i2))] (* should be mod all? *)
   | (Just (AV_addr n1), Just (AV_constantN _ _),       Nothing               ) -> Assert_extra.failwith "AV_constantN in range_of_die"
         
   | (Just (AV_addr n1), Just (AV_block n bs),          Nothing               ) -> let n2 = sym_natural_of_bytes c.endianness bs in Just [(n1, n1+n2)] (* should be mod all? *) (* signed or unsigned interp? *)
@@ -5746,10 +5714,10 @@ let evaluate_line_number_operation
   match lno with
   | DW_LN_special adjusted_opcode ->
       let operation_advance = adjusted_opcode / lnh.lnh_line_range in
-      let line_increment = lnh.lnh_line_base + symIntegerFromSymNatural (adjusted_opcode mod lnh.lnh_line_range) in
+      let line_increment = lnh.lnh_line_base + symIntegerFromNatural (adjusted_opcode mod lnh.lnh_line_range) in
       let s' =
         <| s with
-         lnr_line = partialSymNaturalFromSymInteger ((symIntegerFromSymNatural s.lnr_line) + line_increment);
+         lnr_line = partialSymNaturalFromInteger ((symIntegerFromNatural s.lnr_line) + line_increment);
          lnr_address = new_address s operation_advance;
          lnr_op_index = new_op_index s operation_advance;
       |> in
@@ -5780,7 +5748,7 @@ let evaluate_line_number_operation
       |> in
       (s', lnrs)
   | DW_LNS_advance_line line_increment ->
-      let s' = <| s with lnr_line = partialSymNaturalFromSymInteger ((symIntegerFromSymNatural s.lnr_line) + line_increment) |> in (s', lnrs)
+      let s' = <| s with lnr_line = partialSymNaturalFromInteger ((symIntegerFromNatural s.lnr_line) + line_increment) |> in (s', lnrs)
   | DW_LNS_set_file n             ->
       let s' = <| s with lnr_file = n |> in (s', lnrs)
   | DW_LNS_set_column n           ->
@@ -6518,11 +6486,11 @@ let pp_inlined_subroutines_by_range ds iss =
 (* assume 4-byte ARM instructions *)
 
 
-let rec words_of_rel_byte_sequence (addr:sym_natural) (bs:rel_byte_sequence) (acc:list (sym_natural * sym_natural)) : list (sym_natural * sym_natural) =
+let rec words_of_sym_byte_sequence (addr:sym_natural) (bs:sym_byte_sequence) (acc:list (sym_natural * sym_natural)) : list (sym_natural * sym_natural) =
   match sym_read_4_bytes_be_symbolic bs with
   | Success (Bytes (b0,b1,b2,b3), bs') -> (*TODO allow symbolic? *)
      let i : sym_natural = sym_natural_const (natural_of_byte b0 + 256*natural_of_byte b1 + 65536*natural_of_byte b2 + 65536*256*natural_of_byte b3) in
-     words_of_rel_byte_sequence (addr+4) bs' ((addr,i)::acc)
+     words_of_sym_byte_sequence (addr+4) bs' ((addr,i)::acc)
   | Fail _ -> List.reverse acc
   end
 
@@ -6532,7 +6500,7 @@ let pp_instruction ((addr:sym_natural),(i:sym_natural)) =
 val pp_text_section : elf_file -> relocation_interpreter reloc_target_data -> string
 let pp_text_section f ri =
   let (p_context, addr, bs) = extract_text f ri in
-  let instructions : list (sym_natural * sym_natural) = words_of_rel_byte_sequence addr bs [] in
+  let instructions : list (sym_natural * sym_natural) = words_of_sym_byte_sequence addr bs [] in
   String.concat "" (List.map pp_instruction instructions)  
 
 (** ************************************************************ *)
