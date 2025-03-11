@@ -4054,11 +4054,19 @@ let extract_section_body (f:elf_file) (ri:relocation_interpreter reloc_target_da
           ) f32.elf32_file_interpreted_sections in
       match sections with
       | [section] ->
-          let section_addr = sym_natural_section section_name in
+          let section_addr = if is_elf32_relocatable_file f32.elf32_file_header then
+            sym_natural_section section_name
+          else
+            sym_natural_const section.Elf_interpreted_section.elf32_section_addr
+          in
           let section_body = section.Elf_interpreted_section.elf32_section_body in
           (* let _ = my_debug4 (section_name ^ (": \n" ^ (Elf_interpreted_section.string_of_elf32_interpreted_section section ^ "\n"
            *                ^ "  body = " ^ ppbytes2 0 section_body ^ "\n"))) in *)
-          let section_body = Assert_extra.failwith "Not implemented" in
+          let section_body = if is_elf32_relocatable_file f32.elf32_file_header then
+            Assert_extra.failwith "Not implemented"
+          else
+            sym_bs_construct section_body Map.empty
+          in
           (c,section_addr,section_body)
       | [] ->
           if strict then
@@ -4077,7 +4085,11 @@ let extract_section_body (f:elf_file) (ri:relocation_interpreter reloc_target_da
           ) f64.elf64_file_interpreted_sections in
       match sections with
       | [section] ->
-          let section_addr = sym_natural_section section_name in
+          let section_addr = if is_elf64_relocatable_file f64.elf64_file_header then
+            sym_natural_section section_name
+          else
+            sym_natural_const section.Elf_interpreted_section.elf64_section_addr
+          in
           let section_body = section.Elf_interpreted_section.elf64_section_body in
           let _ = my_debug "extracted section body" in
           match extract_elf64_relocations_for_section f64 ri section_name with
