@@ -75,15 +75,13 @@ let reloc_width_bytes : reloc_target_data -> natural = function
   | Data64 -> 8
 end
 
-type relocation_interpreter 'a = elf64_file -> Map.map natural elf64_symbol_table_entry -> elf64_half -> elf64_relocation_a -> error (Map.map elf64_addr (abstract_relocation 'a))
+type relocation_interpreter 'a = elf64_file -> elf64_symbol_table -> elf64_half -> elf64_relocation_a -> error (Map.map elf64_addr (abstract_relocation 'a))
 
-val symbol_map_from_elf64_symtab : elf64_file -> elf64_symbol_table -> Map.map natural elf64_symbol_table_entry
-let symbol_map_from_elf64_symtab f symtab =
-  let convert i ste =
-    (naturalFromNat i, ste)
-  in
-  let indexed_list = List.mapi convert symtab in
-  Map.fromList indexed_list
+let symbolic_address_of_symbol f symtab sym =
+  match List.index symtab sym with
+  | Nothing -> Nothing
+  | Just ste -> Just (symbolic_address_from_elf64_symbol_table_entry f ste)
+  end
 
 val extract_elf64_relocations_for_section' : forall 'a. elf64_file -> relocation_interpreter 'a -> elf64_half -> error (Map.map elf64_addr (abstract_relocation 'a))
 let extract_elf64_relocations_for_section' f1 interp sidx =
@@ -100,8 +98,8 @@ let extract_elf64_relocations_for_section' f1 interp sidx =
     let rels = rel_sec.elf64_section_body in
     Elf_relocation.read_elf64_relocation_a_section' endian rels >>= fun rels ->
     Elf_file.get_elf64_symbol_table_by_index f1 lnk >>= fun symtab ->
-    let symtab_map = symbol_map_from_elf64_symtab f1 symtab in
-    mapM (interp f1 symtab_map sidx) rels >>= fun rel_maps ->
+    (* let symtab_map = symbol_map_from_elf64_symtab f1 symtab in *)
+    mapM (interp f1 symtab sidx) rels >>= fun rel_maps ->
     let rel_map = Map.fromList (List.concatMap Map_extra.toList rel_maps) in
     if Map.size rel_map <> List.length rels then
       fail "Multiple relocations at the same location"

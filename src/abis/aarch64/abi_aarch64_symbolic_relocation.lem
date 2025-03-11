@@ -147,11 +147,11 @@ let abi_aarch64_apply_relocation_symbolic rel s_val p_val ef =
   	fail "abi_aarch64_apply_relocation: not a relocatable file"
 
 val abi_aarch64_relocation_to_abstract : relocation_interpreter aarch64_relocation_target
-let abi_aarch64_relocation_to_abstract ef symtab_map sidx rel =
+let abi_aarch64_relocation_to_abstract ef symtab sidx rel =
   section_with_offset ef sidx rel.elf64_ra_offset >>= fun p_val ->
   let (_, sym) = parse_elf64_relocation_info rel.elf64_ra_info in
-  match Map.lookup sym symtab_map with
-    | Just ste -> symbolic_address_from_elf64_symbol_table_entry ef ste
+  match symbolic_address_of_symbol ef symtab (natFromNatural sym) with
+    | Just x -> x
     | Nothing -> fail "Invalid symbol table index"
   end >>= fun s_val ->
     abi_aarch64_apply_relocation_symbolic rel s_val p_val ef >>= fun rel_desc_map ->
@@ -163,8 +163,8 @@ let aarch64_relocation_target_to_data_target = function
   | _ -> fail "Not a data relocation"
 end
 
-let aarch64_data_relocation_interpreter ef symtab_map sidx rel =
-  abi_aarch64_relocation_to_abstract ef symtab_map sidx rel >>= fun arels ->
+let aarch64_data_relocation_interpreter ef symtab sidx rel =
+  abi_aarch64_relocation_to_abstract ef symtab sidx rel >>= fun arels ->
   map_mapM (fun arel ->
     aarch64_relocation_target_to_data_target arel.arel_target >>= fun target ->
     return <| arel_value = arel.arel_value
