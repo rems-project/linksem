@@ -25,9 +25,7 @@ type aarch64_relocation_target
   | CALL
 
 (* TODO fix sizes and stuff *)
-val abi_aarch64_apply_relocation_symbolic :
-  elf64_relocation_a -> symbolic_expression -> symbolic_expression -> elf64_file ->
-    error (Map.map elf64_addr (relocation_description symbolic_expression aarch64_relocation_target))
+val abi_aarch64_apply_relocation_symbolic : relocation_spec aarch64_relocation_target
 let abi_aarch64_apply_relocation_symbolic rel s_val p_val ef =
   if is_elf64_relocatable_file ef.elf64_file_header then
     let (rel_type, _) = parse_elf64_relocation_info rel.elf64_ra_info in
@@ -146,28 +144,16 @@ let abi_aarch64_apply_relocation_symbolic rel s_val p_val ef =
   else
   	fail "abi_aarch64_apply_relocation: not a relocatable file"
 
-val abi_aarch64_relocation_to_abstract : relocation_interpreter aarch64_relocation_target
-let abi_aarch64_relocation_to_abstract ef symtab sidx rel =
-  section_with_offset ef sidx rel.elf64_ra_offset >>= fun p_val ->
-  let (_, sym) = parse_elf64_relocation_info rel.elf64_ra_info in
-  match symbolic_address_of_symbol ef symtab (natFromNatural sym) with
-    | Just x -> x
-    | Nothing -> fail "Invalid symbol table index"
-  end >>= fun s_val ->
-    abi_aarch64_apply_relocation_symbolic rel s_val p_val ef >>= fun rel_desc_map ->
-    map_mapM eval_relocation rel_desc_map
-
 let aarch64_relocation_target_to_data_target = function
   | Data32 -> return Elf_symbolic.Data32
   | Data64 -> return Elf_symbolic.Data64
   | _ -> fail "Not a data relocation"
 end
 
-let aarch64_data_relocation_interpreter ef symtab sidx rel =
-  abi_aarch64_relocation_to_abstract ef symtab sidx rel >>= fun arels ->
-  map_mapM (fun arel ->
-    aarch64_relocation_target_to_data_target arel.arel_target >>= fun target ->
-    return <| arel_value = arel.arel_value
-            ; arel_target = target
-            |>
-  ) arels
+let aarch64_relocation_interpreter =
+  abi_relocation_interpreter abi_aarch64_apply_relocation_symbolic
+
+let aarch64_data_relocation_interpreter =
+  relocation_interpreter_map_target
+    aarch64_relocation_interpreter
+    aarch64_relocation_target_to_data_target

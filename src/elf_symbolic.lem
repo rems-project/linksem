@@ -20,6 +20,8 @@ open import Elf_header
 open import Elf_section_header_table
 open import Elf_interpreted_section
 
+(* Symbolic expressions *)
+
 (* TODO *)
 type binary_operation
   = Add
@@ -61,6 +63,14 @@ end
 let symbolic_address_from_elf64_symbol_table_entry f ste =
   section_with_offset f ste.elf64_st_shndx ste.elf64_st_value
 
+let symbolic_address_of_symbol f symtab sym =
+  match List.index symtab sym with
+  | Nothing -> Nothing
+  | Just ste -> Just (symbolic_address_from_elf64_symbol_table_entry f ste)
+  end
+
+(* Relocation expressions *)
+
 type abstract_relocation 'a =
   <| arel_value  : symbolic_expression
    ; arel_target : 'a
@@ -75,13 +85,17 @@ let reloc_width_bytes : reloc_target_data -> natural = function
   | Data64 -> 8
 end
 
-type relocation_interpreter 'a = elf64_file -> elf64_symbol_table -> elf64_half -> elf64_relocation_a -> error (Map.map elf64_addr (abstract_relocation 'a))
+type relocation_interpreter 'a = elf64_file -> elf64_symbol_table -> elf64_half -> elf64_relocation_a ->
+  error (Map.map elf64_addr (abstract_relocation 'a))
 
-let symbolic_address_of_symbol f symtab sym =
-  match List.index symtab sym with
-  | Nothing -> Nothing
-  | Just ste -> Just (symbolic_address_from_elf64_symbol_table_entry f ste)
-  end
+let relocation_interpreter_map_target interp conv ef symtab sidx rel =
+  interp ef symtab sidx rel >>= fun arels ->
+  map_mapM (fun arel ->
+    conv arel.arel_target >>= fun target ->
+    return <| arel_value = arel.arel_value
+            ; arel_target = target
+            |>
+  ) arels
 
 val extract_elf64_relocations_for_section' : forall 'a. elf64_file -> relocation_interpreter 'a -> elf64_half -> error (Map.map elf64_addr (abstract_relocation 'a))
 let extract_elf64_relocations_for_section' f1 interp sidx =
