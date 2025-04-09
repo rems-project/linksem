@@ -61,7 +61,13 @@ end
 
 (* TODO handle special shndx *)
 let symbolic_address_from_elf64_symbol_table_entry f ste =
-  section_with_offset f ste.elf64_st_shndx ste.elf64_st_value
+  if natural_of_elf64_half ste.elf64_st_shndx = shn_undef then
+    let name = natural_of_elf64_word ste.elf64_st_name in
+    get_elf64_file_symbol_string_table f >>= fun strtab ->
+    String_table.get_string_at name strtab >>= fun str ->
+    return (Section ("UND."^str))
+  else
+    section_with_offset f ste.elf64_st_shndx ste.elf64_st_value
 
 let symbolic_address_of_symbol f symtab sym =
   match List.index symtab sym with
