@@ -71,6 +71,7 @@ let symbolic_address_of_symbol f symtab sym =
 
 (* Relocation expressions *)
 
+(* TODO rename *)
 type abstract_relocation 'a =
   <| arel_value  : symbolic_expression
    ; arel_target : 'a

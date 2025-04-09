@@ -126,13 +126,10 @@ module Num = struct
   let div = map2 NBN.div
 
   let modulus x y =
-    if match y with
-      | Absolute(y) -> NBN.greater_equal y (NBN.pow_int (NBN.of_int 2) 64)
-      | _ -> false
-    then
-      x
-    else
-      map2 NBN.modulus x y
+    let y = to_num y in
+    match x with
+      | Absolute x -> Absolute (NBN.modulus x y)
+      | Offset (s, x) -> Offset (s, NBN.modulus x y) (*Unsafe*)
   
   let comp f a b = match (a, b) with
   | (Absolute a, Absolute b) -> f a b
