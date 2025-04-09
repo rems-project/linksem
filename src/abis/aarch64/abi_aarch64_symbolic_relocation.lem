@@ -4,6 +4,7 @@ open import Maybe
 
 open import Num
 open import Basic_classes
+open import String
 
 open import Elf_types_native_uint
 open import Elf_file
@@ -20,13 +21,11 @@ type aarch64_relocation_target
   | Data32
   | ADRP
   | ADD
-  | LDST
+  | LDST of int
   | CALL
 
 (* TODO fix sizes and stuff *)
-val abi_aarch64_apply_relocation_symbolic :
-  elf64_relocation_a -> symbolic_expression -> symbolic_expression -> elf64_file ->
-    error (Map.map elf64_addr (relocation_description symbolic_expression aarch64_relocation_target))
+val abi_aarch64_apply_relocation_symbolic : relocation_spec aarch64_relocation_target
 let abi_aarch64_apply_relocation_symbolic rel s_val p_val ef =
   if is_elf64_relocatable_file ef.elf64_file_header then
     let (rel_type, _) = parse_elf64_relocation_info rel.elf64_ra_info in
@@ -42,7 +41,9 @@ let abi_aarch64_apply_relocation_symbolic rel s_val p_val ef =
       	let result = Plus(Lift s_val, Lift a_val) in
       	let addr   = rel.elf64_ra_offset in
       	return (Map.singleton addr
-          <| rel_desc_operation = (result, I64, CannotFail)
+          <| rel_desc_operation = result
+           ; rel_desc_range = Nothing
+           ; rel_desc_alignment_bits = 0
            ; rel_desc_mask = (63, 0)
            ; rel_desc_target = Data64
            |>
@@ -52,7 +53,9 @@ let abi_aarch64_apply_relocation_symbolic rel s_val p_val ef =
       	let result = Plus(Lift s_val, Lift a_val) in
       	let addr   = rel.elf64_ra_offset in
       	return (Map.singleton addr
-          <| rel_desc_operation = (result, I32, CanFail)
+          <| rel_desc_operation = result
+           ; rel_desc_range = Just (~(2**31), 2**32)
+           ; rel_desc_alignment_bits = 0
            ; rel_desc_mask = (31, 0)
            ; rel_desc_target = Data32
            |>
@@ -62,7 +65,9 @@ let abi_aarch64_apply_relocation_symbolic rel s_val p_val ef =
       	let result = Minus(Plus(Lift s_val, Lift a_val), Lift p_val) in
       	let addr   = rel.elf64_ra_offset in
       	return (Map.singleton addr
-          <| rel_desc_operation = (result, I64, CannotFail)
+          <| rel_desc_operation = result
+           ; rel_desc_range = Nothing
+           ; rel_desc_alignment_bits = 0
            ; rel_desc_mask = (63, 0)
            ; rel_desc_target = Data64
            |>
@@ -72,7 +77,9 @@ let abi_aarch64_apply_relocation_symbolic rel s_val p_val ef =
       	let result = Minus(Plus(Lift s_val, Lift a_val), Lift p_val) in
       	let addr   = rel.elf64_ra_offset in
       	return (Map.singleton addr
-          <| rel_desc_operation = (result, I32, CanFail)
+          <| rel_desc_operation = result
+           ; rel_desc_range = Just (~(2**31), 2**32)
+           ; rel_desc_alignment_bits = 0
            ; rel_desc_mask = (31, 0)
            ; rel_desc_target = Data32
            |>
@@ -81,7 +88,9 @@ let abi_aarch64_apply_relocation_symbolic rel s_val p_val ef =
       	let result = Minus(Apply(Page, Plus(Lift s_val, Lift a_val)), Apply(Page, Lift p_val)) in
       	let addr   = rel.elf64_ra_offset in
       	return (Map.singleton addr
-          <| rel_desc_operation = (result, I32, CanFail)
+          <| rel_desc_operation = result
+           ; rel_desc_range = Just (~(2**32), 2**32)
+           ; rel_desc_alignment_bits = 0
            ; rel_desc_mask = (32, 12)
            ; rel_desc_target = ADRP
            |>
@@ -90,7 +99,9 @@ let abi_aarch64_apply_relocation_symbolic rel s_val p_val ef =
       	let result = Plus(Lift s_val, Lift a_val) in
       	let addr   = rel.elf64_ra_offset in
       	return (Map.singleton addr
-          <| rel_desc_operation = (result, I32, CannotFail)
+          <| rel_desc_operation = result
+           ; rel_desc_range = Nothing
+           ; rel_desc_alignment_bits = 0
            ; rel_desc_mask = (11, 0)
            ; rel_desc_target = ADD
            |>
@@ -99,47 +110,50 @@ let abi_aarch64_apply_relocation_symbolic rel s_val p_val ef =
       	let result = Plus(Lift s_val, Lift a_val) in
       	let addr   = rel.elf64_ra_offset in
       	return (Map.singleton addr
-          <| rel_desc_operation = (result, I32, CannotFail)
+          <| rel_desc_operation = result
+           ; rel_desc_range = Nothing
+           ; rel_desc_alignment_bits = 2
            ; rel_desc_mask = (11, 2)
-           ; rel_desc_target = LDST
+           ; rel_desc_target = LDST 2
            |>
         )
       else if rel_type = r_aarch64_ldst64_abs_lo12_nc then
       	let result = Plus(Lift s_val, Lift a_val) in
       	let addr   = rel.elf64_ra_offset in
       	return (Map.singleton addr
-          <| rel_desc_operation = (result, I32, CannotFail)
+          <| rel_desc_operation = result
+           ; rel_desc_range = Nothing
+           ; rel_desc_alignment_bits = 3
            ; rel_desc_mask = (11, 3)
-           ; rel_desc_target = LDST
+           ; rel_desc_target = LDST 3
            |>
         )
       else if rel_type = r_aarch64_call26 then
       	let result = Minus(Plus(Lift s_val, Lift a_val), Lift p_val) in
       	let addr   = rel.elf64_ra_offset in
       	return (Map.singleton addr
-          <| rel_desc_operation = (result, I27, CanFail)
+          <| rel_desc_operation = result
+           ; rel_desc_range = Just (~(2**27), 2**27)
+           ; rel_desc_alignment_bits = 2
            ; rel_desc_mask = (27, 2)
            ; rel_desc_target = CALL
            |>
         )
       else
-        fail "Invalid AARCH64 relocation type"
+        fail ("Unsupported AARCH64 relocation type " ^ (string_of_aarch64_relocation_type rel_type))
   else
   	fail "abi_aarch64_apply_relocation: not a relocatable file"
-
-val abi_aarch64_relocation_to_abstract : relocation_interpreter aarch64_relocation_target
-let abi_aarch64_relocation_to_abstract ef symtab_map sidx rel =
-  section_with_offset ef sidx rel.elf64_ra_offset >>= fun p_val ->
-  let (_, sym) = parse_elf64_relocation_info rel.elf64_ra_info in
-  match Map.lookup sym symtab_map with
-    | Just ste -> symbolic_address_from_elf64_symbol_table_entry ef ste
-    | Nothing -> fail "Invalid symbol table index"
-  end >>= fun s_val ->
-    abi_aarch64_apply_relocation_symbolic rel s_val p_val ef >>= fun rel_desc_map ->
-    map_mapM eval_relocation rel_desc_map
 
 let aarch64_relocation_target_to_data_target = function
   | Data32 -> return Elf_symbolic.Data32
   | Data64 -> return Elf_symbolic.Data64
   | _ -> fail "Not a data relocation"
 end
+
+let aarch64_relocation_interpreter =
+  abi_relocation_interpreter abi_aarch64_apply_relocation_symbolic
+
+let aarch64_data_relocation_interpreter =
+  relocation_interpreter_map_target
+    aarch64_relocation_interpreter
+    aarch64_relocation_target_to_data_target

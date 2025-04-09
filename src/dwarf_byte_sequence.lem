@@ -1,0 +1,209 @@
+open import Byte_sequence
+open import Sym
+open import Num
+open import Map
+open import Set
+open import Error
+open import Maybe
+open import Bool
+open import Basic_classes
+open import Show
+open import String
+open import List
+
+type sym_mask_entry =
+ | NoSym of natural
+ | SymVal of natural * sym_natural
+
+let rec sym_mask_pp sm = match sm with
+| NoSym x :: sm -> "NoSym(" ^ show x ^ ")," ^ sym_mask_pp sm
+| SymVal x v :: sm -> "SymVal(" ^ show x ^ "," ^ show v ^ ")," ^ sym_mask_pp sm
+| [] -> ""
+end
+
+
+let rec sym_mask_partition n sm =
+  if n = 0 then
+    ([], sm)
+  else
+    match sm with
+    | NoSym k :: sm ->
+        if k > n then
+          ([NoSym n], NoSym (k-n) :: sm)
+        else
+          let (l,r) = sym_mask_partition (n-k) sm in
+          (NoSym k :: l, r)
+    | SymVal k v :: sm ->
+        if k > n then
+          Assert_extra.failwith "Attempting to split seqence in the middle of symbolic part"
+        else
+          let (l,r) = sym_mask_partition (n-k) sm in
+          (SymVal k v :: l, r)
+    end
+
+let sym_mask_dropbytes n sm =
+  let (_,r) = sym_mask_partition n sm in r
+
+let sym_mask_takebytes n sm =
+  let (l,_) = sym_mask_partition n sm in l
+
+let sym_mask_is_symbolic = function
+| [NoSym _] -> false
+| [] -> false
+| _ -> true
+end
+
+let sym_mask_pad_nosym n sm =
+  if n = 0 then
+    sm
+  else match sm with
+  | NoSym m :: sm -> NoSym (n+m) :: sm
+  | _ -> NoSym n :: sm
+end
+
+(* TODO strict mode? *)
+let rec sym_mask_from_map' m i l acc =
+  if i = l then
+    List.reverse acc
+  else
+    match Map.lookup i m with
+    | Nothing -> sym_mask_from_map' m (i+1) l (sym_mask_pad_nosym 1 acc)
+    | Just (w, v) -> sym_mask_from_map' m (i + w) l (SymVal w v :: acc)
+    end
+
+let sym_mask_from_map m l =
+  sym_mask_from_map' m 0 l []
+
+(* ================= *)
+(* sym_byte_sequence *)
+(* ================= *)
+
+type sym_byte_sequence =
+<| sbs_bytes    : byte_sequence
+ ; sbs_symbolic : list sym_mask_entry
+ |>
+
+let sym_read_char bs =
+  read_char bs.sbs_bytes >>= fun (c, bs') ->
+    match bs.sbs_symbolic with
+    | SymVal n v :: _ -> Assert_extra.failwith
+        ("Read char: is symbolic (width: " ^ show n ^ ") " ^ show v)
+    | _ ->
+        return (c, <| sbs_bytes=bs'; sbs_symbolic = sym_mask_dropbytes 1 bs.sbs_symbolic |>)
+  end
+
+let sym_read_2_bytes_be bs0 =
+  sym_read_char bs0 >>= fun (b0, bs1) ->
+  sym_read_char bs1 >>= fun (b1, bs2) ->
+  return ((b0, b1), bs2)
+
+let sym_read_4_bytes_be bs0 =
+  sym_read_char bs0 >>= fun (b0, bs1) ->
+  sym_read_char bs1 >>= fun (b1, bs2) ->
+  sym_read_char bs2 >>= fun (b2, bs3) ->
+  sym_read_char bs3 >>= fun (b3, bs4) ->
+  return ((b0, b1, b2, b3), bs4)
+
+let sym_read_8_bytes_be bs0 =
+  sym_read_char bs0 >>= fun (b0, bs1) ->
+  sym_read_char bs1 >>= fun (b1, bs2) ->
+  sym_read_char bs2 >>= fun (b2, bs3) ->
+  sym_read_char bs3 >>= fun (b3, bs4) ->
+  sym_read_char bs4 >>= fun (b4, bs5) ->
+  sym_read_char bs5 >>= fun (b5, bs6) ->
+  sym_read_char bs6 >>= fun (b6, bs7) ->
+  sym_read_char bs7 >>= fun (b7, bs8) ->
+  return ((b0, b1, b2, b3, b4, b5, b6, b7), bs8)
+
+let sym_dropbytes n bs =
+  dropbytes n bs.sbs_bytes >>= fun bs' ->
+    return <| sbs_bytes=bs'; sbs_symbolic=sym_mask_dropbytes n bs.sbs_symbolic |>
+
+let sym_takebytes n bs =
+  takebytes n bs.sbs_bytes >>= fun bs' ->
+    return <| sbs_bytes=bs'; sbs_symbolic=sym_mask_takebytes n bs.sbs_symbolic |>
+
+let sym_partition idx bs0 =
+  sym_takebytes idx bs0 >>= fun l ->
+  sym_dropbytes idx bs0 >>= fun r ->
+  return (l, r)
+
+let sym_bs_length bs =
+  Byte_sequence.length bs.sbs_bytes
+
+val print_endline : string -> unit
+declare ocaml target_rep function print_endline = `print_endline`
+(* 
+let symbolic_bytes_in_range off len bs =
+  let _ = print_endline "slow operation" in
+  let sym_positions = Map.domain bs.sbs_symbolic in
+  Set.any (fun x -> x >= bs.sbs_pos + off && x < bs.sbs_pos + off + len) sym_positions *)
+
+let sym_bs_expect_const bs =
+  let len = sym_bs_length bs in
+  if sym_mask_is_symbolic bs.sbs_symbolic then
+    Assert_extra.failwith "Byte sequence is symbolic"
+  else
+    bs.sbs_bytes
+
+let sym_bs_construct bs sym =
+  let len = Byte_sequence.length bs in
+  <| sbs_bytes=bs; sbs_symbolic=sym_mask_from_map sym len |>
+
+let sym_find_byte bs b =
+  match find_byte bs.sbs_bytes b with
+  | Nothing -> 
+    if sym_mask_is_symbolic bs.sbs_symbolic then
+      Assert_extra.failwith "Find encountered symbolic bytes"
+    else
+      Nothing
+  | Just n ->
+    if sym_mask_is_symbolic (sym_mask_takebytes n bs.sbs_symbolic) then
+      Assert_extra.failwith "Find encountered symbolic bytes"
+    else
+      Just n
+  end
+
+let sym_bs_empty = sym_bs_construct Byte_sequence.empty Map.empty
+
+let byte_list_of_sym_byte_sequence rbs = 
+  byte_list_of_byte_sequence (sym_bs_expect_const rbs)
+
+let string_of_sym_byte_sequence rbs =
+  string_of_byte_sequence (sym_bs_expect_const rbs)
+
+instance (Show sym_byte_sequence)
+  let show = string_of_sym_byte_sequence
+end
+(* Symbolic reads *)
+
+type read_result 'a =
+  | Bytes of 'a
+  | Sym of sym_natural
+
+let sym_read_4_bytes_be_symbolic bs =
+  match bs.sbs_symbolic with
+  | SymVal 4 v :: _ ->
+      sym_dropbytes 4 bs >>= fun bs' ->
+      return (Sym v, bs')
+  | _ -> sym_read_4_bytes_be bs >>= fun (b, bs') ->
+      return (Bytes b, bs')
+  end
+
+let sym_read_8_bytes_be_symbolic bs =
+  match bs.sbs_symbolic with
+  | SymVal 8 v :: _ ->
+      sym_dropbytes 8 bs >>= fun bs' ->
+      return (Sym v, bs')
+  | _ -> sym_read_8_bytes_be bs >>= fun (b, bs') ->
+      return (Bytes b, bs')
+  end
+
+let sym_ppbytes bs =
+  let symmsg =
+    if sym_mask_is_symbolic bs.sbs_symbolic then
+      "With symbolic bytes! " (*TODO print them*)
+    else
+      ""
+  in
+  symmsg ^ (show (List.map (fun x -> show x) (byte_list_of_byte_sequence bs.sbs_bytes)))
