@@ -106,6 +106,28 @@ let abi_aarch64_apply_relocation_symbolic rel s_val p_val ef =
            ; rel_desc_target = ADD
            |>
         )
+      else if rel_type = r_aarch64_ldst8_abs_lo12_nc then
+      	let result = Plus(Lift s_val, Lift a_val) in
+      	let addr   = rel.elf64_ra_offset in
+      	return (Map.singleton addr
+          <| rel_desc_operation = result
+           ; rel_desc_range = Nothing
+           ; rel_desc_alignment_bits = 0
+           ; rel_desc_mask = (11, 0)
+           ; rel_desc_target = LDST 0
+           |>
+        )
+      else if rel_type = r_aarch64_ldst16_abs_lo12_nc then
+      	let result = Plus(Lift s_val, Lift a_val) in
+      	let addr   = rel.elf64_ra_offset in
+      	return (Map.singleton addr
+          <| rel_desc_operation = result
+           ; rel_desc_range = Nothing
+           ; rel_desc_alignment_bits = 1
+           ; rel_desc_mask = (11, 1)
+           ; rel_desc_target = LDST 1
+           |>
+        )
       else if rel_type = r_aarch64_ldst32_abs_lo12_nc then
       	let result = Plus(Lift s_val, Lift a_val) in
       	let addr   = rel.elf64_ra_offset in
@@ -126,6 +148,17 @@ let abi_aarch64_apply_relocation_symbolic rel s_val p_val ef =
            ; rel_desc_alignment_bits = 3
            ; rel_desc_mask = (11, 3)
            ; rel_desc_target = LDST 3
+           |>
+        )
+      else if rel_type = r_aarch64_ldst128_abs_lo12_nc then
+      	let result = Plus(Lift s_val, Lift a_val) in
+      	let addr   = rel.elf64_ra_offset in
+      	return (Map.singleton addr
+          <| rel_desc_operation = result
+           ; rel_desc_range = Nothing
+           ; rel_desc_alignment_bits = 4
+           ; rel_desc_mask = (11, 4)
+           ; rel_desc_target = LDST 4
            |>
         )
       else if rel_type = r_aarch64_call26 then
