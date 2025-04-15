@@ -24,158 +24,140 @@ type aarch64_relocation_target
   | LDST of int
   | CALL
 
-(* TODO fix sizes and stuff *)
 val abi_aarch64_apply_relocation_symbolic : relocation_spec aarch64_relocation_target
-let abi_aarch64_apply_relocation_symbolic rel s_val p_val ef =
-  if is_elf64_relocatable_file ef.elf64_file_header then
-    let (rel_type, _) = parse_elf64_relocation_info rel.elf64_ra_info in
-    let a_val = Const (integer_of_elf64_sxword rel.elf64_ra_addend) in
-      (** No width, no calculation *)
-      if rel_type = r_aarch64_none then
-        return Map.empty
-      (** No width, no calculation *)
-      else if rel_type = r_aarch64_withdrawn then
-        return Map.empty
-      (** Signed 64 bit width, calculation: S + A *)
-      else if rel_type = r_aarch64_abs64 then
-      	let result = Plus(Lift s_val, Lift a_val) in
-      	let addr   = rel.elf64_ra_offset in
-      	return (Map.singleton addr
-          <| rel_desc_operation = result
-           ; rel_desc_range = Nothing
-           ; rel_desc_alignment_bits = 0
-           ; rel_desc_mask = (63, 0)
-           ; rel_desc_target = Data64
-           |>
-        )
-      (** Signed 32 bit width, calculation: S + A *)
-      else if rel_type = r_aarch64_abs32 then
-      	let result = Plus(Lift s_val, Lift a_val) in
-      	let addr   = rel.elf64_ra_offset in
-      	return (Map.singleton addr
-          <| rel_desc_operation = result
-           ; rel_desc_range = Just (~(2**31), 2**32)
-           ; rel_desc_alignment_bits = 0
-           ; rel_desc_mask = (31, 0)
-           ; rel_desc_target = Data32
-           |>
-        )
-      (** Signed 64 bit width, calculation: S + A - P *)
-      else if rel_type = r_aarch64_prel64 then
-      	let result = Minus(Plus(Lift s_val, Lift a_val), Lift p_val) in
-      	let addr   = rel.elf64_ra_offset in
-      	return (Map.singleton addr
-          <| rel_desc_operation = result
-           ; rel_desc_range = Nothing
-           ; rel_desc_alignment_bits = 0
-           ; rel_desc_mask = (63, 0)
-           ; rel_desc_target = Data64
-           |>
-        )
-      (** Signed 32 bit width, calculation: S + A - P *)
-      else if rel_type = r_aarch64_prel32 then
-      	let result = Minus(Plus(Lift s_val, Lift a_val), Lift p_val) in
-      	let addr   = rel.elf64_ra_offset in
-      	return (Map.singleton addr
-          <| rel_desc_operation = result
-           ; rel_desc_range = Just (~(2**31), 2**32)
-           ; rel_desc_alignment_bits = 0
-           ; rel_desc_mask = (31, 0)
-           ; rel_desc_target = Data32
-           |>
-        )
-      else if rel_type = r_aarch64_adr_prel_pg_hi21 then
-      	let result = Minus(Apply(Page, Plus(Lift s_val, Lift a_val)), Apply(Page, Lift p_val)) in
-      	let addr   = rel.elf64_ra_offset in
-      	return (Map.singleton addr
-          <| rel_desc_operation = result
-           ; rel_desc_range = Just (~(2**32), 2**32)
-           ; rel_desc_alignment_bits = 0
-           ; rel_desc_mask = (32, 12)
-           ; rel_desc_target = ADRP
-           |>
-        )
-      else if rel_type = r_aarch64_add_abs_lo12_nc then
-      	let result = Plus(Lift s_val, Lift a_val) in
-      	let addr   = rel.elf64_ra_offset in
-      	return (Map.singleton addr
-          <| rel_desc_operation = result
-           ; rel_desc_range = Nothing
-           ; rel_desc_alignment_bits = 0
-           ; rel_desc_mask = (11, 0)
-           ; rel_desc_target = ADD
-           |>
-        )
-      else if rel_type = r_aarch64_ldst8_abs_lo12_nc then
-      	let result = Plus(Lift s_val, Lift a_val) in
-      	let addr   = rel.elf64_ra_offset in
-      	return (Map.singleton addr
-          <| rel_desc_operation = result
-           ; rel_desc_range = Nothing
-           ; rel_desc_alignment_bits = 0
-           ; rel_desc_mask = (11, 0)
-           ; rel_desc_target = LDST 0
-           |>
-        )
-      else if rel_type = r_aarch64_ldst16_abs_lo12_nc then
-      	let result = Plus(Lift s_val, Lift a_val) in
-      	let addr   = rel.elf64_ra_offset in
-      	return (Map.singleton addr
-          <| rel_desc_operation = result
-           ; rel_desc_range = Nothing
-           ; rel_desc_alignment_bits = 1
-           ; rel_desc_mask = (11, 1)
-           ; rel_desc_target = LDST 1
-           |>
-        )
-      else if rel_type = r_aarch64_ldst32_abs_lo12_nc then
-      	let result = Plus(Lift s_val, Lift a_val) in
-      	let addr   = rel.elf64_ra_offset in
-      	return (Map.singleton addr
-          <| rel_desc_operation = result
-           ; rel_desc_range = Nothing
-           ; rel_desc_alignment_bits = 2
-           ; rel_desc_mask = (11, 2)
-           ; rel_desc_target = LDST 2
-           |>
-        )
-      else if rel_type = r_aarch64_ldst64_abs_lo12_nc then
-      	let result = Plus(Lift s_val, Lift a_val) in
-      	let addr   = rel.elf64_ra_offset in
-      	return (Map.singleton addr
-          <| rel_desc_operation = result
-           ; rel_desc_range = Nothing
-           ; rel_desc_alignment_bits = 3
-           ; rel_desc_mask = (11, 3)
-           ; rel_desc_target = LDST 3
-           |>
-        )
-      else if rel_type = r_aarch64_ldst128_abs_lo12_nc then
-      	let result = Plus(Lift s_val, Lift a_val) in
-      	let addr   = rel.elf64_ra_offset in
-      	return (Map.singleton addr
-          <| rel_desc_operation = result
-           ; rel_desc_range = Nothing
-           ; rel_desc_alignment_bits = 4
-           ; rel_desc_mask = (11, 4)
-           ; rel_desc_target = LDST 4
-           |>
-        )
-      else if rel_type = r_aarch64_call26 then
-      	let result = Minus(Plus(Lift s_val, Lift a_val), Lift p_val) in
-      	let addr   = rel.elf64_ra_offset in
-      	return (Map.singleton addr
-          <| rel_desc_operation = result
-           ; rel_desc_range = Just (~(2**27), 2**27)
-           ; rel_desc_alignment_bits = 2
-           ; rel_desc_mask = (27, 2)
-           ; rel_desc_target = CALL
-           |>
-        )
-      else
-        fail ("Unsupported AARCH64 relocation type " ^ (string_of_aarch64_relocation_type rel_type))
+let abi_aarch64_apply_relocation_symbolic rel_type =
+  (** No width, no calculation *)
+  if rel_type = r_aarch64_none then
+    return Nothing
+  (** No width, no calculation *)
+  else if rel_type = r_aarch64_withdrawn then
+    return Nothing
+  (** Signed 64 bit width, calculation: S + A *)
+  else if rel_type = r_aarch64_abs64 then
+    let result = Plus(Lift S, Lift A) in
+    return (Just
+      <| rel_desc_operation = result
+        ; rel_desc_range = Nothing
+        ; rel_desc_alignment_bits = 0
+        ; rel_desc_mask = (63, 0)
+        ; rel_desc_target = Data64
+        |>
+    )
+  (** Signed 32 bit width, calculation: S + A *)
+  else if rel_type = r_aarch64_abs32 then
+    let result = Plus(Lift S, Lift A) in
+    return (Just
+      <| rel_desc_operation = result
+        ; rel_desc_range = Just (~(2**31), 2**32)
+        ; rel_desc_alignment_bits = 0
+        ; rel_desc_mask = (31, 0)
+        ; rel_desc_target = Data32
+        |>
+    )
+  (** Signed 64 bit width, calculation: S + A - P *)
+  else if rel_type = r_aarch64_prel64 then
+    let result = Minus(Plus(Lift S, Lift A), Lift P) in
+    return (Just
+      <| rel_desc_operation = result
+        ; rel_desc_range = Nothing
+        ; rel_desc_alignment_bits = 0
+        ; rel_desc_mask = (63, 0)
+        ; rel_desc_target = Data64
+        |>
+    )
+  (** Signed 32 bit width, calculation: S + A - P *)
+  else if rel_type = r_aarch64_prel32 then
+    let result = Minus(Plus(Lift S, Lift A), Lift P) in
+    return (Just
+      <| rel_desc_operation = result
+        ; rel_desc_range = Just (~(2**31), 2**32)
+        ; rel_desc_alignment_bits = 0
+        ; rel_desc_mask = (31, 0)
+        ; rel_desc_target = Data32
+        |>
+    )
+  else if rel_type = r_aarch64_adr_prel_pg_hi21 then
+    let result = Minus(Apply(Page, Plus(Lift S, Lift A)), Apply(Page, Lift P)) in
+    return (Just
+      <| rel_desc_operation = result
+        ; rel_desc_range = Just (~(2**32), 2**32)
+        ; rel_desc_alignment_bits = 0
+        ; rel_desc_mask = (32, 12)
+        ; rel_desc_target = ADRP
+        |>
+    )
+  else if rel_type = r_aarch64_add_abs_lo12_nc then
+    let result = Plus(Lift S, Lift A) in
+    return (Just
+      <| rel_desc_operation = result
+        ; rel_desc_range = Nothing
+        ; rel_desc_alignment_bits = 0
+        ; rel_desc_mask = (11, 0)
+        ; rel_desc_target = ADD
+        |>
+    )
+  else if rel_type = r_aarch64_ldst8_abs_lo12_nc then
+    let result = Plus(Lift S, Lift A) in
+    return (Just
+      <| rel_desc_operation = result
+        ; rel_desc_range = Nothing
+        ; rel_desc_alignment_bits = 0
+        ; rel_desc_mask = (11, 0)
+        ; rel_desc_target = LDST 0
+        |>
+    )
+  else if rel_type = r_aarch64_ldst16_abs_lo12_nc then
+    let result = Plus(Lift S, Lift A) in
+    return (Just
+      <| rel_desc_operation = result
+        ; rel_desc_range = Nothing
+        ; rel_desc_alignment_bits = 1
+        ; rel_desc_mask = (11, 1)
+        ; rel_desc_target = LDST 1
+        |>
+    )
+  else if rel_type = r_aarch64_ldst32_abs_lo12_nc then
+    let result = Plus(Lift S, Lift A) in
+    return (Just
+      <| rel_desc_operation = result
+        ; rel_desc_range = Nothing
+        ; rel_desc_alignment_bits = 2
+        ; rel_desc_mask = (11, 2)
+        ; rel_desc_target = LDST 2
+        |>
+    )
+  else if rel_type = r_aarch64_ldst64_abs_lo12_nc then
+    let result = Plus(Lift S, Lift A) in
+    return (Just
+      <| rel_desc_operation = result
+        ; rel_desc_range = Nothing
+        ; rel_desc_alignment_bits = 3
+        ; rel_desc_mask = (11, 3)
+        ; rel_desc_target = LDST 3
+        |>
+    )
+  else if rel_type = r_aarch64_ldst128_abs_lo12_nc then
+    let result = Plus(Lift S, Lift A) in
+    return (Just
+      <| rel_desc_operation = result
+        ; rel_desc_range = Nothing
+        ; rel_desc_alignment_bits = 4
+        ; rel_desc_mask = (11, 4)
+        ; rel_desc_target = LDST 4
+        |>
+    )
+  else if rel_type = r_aarch64_call26 then
+    let result = Minus(Plus(Lift S, Lift A), Lift P) in
+    return (Just
+      <| rel_desc_operation = result
+        ; rel_desc_range = Just (~(2**27), 2**27)
+        ; rel_desc_alignment_bits = 2
+        ; rel_desc_mask = (27, 2)
+        ; rel_desc_target = CALL
+        |>
+    )
   else
-  	fail "abi_aarch64_apply_relocation: not a relocatable file"
+    fail ("Unsupported AARCH64 relocation type " ^ (string_of_aarch64_relocation_type rel_type))
 
 let aarch64_relocation_target_to_data_target = function
   | Data32 -> return Elf_symbolic.Data32

@@ -17,6 +17,8 @@ open import Elf_header
 open import Elf_section_header_table
 open import Elf_interpreted_section
 
+type relocation_param = S | A | P
+
 type relocation_description 'res 'tar =
   <| rel_desc_operation : (relocation_operator_expression 'res)
    ; rel_desc_range     : maybe (integer * integer)
@@ -25,27 +27,30 @@ type relocation_description 'res 'tar =
    ; rel_desc_target    : 'tar
    |>
 
-let rec eval_op_exp op: error symbolic_expression =
+let rec eval_op_exp s_val a_val p_val op: error symbolic_expression =
+  let f = eval_op_exp s_val a_val p_val in
   match op with
-    | Lift x -> return x
+    | Lift S -> return s_val
+    | Lift A -> return a_val
+    | Lift P -> return p_val
     | Plus (x, y) ->
-        eval_op_exp x >>= fun a ->
-        eval_op_exp y >>= fun b ->
+        f x >>= fun a ->
+        f y >>= fun b ->
         return (BinOp (a, Add, b))
     | Minus (x, y) ->
-        eval_op_exp x >>= fun a ->
-        eval_op_exp y >>= fun b ->
+        f x >>= fun a ->
+        f y >>= fun b ->
         return (BinOp (a, Sub, b))
     | Apply(Page, x) ->
-        eval_op_exp x >>= fun a ->
+        f x >>= fun a ->
         return (BinOp (a, And, UnOp (Not, Const 4095 (*0xFFF*))))
     | _ -> fail "Not supported"
   end
 
-let eval_relocation desc =
+let eval_relocation s_val a_val p_val desc=
   let (hi, lo) = desc.rel_desc_mask in
   
-  eval_op_exp desc.rel_desc_operation >>= fun value ->
+  eval_op_exp s_val a_val p_val desc.rel_desc_operation >>= fun value ->
     match desc.rel_desc_range with
     | Just (min, max) -> return (AssertRange(value, min, max))
     | Nothing -> return value
@@ -58,17 +63,25 @@ let eval_relocation desc =
   >>= fun value ->
     return <| arel_value = Mask(value, hi, lo) ; arel_target = desc.rel_desc_target |>
 
-type relocation_spec 'a = elf64_relocation_a -> symbolic_expression -> symbolic_expression -> elf64_file ->
-  error (Map.map elf64_addr (relocation_description symbolic_expression 'a))
+type relocation_spec 'a = natural -> error (maybe (relocation_description relocation_param 'a))
 
 val abi_relocation_interpreter : forall 'a. relocation_spec 'a -> relocation_interpreter 'a
 let abi_relocation_interpreter spec ef symtab sidx rel =
-  section_with_offset ef sidx rel.elf64_ra_offset >>= fun p_val ->
-  let (_, sym) = parse_elf64_relocation_info rel.elf64_ra_info in
-  match symbolic_address_of_symbol ef symtab (natFromNatural sym) with
-    | Just x -> x
-    | Nothing -> fail "Invalid symbol table index"
-  end >>= fun s_val ->
-    spec rel s_val p_val ef >>= fun rel_desc_map ->
-    map_mapM eval_relocation rel_desc_map
+  if is_elf64_relocatable_file ef.elf64_file_header then
+    section_with_offset ef sidx rel.elf64_ra_offset >>= fun p_val ->
+    let (rel_type, sym) = parse_elf64_relocation_info rel.elf64_ra_info in
+    let a_val = Const (integer_of_elf64_sxword rel.elf64_ra_addend) in
+    let addr = rel.elf64_ra_offset in
+    match symbolic_address_of_symbol ef symtab (natFromNatural sym) with
+      | Just x -> x
+      | Nothing -> fail "Invalid symbol table index"
+    end >>= fun s_val ->
+      spec rel_type >>= function
+      | Nothing -> return Map.empty
+      | Just rel_desc ->
+          eval_relocation s_val a_val p_val rel_desc >>= fun x ->
+          return (Map.singleton addr x)
+      end
+  else
+    fail "abi_relocation_interpreter: not a relocatable file"
 
