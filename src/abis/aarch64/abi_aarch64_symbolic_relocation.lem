@@ -23,6 +23,8 @@ type aarch64_relocation_target
   | ADD
   | LDST of int
   | CALL
+  | CONDBR
+  | B
 
 val abi_aarch64_apply_relocation_symbolic : relocation_spec aarch64_relocation_target
 let abi_aarch64_apply_relocation_symbolic rel_type =
@@ -155,7 +157,27 @@ let abi_aarch64_apply_relocation_symbolic rel_type =
         ; rel_desc_mask = (27, 2)
         ; rel_desc_target = CALL
         |>
-    )
+        )
+  else if rel_type = r_aarch64_condbr19 then
+    let result = Minus(Plus(Lift S, Lift A), Lift P) in
+    return (Just
+      <| rel_desc_operation = result
+        ; rel_desc_range = Just (~(2**20), 2**20)
+        ; rel_desc_alignment_bits = 2
+        ; rel_desc_mask = (20, 2)
+        ; rel_desc_target = CONDBR
+        |>
+        )
+  else if rel_type = r_aarch64_jump26 then
+    let result = Minus(Plus(Lift S, Lift A), Lift P) in
+    return (Just
+      <| rel_desc_operation = result
+        ; rel_desc_range = Just (~(2**27), 2**27)
+        ; rel_desc_alignment_bits = 2
+        ; rel_desc_mask = (27, 2)
+        ; rel_desc_target = B
+        |>
+        )
   else
     fail ("Unsupported AARCH64 relocation type " ^ (string_of_aarch64_relocation_type rel_type))
 
