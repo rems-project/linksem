@@ -36,9 +36,6 @@ type symbolic_expression
   | Const of integer
   | BinOp of (symbolic_expression * binary_operation * symbolic_expression)
   | UnOp of (unary_operation * symbolic_expression)
-  | AssertRange of (symbolic_expression * integer * integer)
-  | AssertAlignment of (symbolic_expression * natural)
-  | Mask of (symbolic_expression * natural * natural)
 
 let rec pp_sym_expr sx = match sx with
   | Section s -> s
@@ -47,9 +44,6 @@ let rec pp_sym_expr sx = match sx with
   | BinOp (a, Sub, b) -> "(" ^ (pp_sym_expr a) ^ "-" ^ (pp_sym_expr b) ^ ")"
   | BinOp (a, And, b) -> "(" ^ (pp_sym_expr a) ^ "&" ^ (pp_sym_expr b) ^ ")"
   | UnOp (Not, b) -> "(" ^ "~" ^ (pp_sym_expr b) ^ ")"
-  | AssertRange (x, a, b) -> pp_sym_expr x ^ "!" (*TODO*)
-  | AssertAlignment (x, a) -> pp_sym_expr x ^ "!" (*TODO*)
-  | Mask (x, a, b) -> pp_sym_expr x ^ "[" ^ (show a) ^ ":" ^ (show b) ^ "]"
 end
 
 val section_with_offset : elf64_file -> elf64_half -> elf64_addr -> error symbolic_expression
@@ -77,11 +71,27 @@ let symbolic_address_of_symbol f symtab sym =
 
 (* Relocation expressions *)
 
+type safety_check =
+| Overflow of (integer * integer)
+| Alignment of natural
+
+type relocation_description 'v 'tar =
+<| rel_desc_value     : 'v
+ ; rel_desc_checks    : list safety_check
+ ; rel_desc_mask      : (natural * natural)
+ ; rel_desc_target    : 'tar
+ |>
+
+let relocation_map_target f desc =
+  f desc.rel_desc_target >>= fun target ->
+  return <| rel_desc_value = desc.rel_desc_value
+          ; rel_desc_checks = desc.rel_desc_checks
+          ; rel_desc_mask = desc.rel_desc_mask
+          ; rel_desc_target = target
+          |>
+
 (* TODO rename *)
-type abstract_relocation 'a =
-  <| arel_value  : symbolic_expression
-   ; arel_target : 'a
-   |>
+type abstract_relocation 'a = relocation_description symbolic_expression 'a
 
 type reloc_target_data =
   | Data32
@@ -98,10 +108,7 @@ type relocation_interpreter 'a = elf64_file -> elf64_symbol_table -> elf64_half 
 let relocation_interpreter_map_target interp conv ef symtab sidx rel =
   interp ef symtab sidx rel >>= fun arels ->
   map_mapM (fun arel ->
-    conv arel.arel_target >>= fun target ->
-    return <| arel_value = arel.arel_value
-            ; arel_target = target
-            |>
+    relocation_map_target conv arel
   ) arels
 
 val extract_elf64_relocations_for_section' : forall 'a. elf64_file -> relocation_interpreter 'a -> elf64_half -> error (Map.map elf64_addr (abstract_relocation 'a))

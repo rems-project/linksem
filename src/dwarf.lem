@@ -159,9 +159,9 @@ let rec sym_integer_of_symbolic_expression x = match x with
   | Const x -> sym_integer_const x
   | BinOp (x, Add, y) -> (sym_integer_of_symbolic_expression x) + (sym_integer_of_symbolic_expression y)
   | BinOp (x, Sub, y) -> (sym_integer_of_symbolic_expression x) - (sym_integer_of_symbolic_expression y)
-  | AssertRange (x, _, _) -> sym_integer_of_symbolic_expression x (*TODO*)
+  (* | AssertRange (x, _, _) -> sym_integer_of_symbolic_expression x (*TODO*)
   | AssertAlignment (x, _) -> sym_integer_of_symbolic_expression x (*TODO*)
-  | Mask (x, _, _) -> sym_integer_of_symbolic_expression x (*TODO*)
+  | Mask (x, _, _) -> sym_integer_of_symbolic_expression x TODO *)
 end
 
 let sym_natural_of_symbolic_expression x =
@@ -196,8 +196,8 @@ let construct_sym_byte_sequence bs rel =
     (
       natural_of_elf64_addr pos,
       (
-        reloc_width_bytes rel.arel_target,
-        sym_natural_of_symbolic_expression rel.arel_value
+        reloc_width_bytes rel.rel_desc_target,
+        sym_natural_of_symbolic_expression rel.rel_desc_value
       )
     )
   ) rel_list in

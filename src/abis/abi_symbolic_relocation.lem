@@ -19,14 +19,6 @@ open import Elf_interpreted_section
 
 type relocation_param = S | A | P
 
-type relocation_description 'res 'tar =
-  <| rel_desc_operation : (relocation_operator_expression 'res)
-   ; rel_desc_range     : maybe (integer * integer)
-   ; rel_desc_alignment_bits : natural
-   ; rel_desc_mask      : (natural * natural)
-   ; rel_desc_target    : 'tar
-   |>
-
 let rec eval_op_exp s_val a_val p_val op: error symbolic_expression =
   let f = eval_op_exp s_val a_val p_val in
   match op with
@@ -48,22 +40,20 @@ let rec eval_op_exp s_val a_val p_val op: error symbolic_expression =
   end
 
 let eval_relocation s_val a_val p_val desc=
-  let (hi, lo) = desc.rel_desc_mask in
-  
-  eval_op_exp s_val a_val p_val desc.rel_desc_operation >>= fun value ->
-    match desc.rel_desc_range with
-    | Just (min, max) -> return (AssertRange(value, min, max))
-    | Nothing -> return value
-    end
-  >>= fun value ->
-    match desc.rel_desc_alignment_bits with
-    | 0 -> return value
-    | x -> return (AssertAlignment(value, x))
-    end
-  >>= fun value ->
-    return <| arel_value = Mask(value, hi, lo) ; arel_target = desc.rel_desc_target |>
+  eval_op_exp s_val a_val p_val desc.rel_desc_value >>= fun value ->
+  return <| rel_desc_value = value
+          ; rel_desc_checks = desc.rel_desc_checks
+          ; rel_desc_mask = desc.rel_desc_mask
+          ; rel_desc_target = desc.rel_desc_target
+          |>
 
-type relocation_spec 'a = natural -> error (maybe (relocation_description relocation_param 'a))
+type relocation_spec 'a = natural -> error (maybe (relocation_description (relocation_operator_expression relocation_param) 'a))
+
+let relocation_spec_map_target f spec rel_type =
+  spec rel_type >>= function
+  | Nothing -> return Nothing
+  | Just desc -> return (Just (relocation_map_target f desc))
+  end
 
 val abi_relocation_interpreter : forall 'a. relocation_spec 'a -> relocation_interpreter 'a
 let abi_relocation_interpreter spec ef symtab sidx rel =

@@ -38,9 +38,8 @@ let abi_aarch64_apply_relocation_symbolic rel_type =
   else if rel_type = r_aarch64_abs64 then
     let result = Plus(Lift S, Lift A) in
     return (Just
-      <| rel_desc_operation = result
-        ; rel_desc_range = Nothing
-        ; rel_desc_alignment_bits = 0
+      <| rel_desc_value = result
+        ; rel_desc_checks = []
         ; rel_desc_mask = (63, 0)
         ; rel_desc_target = Data64
         |>
@@ -49,9 +48,8 @@ let abi_aarch64_apply_relocation_symbolic rel_type =
   else if rel_type = r_aarch64_abs32 then
     let result = Plus(Lift S, Lift A) in
     return (Just
-      <| rel_desc_operation = result
-        ; rel_desc_range = Just (~(2**31), 2**32)
-        ; rel_desc_alignment_bits = 0
+      <| rel_desc_value = result
+        ; rel_desc_checks = [Overflow (~(2**31), 2**32)]
         ; rel_desc_mask = (31, 0)
         ; rel_desc_target = Data32
         |>
@@ -60,9 +58,8 @@ let abi_aarch64_apply_relocation_symbolic rel_type =
   else if rel_type = r_aarch64_prel64 then
     let result = Minus(Plus(Lift S, Lift A), Lift P) in
     return (Just
-      <| rel_desc_operation = result
-        ; rel_desc_range = Nothing
-        ; rel_desc_alignment_bits = 0
+      <| rel_desc_value = result
+        ; rel_desc_checks = []
         ; rel_desc_mask = (63, 0)
         ; rel_desc_target = Data64
         |>
@@ -71,9 +68,8 @@ let abi_aarch64_apply_relocation_symbolic rel_type =
   else if rel_type = r_aarch64_prel32 then
     let result = Minus(Plus(Lift S, Lift A), Lift P) in
     return (Just
-      <| rel_desc_operation = result
-        ; rel_desc_range = Just (~(2**31), 2**32)
-        ; rel_desc_alignment_bits = 0
+      <| rel_desc_value = result
+        ; rel_desc_checks = [Overflow (~(2**31), 2**32)]
         ; rel_desc_mask = (31, 0)
         ; rel_desc_target = Data32
         |>
@@ -81,9 +77,8 @@ let abi_aarch64_apply_relocation_symbolic rel_type =
   else if rel_type = r_aarch64_adr_prel_pg_hi21 then
     let result = Minus(Apply(Page, Plus(Lift S, Lift A)), Apply(Page, Lift P)) in
     return (Just
-      <| rel_desc_operation = result
-        ; rel_desc_range = Just (~(2**32), 2**32)
-        ; rel_desc_alignment_bits = 0
+      <| rel_desc_value = result
+        ; rel_desc_checks = [Overflow (~(2**32), 2**32)]
         ; rel_desc_mask = (32, 12)
         ; rel_desc_target = ADRP
         |>
@@ -91,9 +86,8 @@ let abi_aarch64_apply_relocation_symbolic rel_type =
   else if rel_type = r_aarch64_add_abs_lo12_nc then
     let result = Plus(Lift S, Lift A) in
     return (Just
-      <| rel_desc_operation = result
-        ; rel_desc_range = Nothing
-        ; rel_desc_alignment_bits = 0
+      <| rel_desc_value = result
+        ; rel_desc_checks = []
         ; rel_desc_mask = (11, 0)
         ; rel_desc_target = ADD
         |>
@@ -101,9 +95,8 @@ let abi_aarch64_apply_relocation_symbolic rel_type =
   else if rel_type = r_aarch64_ldst8_abs_lo12_nc then
     let result = Plus(Lift S, Lift A) in
     return (Just
-      <| rel_desc_operation = result
-        ; rel_desc_range = Nothing
-        ; rel_desc_alignment_bits = 0
+      <| rel_desc_value = result
+        ; rel_desc_checks = []
         ; rel_desc_mask = (11, 0)
         ; rel_desc_target = LDST 0
         |>
@@ -111,9 +104,8 @@ let abi_aarch64_apply_relocation_symbolic rel_type =
   else if rel_type = r_aarch64_ldst16_abs_lo12_nc then
     let result = Plus(Lift S, Lift A) in
     return (Just
-      <| rel_desc_operation = result
-        ; rel_desc_range = Nothing
-        ; rel_desc_alignment_bits = 1
+      <| rel_desc_value = result
+        ; rel_desc_checks = [Alignment 1]
         ; rel_desc_mask = (11, 1)
         ; rel_desc_target = LDST 1
         |>
@@ -121,9 +113,8 @@ let abi_aarch64_apply_relocation_symbolic rel_type =
   else if rel_type = r_aarch64_ldst32_abs_lo12_nc then
     let result = Plus(Lift S, Lift A) in
     return (Just
-      <| rel_desc_operation = result
-        ; rel_desc_range = Nothing
-        ; rel_desc_alignment_bits = 2
+      <| rel_desc_value = result
+        ; rel_desc_checks = [Alignment 2]
         ; rel_desc_mask = (11, 2)
         ; rel_desc_target = LDST 2
         |>
@@ -131,9 +122,8 @@ let abi_aarch64_apply_relocation_symbolic rel_type =
   else if rel_type = r_aarch64_ldst64_abs_lo12_nc then
     let result = Plus(Lift S, Lift A) in
     return (Just
-      <| rel_desc_operation = result
-        ; rel_desc_range = Nothing
-        ; rel_desc_alignment_bits = 3
+      <| rel_desc_value = result
+        ; rel_desc_checks = [Alignment 3]
         ; rel_desc_mask = (11, 3)
         ; rel_desc_target = LDST 3
         |>
@@ -141,9 +131,8 @@ let abi_aarch64_apply_relocation_symbolic rel_type =
   else if rel_type = r_aarch64_ldst128_abs_lo12_nc then
     let result = Plus(Lift S, Lift A) in
     return (Just
-      <| rel_desc_operation = result
-        ; rel_desc_range = Nothing
-        ; rel_desc_alignment_bits = 4
+      <| rel_desc_value = result
+        ; rel_desc_checks = [Alignment 4]
         ; rel_desc_mask = (11, 4)
         ; rel_desc_target = LDST 4
         |>
@@ -151,9 +140,8 @@ let abi_aarch64_apply_relocation_symbolic rel_type =
   else if rel_type = r_aarch64_call26 then
     let result = Minus(Plus(Lift S, Lift A), Lift P) in
     return (Just
-      <| rel_desc_operation = result
-        ; rel_desc_range = Just (~(2**27), 2**27)
-        ; rel_desc_alignment_bits = 2
+      <| rel_desc_value = result
+        ; rel_desc_checks = [Overflow (~(2**27), 2**27); Alignment 2]
         ; rel_desc_mask = (27, 2)
         ; rel_desc_target = CALL
         |>
@@ -161,9 +149,8 @@ let abi_aarch64_apply_relocation_symbolic rel_type =
   else if rel_type = r_aarch64_condbr19 then
     let result = Minus(Plus(Lift S, Lift A), Lift P) in
     return (Just
-      <| rel_desc_operation = result
-        ; rel_desc_range = Just (~(2**20), 2**20)
-        ; rel_desc_alignment_bits = 2
+      <| rel_desc_value = result
+        ; rel_desc_checks = [Overflow (~(2**20), 2**20); Alignment 2]
         ; rel_desc_mask = (20, 2)
         ; rel_desc_target = CONDBR
         |>
@@ -171,9 +158,8 @@ let abi_aarch64_apply_relocation_symbolic rel_type =
   else if rel_type = r_aarch64_jump26 then
     let result = Minus(Plus(Lift S, Lift A), Lift P) in
     return (Just
-      <| rel_desc_operation = result
-        ; rel_desc_range = Just (~(2**27), 2**27)
-        ; rel_desc_alignment_bits = 2
+      <| rel_desc_value = result
+        ; rel_desc_checks = [Overflow (~(2**27), 2**27); Alignment 2]
         ; rel_desc_mask = (27, 2)
         ; rel_desc_target = B
         |>
