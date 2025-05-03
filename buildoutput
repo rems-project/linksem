@@ -1,5 +1,0 @@
-make -C src
-make[1]: Entering directory '/home/matej/Documents/cam/IIproj/linksem/src'
-OCAMLPATH is 
-make[1]: Nothing to be done for 'default'.
-make[1]: Leaving directory '/home/matej/Documents/cam/IIproj/linksem/src'
