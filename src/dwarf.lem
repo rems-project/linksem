@@ -803,6 +803,7 @@ type sdt_variable_or_formal_parameter =
   svfp_const_value : maybe sym_integer;
   svfp_external : bool;
   svfp_declaration : bool;
+  svfp_locations_frame_base : maybe (list (sym_natural * sym_natural * list operation));
   svfp_locations : maybe (list (sym_natural * sym_natural * list operation (*the parsed single_location_description*)));
   svfp_decl : maybe unpacked_decl;
 |>
@@ -5269,15 +5270,11 @@ let rec closest_enclosing_frame_base dloc (base_address: sym_natural) (parents: 
       end
   end
 
-
-
-
-let interpreted_location_of_die c cuh str (dloc: location_list_list) (dranges: range_list_list) (base_address: sym_natural) (parents: list die) (die: die) : maybe (list (sym_natural * sym_natural * single_location_description)) =
-
+let interpreted_location c cuh str (dloc: location_list_list) (dranges: range_list_list) (base_address: sym_natural) (parents: list die) loc : maybe (list (sym_natural * sym_natural * single_location_description)) =
   (* for a simple location expression bs, we look in the enclosing die
   tree to find the associated pc range *)
   let location bs =
-    match closest_enclosing_range c cuh str dranges base_address (die::parents) with
+    match closest_enclosing_range c cuh str dranges base_address parents with
     | Just nns ->
         Just (List.map (fun (n1,n2) -> (n1,n2,bs)) nns)
     | Nothing ->
@@ -5285,7 +5282,7 @@ let interpreted_location_of_die c cuh str (dloc: location_list_list) (dranges: r
         Just [(0,(arithmetic_context_of_cuh cuh).ac_max,bs)]
     end in
 
-  match find_attribute_value "DW_AT_location" die with
+  match loc with
   | Just (AV_exprloc n bs) -> location bs
   | Just (AV_block n bs) -> location bs
   (* while for a location list, we take the associated pc range from
@@ -5296,7 +5293,9 @@ let interpreted_location_of_die c cuh str (dloc: location_list_list) (dranges: r
   | Nothing -> Nothing
   end
 
-
+let interpreted_location_of_die c cuh str (dloc: location_list_list) (dranges: range_list_list) (base_address: sym_natural) (parents: list die) (die: die) : maybe (list (sym_natural * sym_natural * single_location_description)) =
+  let loc = find_attribute_value "DW_AT_location" die in
+  interpreted_location c cuh str dloc dranges base_address (die::parents) loc
 
 val analyse_locations : dwarf -> analysed_location_data
 let analyse_locations (d: dwarf) : analysed_location_data =
@@ -6018,6 +6017,8 @@ let rec mk_sdt_variable_or_formal_parameter (d:dwarf) subprogram_line_extents cu
     (* find aDW_AT_specification die, if it exists. TODO: how should this interact with abstract origins? *)
     let mcupdie_spec = find_reference_attribute_of_die c d cu d.d_str "DW_AT_specification" die in
     
+    let base_address = cu_base_address cu in
+
     Just (
     <|
     svfp_cupdie = cupdie;
@@ -6035,8 +6036,11 @@ let rec mk_sdt_variable_or_formal_parameter (d:dwarf) subprogram_line_extents cu
     svfp_const_value = find_integer_attribute_value_of_die c "DW_AT_const_value" die;
     svfp_external = match find_flag_attribute_value_of_die_using_abstract_origin d "DW_AT_external" cupdie with Just b -> b | Nothing -> false end;
     svfp_declaration = match find_flag_attribute_value_of_die_using_abstract_origin d "DW_AT_declaration" cupdie with Just b -> b | Nothing -> false end;
+    svfp_locations_frame_base =
+      let frame_base = closest_enclosing_frame_base d.d_loc base_address (die::parents) in
+      let interpreted_frame_base = interpreted_location c cu.cu_header d.d_str d.d_loc d.d_ranges base_address (die::parents) frame_base in
+      Maybe.map (fun nnbss -> List.map (fun (n1,n2,bs) -> (n1,n2,parse_operations_bs c cu.cu_header bs)) nnbss) interpreted_frame_base;
     svfp_locations =
-      let base_address = cu_base_address cu in
       let interpreted_locations : maybe (list (sym_natural * sym_natural * single_location_description)) =
         interpreted_location_of_die c cu.cu_header d.d_str d.d_loc d.d_ranges base_address parents die in
       Maybe.map (fun nnbss -> List.map (fun (n1,n2,bs) -> (n1,n2,parse_operations_bs c cu.cu_header bs)) nnbss) interpreted_locations;
