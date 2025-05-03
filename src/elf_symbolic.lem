@@ -91,7 +91,7 @@ let relocation_map_target f desc =
           |>
 
 (* TODO rename *)
-type abstract_relocation 'a = relocation_description symbolic_expression 'a
+type universal_relocation 'a = relocation_description symbolic_expression 'a
 
 type reloc_target_data =
   | Data32
@@ -103,7 +103,7 @@ let reloc_width_bytes : reloc_target_data -> natural = function
 end
 
 type relocation_interpreter 'a = elf64_file -> elf64_symbol_table -> elf64_half -> elf64_relocation_a ->
-  error (Map.map elf64_addr (abstract_relocation 'a))
+  error (Map.map elf64_addr (universal_relocation 'a))
 
 let relocation_interpreter_map_target interp conv ef symtab sidx rel =
   interp ef symtab sidx rel >>= fun arels ->
@@ -111,7 +111,7 @@ let relocation_interpreter_map_target interp conv ef symtab sidx rel =
     relocation_map_target conv arel
   ) arels
 
-val extract_elf64_relocations_for_section' : forall 'a. elf64_file -> relocation_interpreter 'a -> elf64_half -> error (Map.map elf64_addr (abstract_relocation 'a))
+val extract_elf64_relocations_for_section' : forall 'a. elf64_file -> relocation_interpreter 'a -> elf64_half -> error (Map.map elf64_addr (universal_relocation 'a))
 let extract_elf64_relocations_for_section' f1 interp sidx =
   let hdr       = f1.elf64_file_header in
   let sections   = f1.elf64_file_interpreted_sections in
@@ -136,7 +136,7 @@ let extract_elf64_relocations_for_section' f1 interp sidx =
   | _ -> fail "Multiple relocation sections for this section"
 end
 
-val extract_elf64_relocations_for_section : forall 'a. elf64_file -> relocation_interpreter 'a -> string -> error (Map.map elf64_addr (abstract_relocation 'a))
+val extract_elf64_relocations_for_section : forall 'a. elf64_file -> relocation_interpreter 'a -> string -> error (Map.map elf64_addr (universal_relocation 'a))
 let extract_elf64_relocations_for_section f1 interp section_name =
   match List.findIndices
     (fun x -> x.elf64_section_name_as_string = section_name)
