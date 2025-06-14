@@ -4868,7 +4868,8 @@ let analyse_type_info_top c (d: dwarf) (r:bool(*recurse into members*)) (cupdie:
             let typ' = strict s (find_DW_AT_type_of_die c d cu d.d_str die') in
             let mdata_member_location' =
               match atk with
-              | Atk_structure -> Just (strict s (find_natural_attribute_value_of_die c "DW_AT_data_member_location" die'))
+(* PS 2025-06-10 make the DW_AT_data_member_location non-strict so that it doesn't fail on struct bitfield members, which have a DW_AT_bit_size and DW_AT_data_bit_offset instead. TODO: support those properly *)
+              | Atk_structure -> (*Just*) ((*strict s*) (find_natural_attribute_value_of_die c "DW_AT_data_member_location" die'))
               | Atk_union -> (find_natural_attribute_value_of_die c "DW_AT_data_member_location" die') 
               end in 
             (cupdie',mname',typ',mdata_member_location'))
