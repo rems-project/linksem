@@ -1,0 +1,207 @@
+open import Num
+open import Show
+open import Bool Basic_classes
+
+class (SymEq 'a)
+  val sym_eq : 'a -> 'a -> bool
+end
+
+(* =========== *)
+(* sym_natural *)
+(* =========== *)
+type sym_natural
+declare ocaml    target_rep type sym_natural = `Sym_ocaml.Num.t`
+
+val sym_natural_const : natural -> sym_natural
+declare ocaml    target_rep function sym_natural_const = `Sym_ocaml.Num.of_num`
+
+val sym_natural_section : string -> sym_natural
+declare ocaml    target_rep function sym_natural_section = `Sym_ocaml.Num.section`
+
+val sym_natural_expect_const : sym_natural -> natural
+declare ocaml    target_rep function sym_natural_expect_const = `Sym_ocaml.Num.to_num`
+
+val sym_natural_map : (natural -> natural) -> sym_natural -> sym_natural
+declare ocaml    target_rep function sym_natural_map = `Sym_ocaml.Num.map`
+
+val sym_natural_map2 : (natural -> natural -> natural) -> sym_natural -> sym_natural -> sym_natural
+declare ocaml    target_rep function sym_natural_map2 = `Sym_ocaml.Num.map2`
+
+instance (Numeral sym_natural)
+  let fromNumeral = fun x -> sym_natural_const (fromNumeral x)
+end
+
+val sym_natural_pp : (natural -> string) -> sym_natural -> string
+declare ocaml    target_rep function sym_natural_pp = `Sym_ocaml.Num.ppf`
+
+instance (Show sym_natural)
+  let show = sym_natural_pp show
+end
+
+val sym_natural_add : sym_natural -> sym_natural -> sym_natural
+declare ocaml    target_rep function sym_natural_add = `Sym_ocaml.Num.add`
+
+
+instance (NumAdd sym_natural)
+  let (+) = sym_natural_add
+end
+
+val sym_natural_sub : sym_natural -> sym_natural -> sym_natural
+declare ocaml    target_rep function sym_natural_sub = `Sym_ocaml.Num.sub_nat`
+
+instance (NumMinus sym_natural)
+  let (-) = sym_natural_sub
+end
+
+val sym_natural_mul : sym_natural -> sym_natural -> sym_natural
+declare ocaml    target_rep function sym_natural_mul = `Sym_ocaml.Num.mul`
+
+instance (NumMult sym_natural)
+  let ( * ) = sym_natural_mul
+end
+
+val sym_natural_div : sym_natural -> sym_natural -> sym_natural
+declare ocaml    target_rep function sym_natural_div = `Sym_ocaml.Num.div`
+
+instance (NumDivision sym_natural)
+  let (/) = sym_natural_div
+end
+
+val sym_natural_mod : sym_natural -> sym_natural -> sym_natural
+declare ocaml    target_rep function sym_natural_mod = `Sym_ocaml.Num.modulus`
+
+instance (NumRemainder sym_natural)
+  let (mod) = sym_natural_mod
+end
+
+val sym_natural_compare : sym_natural -> sym_natural -> ordering
+val sym_natural_less : sym_natural -> sym_natural -> bool
+val sym_natural_less_equal : sym_natural -> sym_natural -> bool
+val sym_natural_greater : sym_natural -> sym_natural -> bool
+val sym_natural_greater_equal : sym_natural -> sym_natural -> bool
+val sym_natural_eq : sym_natural -> sym_natural -> bool
+
+declare ocaml    target_rep function sym_natural_compare = `Sym_ocaml.Num.compare`
+declare ocaml    target_rep function sym_natural_less = `Sym_ocaml.Num.less`
+declare ocaml    target_rep function sym_natural_less_equal = `Sym_ocaml.Num.less_equal`
+declare ocaml    target_rep function sym_natural_greater = `Sym_ocaml.Num.greater`
+declare ocaml    target_rep function sym_natural_greater_equal = `Sym_ocaml.Num.greater_equal`
+declare ocaml    target_rep function sym_natural_eq = `Sym_ocaml.Num.equal`
+
+instance (Ord sym_natural)
+  let compare = sym_natural_compare
+  let (<) = sym_natural_less
+  let (<=) = sym_natural_less_equal
+  let (>) = sym_natural_greater
+  let (>=) = sym_natural_greater_equal
+end
+
+instance (SymEq sym_natural)
+  let sym_eq = sym_natural_eq
+end
+
+
+(* =========== *)
+(* sym_integer *)
+(* =========== *)
+type sym_integer
+declare ocaml    target_rep type sym_integer = `Sym_ocaml.Num.t`
+
+val sym_integer_const : integer -> sym_integer
+declare ocaml    target_rep function sym_integer_const = `Sym_ocaml.Num.of_num`
+
+val sym_integer_section : string -> sym_integer
+declare ocaml    target_rep function sym_integer_section = `Sym_ocaml.Num.section`
+
+val sym_integer_expect_const : sym_integer -> integer
+declare ocaml    target_rep function sym_integer_expect_const = `Sym_ocaml.Num.to_num`
+
+val sym_integer_map : (integer -> integer) -> sym_integer -> sym_integer
+declare ocaml    target_rep function sym_integer_map = `Sym_ocaml.Num.map`
+
+val sym_integer_map2 : (integer -> integer -> integer) -> sym_integer -> sym_integer -> sym_integer
+declare ocaml    target_rep function sym_integer_map2 = `Sym_ocaml.Num.map2`
+
+instance (Numeral sym_integer)
+  let fromNumeral = fun x -> sym_integer_const (fromNumeral x)
+end
+
+val sym_integer_pp : (integer -> string) -> sym_integer -> string
+declare ocaml    target_rep function sym_integer_pp = `Sym_ocaml.Num.ppf`
+
+instance (Show sym_integer)
+  let show = sym_integer_pp show
+end
+
+val sym_integer_add : sym_integer -> sym_integer -> sym_integer
+declare ocaml    target_rep function sym_integer_add = `Sym_ocaml.Num.add`
+
+
+instance (NumAdd sym_integer)
+  let (+) = sym_integer_add
+end
+
+val sym_integer_sub : sym_integer -> sym_integer -> sym_integer
+declare ocaml    target_rep function sym_integer_sub = `Sym_ocaml.Num.sub`
+
+instance (NumMinus sym_integer)
+  let (-) = sym_integer_sub
+end
+
+val sym_integer_mul : sym_integer -> sym_integer -> sym_integer
+declare ocaml    target_rep function sym_integer_mul = `Sym_ocaml.Num.mul`
+
+instance (NumMult sym_integer)
+  let ( * ) = sym_integer_mul
+end
+
+val sym_integer_div : sym_integer -> sym_integer -> sym_integer
+declare ocaml    target_rep function sym_integer_div = `Sym_ocaml.Num.div`
+
+instance (NumDivision sym_integer)
+  let (/) = sym_integer_div
+end
+
+val sym_integer_mod : sym_integer -> sym_integer -> sym_integer
+declare ocaml    target_rep function sym_integer_mod = `Sym_ocaml.Num.modulus`
+
+instance (NumRemainder sym_integer)
+  let (mod) = sym_integer_mod
+end
+
+val sym_integer_compare : sym_integer -> sym_integer -> ordering
+val sym_integer_less : sym_integer -> sym_integer -> bool
+val sym_integer_less_equal : sym_integer -> sym_integer -> bool
+val sym_integer_greater : sym_integer -> sym_integer -> bool
+val sym_integer_greater_equal : sym_integer -> sym_integer -> bool
+val sym_integer_eq : sym_integer -> sym_integer -> bool
+
+declare ocaml    target_rep function sym_integer_compare = `Sym_ocaml.Num.compare`
+declare ocaml    target_rep function sym_integer_less = `Sym_ocaml.Num.less`
+declare ocaml    target_rep function sym_integer_less_equal = `Sym_ocaml.Num.less_equal`
+declare ocaml    target_rep function sym_integer_greater = `Sym_ocaml.Num.greater`
+declare ocaml    target_rep function sym_integer_greater_equal = `Sym_ocaml.Num.greater_equal`
+declare ocaml    target_rep function sym_integer_eq = `Sym_ocaml.Num.equal`
+
+instance (Ord sym_integer)
+  let compare = sym_integer_compare
+  let (<) = sym_integer_less
+  let (<=) = sym_integer_less_equal
+  let (>) = sym_integer_greater
+  let (>=) = sym_integer_greater_equal
+end
+
+instance (SymEq sym_integer)
+  let sym_eq = sym_integer_eq
+end
+
+(* ======== *)
+(*   from   *)
+(* ======== *)
+
+val symIntegerFromNatural : sym_natural -> sym_integer
+declare ocaml    target_rep function symIntegerFromNatural x= ``x
+
+val partialSymNaturalFromInteger : sym_integer -> sym_natural
+declare ocaml    target_rep function partialSymNaturalFromInteger = `Sym_ocaml.Num.expect_nonneg`
+      

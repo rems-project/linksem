@@ -1,5 +1,7 @@
 open import Basic_classes
 open import List
+open import Map
+open import Map_extra
 open import Maybe
 open import Num
 open import String
@@ -128,3 +130,7 @@ let string_of_error e =
 instance forall 'a. Show 'a => (Show (error 'a))
   let show = string_of_error
 end
+
+let map_mapM f mp =
+  mapM (fun (k, v) -> f v >>= fun v -> return (k, v)) (Map_extra.toList mp) >>= fun xs ->
+    return (Map.fromList xs)

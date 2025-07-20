@@ -32,11 +32,14 @@ open import Elf_file
 open import Elf_program_header_table
 open import Elf_section_header_table
 open import Elf_types_native_uint
+open import Elf_symbolic
 
 open import Harness_interface
 open import Sail_interface
 
+open import Abi_symbolic_relocation
 open import Abi_aarch64_relocation
+open import Abi_aarch64_symbolic_relocation
 
 open import Abi_amd64_elf_header
 open import Abi_amd64_relocation
@@ -186,7 +189,15 @@ let obtain_abi_specific_string_of_reloc_type mach =
     string_of_mips64_relocation_type*)
   else
     const "Cannot deduce ABI"
-    
+
+val interpret_data_relocation : natural -> relocation_interpreter reloc_target_data
+let interpret_data_relocation mach ef symtab_map sidx rel =
+  if mach = elf_ma_aarch64 then
+    aarch64_data_relocation_interpreter ef symtab_map sidx rel
+  else
+    Error.fail "Unsupported machine"
+
+
 let _ =
   let res =
     let (flag, arg) =
@@ -262,31 +273,9 @@ let _ =
                       return lines
                 end
               else if flag = "--debug-dump=info" then
-                Elf_file.read_elf32_file bs0 >>= fun f1 ->
-                get_elf32_file_section_header_string_table f1 >>= fun stbl ->
-                return (Dwarf.harness_string_of_elf32_debug_info_section
-                  f1 
-                  bs0
-                  (*string_of_gnu_ext_section_type
-                  (fun x -> show x)
-                  (fun x -> show x)
-                  f1.elf32_file_header
-                  f1.elf32_file_section_header_table
-                  stbl*)
-                  )
+                Error.fail "not implemented"
               else if flag = "--debug-dump=dies" then
-                Elf_file.read_elf32_file bs0 >>= fun f1 ->
-                get_elf32_file_section_header_string_table f1 >>= fun stbl ->
-                return (Dwarf.harness_string_of_elf32_like_objdump
-                  f1
-                  bs0
-                  (*string_of_gnu_ext_section_type
-                  (fun x -> show x)
-                  (fun x -> show x)
-                  f1.elf32_file_header
-                  f1.elf32_file_section_header_table
-                  stbl*)
-                  )
+                Error.fail "not implemented"
               else
                 failwith "Unrecognised flag"
             in
@@ -358,7 +347,7 @@ let _ =
                 get_elf64_file_section_header_string_table f1 >>= fun stbl ->
                 return (Dwarf.harness_string_of_elf64_debug_info_section
                   f1
-                  bs0
+                  (interpret_data_relocation (natural_of_elf64_half f1.elf64_file_header.elf64_machine))
                   (*string_of_gnu_ext_section_type
                   (fun x -> show x)
                   (fun x -> show x)
@@ -371,7 +360,7 @@ let _ =
                 get_elf64_file_section_header_string_table f1 >>= fun stbl ->
                 return ("\n"^arg^":     file format [...]" ^"\n\n"^ Dwarf.harness_string_of_elf64_like_objdump
                   f1
-                  bs0
+                  (interpret_data_relocation (natural_of_elf64_half f1.elf64_file_header.elf64_machine))
                   (*string_of_gnu_ext_section_type
                   (fun x -> show x)
                   (fun x -> show x)

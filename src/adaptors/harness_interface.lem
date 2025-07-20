@@ -16,6 +16,7 @@ open import Default_printing
 open import Endianness
 open import String_table
 
+open import Abi_utilities
 open import Elf_dynamic
 open import Elf_file
 open import Elf_header
@@ -514,12 +515,13 @@ let {ocaml} harness_string_of_elf64_reloc_a_entry os symtab sht stbl sechdr_stbl
   let off    = natural_of_elf64_addr  rel.elf64_ra_offset in
   let inf    = natural_of_elf64_xword rel.elf64_ra_info in
   let add    = integer_of_elf64_sxword rel.elf64_ra_addend in
-  let typ    = Missing_pervasives.unsafe_string_take 22 (os 0) in (*FIXME *)
+  let (typ, sym) = parse_elf64_relocation_info rel.elf64_ra_info in
+  let typ    = Missing_pervasives.unsafe_string_take 22 (os typ) in
   let typs   =
     let len = naturalFromNat (22 - String.stringLength typ) in
       concatS (replicate len " ")
   in
-  let idx  = 0 in (* FIXME *)
+  let idx  = sym in
   let (nm, value, symtyp, secthdr)  =
     match List.index symtab (unsafe_nat_of_natural idx) with
       | Nothing  -> (stn_undef, 0, 0, 0)
