@@ -33,3 +33,5 @@ src/_build
 src/byte_sequence_impl.lem
 
 _opam
+
+.vscode
