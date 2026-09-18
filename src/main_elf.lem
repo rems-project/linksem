@@ -357,6 +357,16 @@ let _ =
                   f1.elf64_file_section_header_table
                   stbl*)
                   )
+              else if flag = "--debug-dump=raw" then
+                (* Claude: exactly what the DWARF parser stored, nothing resolved *)
+                Elf_file.read_elf64_file bs0 >>= fun f1 ->
+                let mach = natural_of_elf64_half f1.elf64_file_header.elf64_machine in
+                return (Dwarf.harness_string_of_elf64_debug_info_raw f1 (interpret_data_relocation mach))
+              else if flag = "--debug-dump=resolved" then
+                (* Claude: the DIE tree with strings, references, types, files, expressions and lists resolved *)
+                Elf_file.read_elf64_file bs0 >>= fun f1 ->
+                let mach = natural_of_elf64_half f1.elf64_file_header.elf64_machine in
+                return (Dwarf.harness_string_of_elf64_debug_info_resolved f1 (interpret_data_relocation mach) (Dwarf.objdump_regname mach))
               else if flag = "--debug-dump=dies" then
                 (* Claude: the text of `objdump --dwarf=abbrev,info` *)
                 Elf_file.read_elf64_file bs0 >>= fun f1 ->

@@ -2938,7 +2938,7 @@ let indent_level_plus_one indent level =
   *)
 type die_style =
   <| ds_die_line   : natural -> die -> string
-   ; ds_attribute  : compilation_unit_header -> natural -> ((sym_natural * sym_natural) * (sym_natural * attribute_value)) -> string
+   ; ds_attribute  : compilation_unit_header -> natural -> die -> ((sym_natural * sym_natural) * (sym_natural * attribute_value)) -> string
    ; ds_terminator : natural -> die -> string
   |>
 
@@ -2946,7 +2946,7 @@ val pp_die_tree : die_style -> compilation_unit_header -> bool -> natural -> die
 let rec pp_die_tree (st:die_style) (cuh:compilation_unit_header) (descend:bool) (level:natural) (die:die) : string =
   let ad = die.die_abbreviation_declaration in
   st.ds_die_line level die
-  ^ String.concat "" (List.map (st.ds_attribute cuh level) (List.zip ad.ad_attribute_specifications die.die_attribute_values))
+  ^ String.concat "" (List.map (st.ds_attribute cuh level die) (List.zip ad.ad_attribute_specifications die.die_attribute_values))
   ^ (if descend && ad.ad_has_children then
        String.concat "" (List.map (pp_die_tree st cuh descend (level + 1)) die.die_children)
        ^ st.ds_terminator level die
@@ -2960,7 +2960,7 @@ let style_info c (str:sym_byte_sequence) (indent:bool) : die_style =
        ^ pp_pos die.die_offset
        ^ ": Abbrev Number: " ^ show die.die_abbreviation_code
        ^ " (" ^ pp_tag_encoding die.die_abbreviation_declaration.ad_tag ^")\n")
-   ; ds_attribute = (fun cuh level ((at, af), (pos, av)) ->
+   ; ds_attribute = (fun cuh level die ((at, af), (pos, av)) ->
        indent_level_plus_one indent level ^ pp_pos pos  ^ "   "
        ^ right_space_padded_to 18 (pp_attribute_encoding at) ^ ": "
        ^ "(" ^ pp_attribute_form_encoding af ^ ") "
@@ -2972,8 +2972,8 @@ let style_info c (str:sym_byte_sequence) (indent:bool) : die_style =
 (* Claude: the original entry points, kept with their signatures.  [indent]
    now only controls indentation: the unindented variant used to be a rough
    imitation of objdump, superseded by [pp_dwarf_like_objdump]. *)
-let pp_die_attribute c (cuh:compilation_unit_header) (str : sym_byte_sequence) (indent:bool) (level: natural) (spec_and_value : (sym_natural * sym_natural) * (sym_natural * attribute_value)) : string =
-  (style_info c str indent).ds_attribute cuh level spec_and_value
+let pp_die_attribute c (cuh:compilation_unit_header) (str : sym_byte_sequence) (indent:bool) (level: natural) (die:die) (spec_and_value : (sym_natural * sym_natural) * (sym_natural * attribute_value)) : string =
+  (style_info c str indent).ds_attribute cuh level die spec_and_value
 
 val pp_die : p_context -> compilation_unit_header -> sym_byte_sequence -> bool -> natural -> bool -> die -> string
 let pp_die c cuh str indent level (pp_children:bool) die =
@@ -4387,6 +4387,19 @@ let od_annotation (at:sym_natural) (u:natural) : string =
     "\t" ^ (if u = 0 then "(no)" else if u = 1 then "(in class)" else if u = 2 then "(out of class)" else "(unrecognised)")
   else ""
 
+(* the value of an attribute as an unsigned constant, as objdump's uvalue *)
+let od_uvalue (c:p_context) (small_data:bool) (wide_data:bool) (av:attribute_value) : natural =
+  match av with
+  | AV_block _ bs -> if small_data || wide_data then od_value_of_bytes c bs else 0
+  | AV_constantN _ bs -> od_value_of_bytes c bs
+  | AV_constant_ULEB128 n -> sym_natural_offset_part n
+  | AV_constant_SLEB128 i -> let i = sym_integer_expect_const i in if i < 0 then 0 else naturalFromInteger i
+  | AV_flag b -> if b then 1 else 0
+  | AV_addr x -> sym_natural_offset_part x
+  | AV_sec_offset x -> sym_natural_offset_part x
+  | _ -> 0
+  end
+
 val od_attribute_value : p_context -> compilation_unit_header -> sym_byte_sequence -> (natural -> string) -> bool ->
   sym_natural -> sym_natural -> attribute_value -> string
 let od_attribute_value c cuh str regname have_frame_base (at:sym_natural) (af:sym_natural) (av:attribute_value) : string =
@@ -4421,18 +4434,7 @@ let od_attribute_value c cuh str regname have_frame_base (at:sym_natural) (af:sy
     | _ -> Nothing
     end
   in
-  let uvalue : natural =
-    match av with
-    | AV_block _ bs -> if small_data || wide_data then od_value_of_bytes c bs else 0
-    | AV_constantN _ bs -> od_value_of_bytes c bs
-    | AV_constant_ULEB128 n -> sym_natural_offset_part n
-    | AV_constant_SLEB128 i -> let i = sym_integer_expect_const i in if i < 0 then 0 else naturalFromInteger i
-    | AV_flag b -> if b then 1 else 0
-    | AV_addr x -> sym_natural_offset_part x
-    | AV_sec_offset x -> sym_natural_offset_part x
-    | _ -> 0
-    end
-  in
+  let uvalue : natural = od_uvalue c small_data wide_data av in
   let is_loc = od_at_in at od_location_codes in
   let is_base = od_at_in at od_base_codes in
   let version = sym_natural_offset_part cuh.cuh_version in
@@ -4471,7 +4473,7 @@ let style_objdump c (str:sym_byte_sequence) (regname: natural -> string) (have_f
   <| ds_die_line = (fun level die ->
        " <" ^ show level ^ "><" ^ od_x_sym die.die_offset ^ ">: Abbrev Number: " ^ od_dec_sym die.die_abbreviation_code
        ^ " (" ^ od_tag_name die.die_abbreviation_declaration.ad_tag ^ ")\n")
-   ; ds_attribute = (fun cuh level ((at, af), (pos, av)) ->
+   ; ds_attribute = (fun cuh level die ((at, af), (pos, av)) ->
        "    <" ^ od_x_sym pos ^ ">   " ^ right_space_padded_to 18 (pp_attribute_encoding at) ^ ": "
        ^ od_attribute_value c cuh str regname have_frame_base at af av ^ "\n")
    ; ds_terminator = (fun level die ->
@@ -7145,6 +7147,218 @@ let mds = extract_dwarf_static f1 ri in
 
 end
 
+
+(** ************************************************************ *)
+(** Claude: the raw and the resolved DIE views                    *)
+(** ************************************************************ *)
+
+(* Claude: [style_raw] prints exactly what the parser stored: every number as
+   it is in the record (symbolic values symbolically, byte sequences with their
+   symbolic entries inline), nothing dereferenced or decoded.  Names of tags,
+   attributes and forms are shown alongside their codes, since they are pure
+   functions of the code. *)
+
+(* a byte sequence with symbolic entries shown as <value:width> *)
+let rec pp_sym_bytes_raw' (raw: list natural) (mask: list sym_mask_entry) : list string =
+  match mask with
+  | [] -> List.map (fun b -> unsafe_hex_string_of_natural 2 b) raw
+  | NoSym k :: mask' ->
+      let k' = unsafe_nat_of_natural k in
+        List.map (fun b -> unsafe_hex_string_of_natural 2 b) (List.take k' raw) ++ pp_sym_bytes_raw' (List.drop k' raw) mask'
+  | SymVal k v :: mask' ->
+      ("<" ^ pphex_sym v ^ ":" ^ show k ^ ">") :: pp_sym_bytes_raw' (List.drop (unsafe_nat_of_natural k) raw) mask'
+  end
+
+let pp_sym_bytes_raw (bs:sym_byte_sequence) : string =
+  "[" ^ String.concat " " (pp_sym_bytes_raw' (List.map natural_of_byte (byte_list_of_byte_sequence bs.sbs_bytes)) bs.sbs_symbolic) ^ "]"
+
+let pp_attribute_value_raw (av:attribute_value) : string =
+  match av with
+  | AV_addr x -> "AV_addr " ^ pphex_sym x
+  | AV_block n bs -> "AV_block " ^ show n ^ " " ^ pp_sym_bytes_raw bs
+  | AV_constantN n bs -> "AV_constantN " ^ show n ^ " " ^ pp_sym_bytes_raw bs
+  | AV_constant_SLEB128 i -> "AV_constant_SLEB128 " ^ show i
+  | AV_constant_ULEB128 n -> "AV_constant_ULEB128 " ^ show n
+  | AV_exprloc n bs -> "AV_exprloc " ^ show n ^ " " ^ pp_sym_bytes_raw bs
+  | AV_flag b -> "AV_flag " ^ show b
+  | AV_ref n -> "AV_ref " ^ pphex_sym n
+  | AV_ref_addr n -> "AV_ref_addr " ^ pphex_sym n
+  | AV_ref_sig8 n -> "AV_ref_sig8 " ^ pphex_sym n
+  | AV_sec_offset n -> "AV_sec_offset " ^ pphex_sym n
+  | AV_string bs -> "AV_string \"" ^ string_of_sym_byte_sequence bs ^ "\""
+  | AV_strp n -> "AV_strp " ^ pphex_sym n
+  end
+
+val style_raw : die_style
+let style_raw : die_style =
+  <| ds_die_line = (fun level die ->
+       let ad = die.die_abbreviation_declaration in
+       indent_level true level ^ "<" ^ show level ^ ">" ^ pp_pos die.die_offset
+       ^ ": abbrev " ^ show die.die_abbreviation_code
+       ^ " " ^ pp_tag_encoding ad.ad_tag ^ " (" ^ pphex_sym ad.ad_tag ^ ")"
+       ^ (if ad.ad_has_children then " [has children]" else " [no children]")
+       ^ " end=" ^ pp_pos die.die_end ^ "\n")
+   ; ds_attribute = (fun cuh level die ((at, af), (pos, av)) ->
+       indent_level_plus_one true level ^ pp_pos pos ^ "   "
+       ^ right_space_padded_to 18 (pp_attribute_encoding at) ^ " (" ^ pphex_sym at ^ ") "
+       ^ pp_attribute_form_encoding af ^ " (" ^ pphex_sym af ^ "): "
+       ^ pp_attribute_value_raw av ^ "\n")
+   ; ds_terminator = (fun _ _ -> "")
+  |>
+
+val pp_dwarf_raw : dwarf -> string
+let pp_dwarf_raw (d:dwarf) : string =
+  String.concat ""
+    (List.map
+      (fun cu ->
+        pp_compilation_unit_header cu.cu_header
+        ^ "\n*** compilation unit abbreviation table\n"
+        ^ pp_abbreviations_table cu.cu_abbreviations_table
+        ^ "\n*** compilation unit die tree\n"
+        ^ pp_die_tree style_raw cu.cu_header true 0 cu.cu_die
+        ^ "\n")
+      d.d_compilation_units)
+
+(* Claude: [style_resolved] is the most useful view: the info layout, with
+   string references replaced by their strings, DIE references followed to the
+   referenced DIE's tag and name (and, for DW_AT_type, the C type),
+   decl_file/call_file resolved through the line table, expressions decoded
+   with register names, location and range lists expanded, DW_AT_high_pc
+   offsets turned into addresses, and the enumerated attributes annotated. *)
+
+let pp_referenced_die c d cu str (av:attribute_value) : string =
+  match reference_of_reference_attribute_value c d cu str av with
+  | Nothing -> " -> ?"
+  | Just (cu', parents', die') ->
+      " -> " ^ pp_tag_encoding die'.die_abbreviation_declaration.ad_tag
+      ^ (match find_name_of_die_using_abstract_origin c d cu' str die' with
+         | Just name -> " \"" ^ name ^ "\""
+         | Nothing -> ""
+         end)
+  end
+
+let pp_resolved_file d cu (n:natural) : string =
+  if n = 0 then ""
+  else
+    match find_attribute_value "DW_AT_stmt_list" cu.cu_die with
+    | Nothing -> ""
+    | Just _ ->
+        let lnp = line_number_program_of_compilation_unit d cu in
+          " " ^ pp_ufe (unpack_file_entry lnp.lnp_header (sym_natural_const n))
+    end
+
+(* a location list, one entry per line, with expressions decoded and register names *)
+let pp_location_list_resolved c cuh regname ((offset:sym_natural), (llis: list location_list_item)) : string =
+  String.concat ""
+    (List.map
+      (fun lli ->
+        match lli with
+        | LLI_lle x ->
+            "      " ^ pphex_sym x.lle_beginning_address_offset ^ " .. " ^ pphex_sym x.lle_ending_address_offset
+            ^ " (" ^ od_ops c cuh regname (parse_operations_bs c cuh x.lle_single_location_description) ^ ")\n"
+        | LLI_base x ->
+            "      base address " ^ pphex_sym x.base_address ^ "\n"
+        end)
+      llis)
+
+val pp_attribute_value_resolved : p_context -> dwarf -> compilation_unit -> sym_byte_sequence -> (natural -> string) ->
+  die -> sym_natural -> sym_natural -> attribute_value -> string
+let pp_attribute_value_resolved c d cu str regname (die:die) (at:sym_natural) (af:sym_natural) (av:attribute_value) : string =
+  let cuh = cu.cu_header in
+  let small_data = af = od_form_data1 || af = od_form_data2 in
+  let wide_data  = af = od_form_data4 || af = od_form_data8 in
+  let uvalue = od_uvalue c small_data wide_data av in
+  let is_loc = od_at_in at od_location_codes || od_at_in at od_base_codes in
+  let decode bs = "(" ^ od_ops c cuh regname (parse_operations_bs c cuh bs) ^ ")" in
+  let value =
+    match av with
+    | AV_addr x -> pphex_sym x
+    | AV_block n bs ->
+        if small_data || wide_data then show (od_value_of_bytes c bs) ^ " (" ^ od_hx (od_value_of_bytes c bs) ^ ")"
+        else pp_sym_bytes_raw bs ^ (if is_loc then " " ^ decode bs else "")
+    | AV_constantN n bs -> show (od_value_of_bytes c bs) ^ " (" ^ od_hx (od_value_of_bytes c bs) ^ ")"
+    | AV_constant_SLEB128 i -> show i
+    | AV_constant_ULEB128 n -> show n
+    | AV_exprloc n bs -> pp_sym_bytes_raw bs ^ " " ^ decode bs
+    | AV_flag b -> show b
+    | AV_ref n -> pphex_sym (n + cuh.cuh_offset) ^ pp_referenced_die c d cu str av
+    | AV_ref_addr n -> pphex_sym n ^ pp_referenced_die c d cu str av
+    | AV_ref_sig8 n -> "signature " ^ pphex_sym n
+    | AV_sec_offset n -> pphex_sym n
+    | AV_string bs -> "\"" ^ string_of_sym_byte_sequence bs ^ "\""
+    | AV_strp n -> "\"" ^ pp_debug_str_entry str n ^ "\" (strp " ^ pphex_sym n ^ ")"
+    end
+  in
+  let extra =
+    if at = od_code "DW_AT_type" then
+      match reference_of_reference_attribute_value c d cu str av with
+      | Just cupdie -> " : " ^ pp_type_info_die c d cupdie
+      | Nothing -> ""
+      end
+    else if at = od_code "DW_AT_decl_file" || at = od_code "DW_AT_call_file" then
+      pp_resolved_file d cu uvalue
+    else if at = od_code "DW_AT_high_pc" && (small_data || wide_data || (match av with AV_constant_ULEB128 _ -> true | _ -> false end)) then
+      match find_attribute_value "DW_AT_low_pc" die with
+      | Just (AV_addr low) -> " (= " ^ pphex_sym (sym_natural_add low (sym_natural_const uvalue)) ^ ")"
+      | _ -> ""
+      end
+    else if is_loc && af = od_form_sec_offset then
+      match List.find (fun (off, _) -> sym_eq off (match av with AV_sec_offset n -> n | _ -> sym_natural_const 0 end)) d.d_loc with
+      | Just ll -> " (location list)\n" ^ pp_location_list_resolved c cuh regname ll
+      | Nothing -> " (location list not found)"
+      end
+    else if at = od_code "DW_AT_ranges" && af = od_form_sec_offset then
+      match List.find (fun (off, _) -> sym_eq off (match av with AV_sec_offset n -> n | _ -> sym_natural_const 0 end)) d.d_ranges with
+      | Just rl -> " (ranges)\n" ^ pp_range_list c cuh rl
+      | Nothing -> " (range list not found)"
+      end
+    else
+      od_annotation at uvalue
+  in
+    value ^ extra
+
+val style_resolved : p_context -> dwarf -> compilation_unit -> sym_byte_sequence -> (natural -> string) -> die_style
+let style_resolved c d cu str regname : die_style =
+  <| ds_die_line = (fun level die ->
+       let ad = die.die_abbreviation_declaration in
+       indent_level true level ^ "<" ^ show level ^ ">" ^ pp_pos die.die_offset
+       ^ ": " ^ pp_tag_encoding ad.ad_tag
+       ^ (match find_name_of_die_using_abstract_origin c d cu str die with Just name -> " \"" ^ name ^ "\"" | Nothing -> "" end)
+       ^ " (abbrev " ^ show die.die_abbreviation_code ^ ")\n")
+   ; ds_attribute = (fun cuh level die ((at, af), (pos, av)) ->
+       indent_level_plus_one true level ^ pp_pos pos ^ "   "
+       ^ right_space_padded_to 18 (pp_attribute_encoding at) ^ ": "
+       ^ "(" ^ pp_attribute_form_encoding af ^ ") "
+       ^ pp_attribute_value_resolved c d cu str regname die at af av
+       ^ "\n")
+   ; ds_terminator = (fun _ _ -> "")
+  |>
+
+val pp_dwarf_resolved : (natural -> string) -> dwarf -> string
+let pp_dwarf_resolved regname (d:dwarf) : string =
+  let c = p_context_of_d d in
+  String.concat ""
+    (List.map
+      (fun cu ->
+        pp_compilation_unit_header cu.cu_header
+        ^ "\n"
+        ^ pp_die_tree (style_resolved c d cu d.d_str regname) cu.cu_header true 0 cu.cu_die
+        ^ "\n")
+      d.d_compilation_units)
+
+val harness_string_of_elf64_debug_info_raw : elf64_file -> relocation_interpreter reloc_target_data -> string
+let {ocaml} harness_string_of_elf64_debug_info_raw f1 ri =
+  match extract_dwarf_static (ELF_File_64 f1) ri with
+  | Nothing -> "<no dwarf information extracted>"
+  | Just ds -> pp_dwarf_raw ds.ds_dwarf
+  end
+
+val harness_string_of_elf64_debug_info_resolved : elf64_file -> relocation_interpreter reloc_target_data -> (natural -> string) -> string
+let {ocaml} harness_string_of_elf64_debug_info_resolved f1 ri regname =
+  match extract_dwarf_static (ELF_File_64 f1) ri with
+  | Nothing -> "<no dwarf information extracted>"
+  | Just ds -> pp_dwarf_resolved regname ds.ds_dwarf
+  end
 
 val harness_string_of_elf64_debug_info_section : elf64_file -> relocation_interpreter reloc_target_data -> (*(sym_natural -> string) -> (sym_natural -> string) -> (sym_natural -> string) -> elf64_header -> elf64_section_header_table -> string_table -> *) string
 let {ocaml} harness_string_of_elf64_debug_info_section f1 (*os proc usr hdr sht stbl*) =
