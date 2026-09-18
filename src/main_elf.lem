@@ -6,7 +6,7 @@
   *   FLAG   is in the set { file-header, program-headers, section-headers,
   *                            dynamic, relocs, symbols,
   *                            debug-dump=info<raw>, debug-dump=info<resolved>,
-  *                            debug-dump=info<objdump>, debug-dump=info<full> }
+  *                            debug-dump=info<objdump>, debug-dump=info<analysis> }
   *          (Claude: debug-dump=info alone means debug-dump=info<resolved>; the
   *           angle brackets need quoting from the shell)
   *
@@ -203,14 +203,35 @@ let interpret_data_relocation mach ef symtab_map sidx rel =
     Error.fail "Unsupported machine"
 
 
-let _ =
+(* Claude: printed by --help, and on a malformed command line *)
+let usage_text : string =
+  String.concat "\n" [
+    "usage: main_elf FLAG FILE"
+  ; "       main_elf --help"
+  ; ""
+  ; "Dump one aspect of the ELF file FILE.  FLAG is one of:"
+  ; "  --file-header                 the ELF header               (as readelf -W --file-header)"
+  ; "  --program-headers             the program headers          (as readelf -W --program-headers)"
+  ; "  --section-headers             the section headers          (as readelf -W --section-headers)"
+  ; "  --relocs                      the relocations              (as readelf -W --relocs)"
+  ; "  --symbols                     the symbol tables            (as readelf -W --symbols)"
+  ; "  --dynamic                     the dynamic section          (as readelf -W --dynamic)"
+  ; "  --in-out                      the file re-serialised, as a hex dump (as hexdump -v)"
+  ; "  --debug-dump=info<raw>        DWARF .debug_info: exactly what the parser stored, nothing resolved"
+  ; "  --debug-dump=info<resolved>   DWARF .debug_info: the DIE tree with strings, references, types,"
+  ; "                                files, expressions and location/range lists resolved"
+  ; "  --debug-dump=info<objdump>    DWARF .debug_info and .debug_abbrev, byte-identical to"
+  ; "                                objdump --dwarf=abbrev,info"
+  ; "  --debug-dump=info<analysis>   linksem's full DWARF analysis: DIE tree, frame, line, location"
+  ; "                                and inlined-subroutine information"
+  ; "  --debug-dump=info             the same as --debug-dump=info<resolved>"
+  ; ""
+  ; "The angle brackets need quoting from the shell, e.g. '--debug-dump=info<raw>'."
+  ; "The DWARF dumps are implemented for ELF64 only."
+  ]
+
+let run (flag:string) (arg:string) =
   let res =
-    let (flag, arg) =
-      match argv with
-        | progname::flag::fname::more -> (flag, fname)
-        | _                           -> failwith "usage: main_elf <flag> <fname>"
-      end
-    in
     Byte_sequence.acquire arg    >>= fun bs0 ->
     repeatM' Elf_header.ei_nident bs0 (read_unsigned_char Endianness.default_endianness) >>= fun (ident, bs) ->
     match List.index ident 4 with
@@ -278,7 +299,7 @@ let _ =
                 end
               else if flag = "--debug-dump=info" || flag = "--debug-dump=info<raw>"
                       || flag = "--debug-dump=info<resolved>" || flag = "--debug-dump=info<objdump>"
-                      || flag = "--debug-dump=info<full>" then
+                      || flag = "--debug-dump=info<analysis>" then
                 Error.fail "not implemented"
               else
                 failwith "Unrecognised flag"
@@ -355,7 +376,7 @@ let _ =
                    info<resolved>  the DIE tree with strings, references, types, files,
                                    expressions and lists resolved
                    info<objdump>   byte-identical to objdump --dwarf=abbrev,info
-                   info<full>      linksem's full analysis dump (frame, line, location and
+                   info<analysis>  linksem's full analysis dump (frame, line, location and
                                    inlined-subroutine information as well as the DIE tree) *)
               else if flag = "--debug-dump=info<raw>" then
                 Elf_file.read_elf64_file bs0 >>= fun f1 ->
@@ -374,7 +395,7 @@ let _ =
                       f1
                       (interpret_data_relocation mach)
                       (Dwarf.objdump_regname mach))
-              else if flag = "--debug-dump=info<full>" then
+              else if flag = "--debug-dump=info<analysis>" then
                 Elf_file.read_elf64_file bs0 >>= fun f1 ->
                 let mach = natural_of_elf64_half f1.elf64_file_header.elf64_machine in
                 return (Dwarf.harness_string_of_elf64_debug_info_section f1 (interpret_data_relocation mach))
@@ -390,6 +411,19 @@ let _ =
       | Fail err  -> Missing_pervasives.errln ("[!]: " ^ err)
       | Success e -> Missing_pervasives.outln (show e)
     end
+
+let _ =
+  match argv with
+    | _ :: flag :: rest ->
+        if flag = "--help" then
+          Missing_pervasives.outln usage_text
+        else
+          match rest with
+            | fname :: _ -> run flag fname
+            | [] -> Missing_pervasives.errln usage_text
+          end
+    | _ -> Missing_pervasives.errln usage_text
+  end
 
 (*
 let _ =
