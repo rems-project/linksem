@@ -53,6 +53,18 @@ let {ocaml} unsafe_hex_string_of_natural pad m =
   else
     hex_string_of_big_int_no_padding m
 
+(** Claude: [unsafe_hex_string_of_natural_alternate m] renders [m] the way C's
+  * [%#x] conversion does: lower-case hexadecimal with a [0x] prefix, except that
+  * zero is rendered as a bare [0].  GNU readelf uses this format for the
+  * [LOOS+], [LOPROC+] and [LOUSER+] section type names.
+  *)
+val unsafe_hex_string_of_natural_alternate : natural -> string
+let {ocaml} unsafe_hex_string_of_natural_alternate m =
+  if m = 0 then
+    "0"
+  else
+    "0x" ^ unsafe_hex_string_of_natural 0 m
+
 val unsafe_hex_string_of_uc_list : list unsigned_char -> string
 let rec {ocaml} unsafe_hex_string_of_uc_list xs =
   match xs with

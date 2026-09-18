@@ -51,6 +51,15 @@ let sht_gnu_liblist : natural = (2 * 939524091) + 1 (* 0x6FFFFFF7 *)
 (** [string_of_gnu_ext_section_type m] produces a string based representation of
   * GNU extension section type [m].
   *)
+(** Claude: further GNU section types in the OS-specific range, named as GNU
+  * readelf names them.
+  *)
+let sht_gnu_attributes         : natural = (2 * 939524090) + 1 (* 0x6ffffff5 *)
+let sht_gnu_incremental_inputs : natural = (2 * 939500416)     (* 0x6fff4700 *)
+(** Old Sun values for VERSYM and VERDEF that readelf also recognises. *)
+let sht_sun_versym_old         : natural = (2 * 939524088)     (* 0x6ffffff0 *)
+let sht_sun_verdef_old         : natural = (2 * 939524094)     (* 0x6ffffffc *)
+
 val string_of_gnu_ext_section_type : natural -> string
 let {ocaml} string_of_gnu_ext_section_type i =
   if i = sht_gnu_hash then
@@ -63,10 +72,19 @@ let {ocaml} string_of_gnu_ext_section_type i =
     "VERSYM"
   else if i = sht_gnu_liblist then
     "GNU_LIBLIST"
+  else if i = sht_gnu_attributes then
+    "GNU_ATTRIBUTES"
+  else if i = sht_gnu_incremental_inputs then
+    "GNU_INCREMENTAL_INPUTS"
+  else if i = sht_sun_versym_old then
+    "VERSYM"
+  else if i = sht_sun_verdef_old then
+    "VERDEF"
   else if i >= sht_loos && i <= sht_hios then
-    let diff = i - sht_loos in
-    let suff = unsafe_hex_string_of_natural 0 diff in
-      "LOOS+" ^ suff
+    (* Claude: readelf formats this with C's [%#x], hence the [0x] prefix.
+     * (readelf additionally knows Solaris- and IA-64-specific names in this
+     * range, which are not reproduced here.) *)
+    "LOOS+" ^ unsafe_hex_string_of_natural_alternate (i - sht_loos)
   else
     "Invalid GNU EXT section type: " ^ show i
     

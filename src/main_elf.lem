@@ -233,8 +233,8 @@ let _ =
                 get_elf32_file_section_header_string_table f1 >>= fun stbl ->
                 return (Harness_interface.harness_string_of_elf32_section_headers
                   string_of_gnu_ext_section_type
-                  (fun x -> show x)
-                  (fun x -> show x)
+                  (Harness_interface.harness_string_of_proc_section_type (natural_of_elf32_half f1.elf32_file_header.elf32_machine))
+                  Harness_interface.harness_string_of_user_section_type
                   f1.elf32_file_header
                   f1.elf32_file_section_header_table
                   stbl)
@@ -302,8 +302,8 @@ let _ =
                 get_elf64_file_section_header_string_table f1 >>= fun stbl ->
                 return (Harness_interface.harness_string_of_elf64_section_headers
                   string_of_gnu_ext_section_type
-                  (fun x -> show x)
-                  (fun x -> show x)
+                  (Harness_interface.harness_string_of_proc_section_type (natural_of_elf64_half f1.elf64_file_header.elf64_machine))
+                  Harness_interface.harness_string_of_user_section_type
                   f1.elf64_file_header
                   f1.elf64_file_section_header_table
                   stbl)

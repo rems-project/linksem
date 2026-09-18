@@ -151,6 +151,10 @@ let sht_group : natural = 17
   * way in which they are written.
   *)
 let sht_symtab_shndx : natural = 18
+(** Claude: The section holds RELR relative relocations (a compact encoding of
+  * relative relocations, see the generic ABI).
+  *)
+let sht_relr : natural = 19
 
 (** The following ranges are reserved solely for OS-, processor- and user-
   * specific semantics, respectively.
@@ -204,6 +208,8 @@ let string_of_section_type os proc user i =
     "GROUP"
   else if i = sht_symtab_shndx then
     "SYMTAB_SHNDX"
+  else if i = sht_relr then
+    "RELR"
   else if i >= sht_loos && i <= sht_hios then
     os i
   else if i >= sht_loproc && i <= sht_hiproc then
@@ -260,49 +266,110 @@ let shf_compressed       : natural = 2048
 let shf_mask_os          : natural = 267386880      (* 0x0ff00000 *)
 let shf_mask_proc        : natural = 4 * 1006632960 (* 0xf0000000 *)
 
-(** [string_of_section_flags os proc f] produces a string based representation
-  * of section flag [f].  Some section flags are defined by the ABI and are in
-  * reserved ranges, in which case the flag string is produced by functions
-  * [os] and [proc].
-  * TODO: add more as validation tests require them.
+(** Claude: further section flag values, needed to reproduce the flag letters
+  * printed by GNU readelf (see [string_of_section_flags] below).
   *)
-val string_of_section_flags : (natural -> string) -> (natural -> string) ->
-  natural -> string
-let string_of_section_flags os proc f =
-  if f = shf_write then
-    "W"
-  else if f = shf_alloc then
-    "  A"
-  else if f = shf_execinstr then
-    "  X"
-  else if f = shf_alloc + shf_execinstr then
-    " AX"
-  else if f = shf_write + shf_alloc then
-    " WA"
-  else if f = shf_merge then
-    " M "
-  else if f = shf_merge + shf_alloc then
-    " AM"
-  else if f = shf_merge + shf_alloc + shf_strings then
-    "AMS"
-  else if f = shf_alloc + shf_execinstr + shf_group then
-    "AXG"
-  else if f = shf_strings then
-    "  S"
-  else if f = shf_merge + shf_strings then
-    " MS"
-  else if f = shf_tls then
-    "  T"
-  else if f = shf_tls + shf_alloc then
-    " AT"
-  else if f = shf_write + shf_alloc + shf_tls then
-    "WAT"
-  else if f = shf_info_link then
-    "  I"
-  else if f = shf_alloc + shf_info_link then
-    " AI"
+(** The section is excluded from a final link unless referenced or allocated
+  * (GNU/Solaris extension).  Note that this value lies inside [shf_mask_proc].
+  *)
+let shf_exclude          : natural = 2 * 1073741824  (* 0x80000000 *)
+(** The section must not be garbage-collected by the linker (GNU extension, in
+  * the OS-specific range).
+  *)
+let shf_gnu_retain       : natural = 2097152         (* 0x00200000 *)
+(** Memory-bind section (GNU extension, in the OS-specific range). *)
+let shf_gnu_mbind        : natural = 16777216        (* 0x01000000 *)
+(** x86-64: section may hold more than 2GB of data (processor-specific range).
+  * Numerically equal to the SHF_X86_64_LARGE constant in [Abi_amd64].
+  *)
+let shf_amd64_large      : natural = 268435456       (* 0x10000000 *)
+(** ARM: section contains only code, no data (processor-specific range). *)
+let shf_arm_purecode     : natural = 536870912       (* 0x20000000 *)
+(** PowerPC: section contains VLE code (processor-specific range). *)
+let shf_ppc_vle          : natural = 268435456       (* 0x10000000 *)
+
+(** Claude: [string_of_section_flags machine osabi f] produces the string of
+  * section flag letters that GNU readelf prints in the [Flg] column of
+  * [readelf -W -S].  It follows [get_elf_section_flags] in binutils 2.42
+  * ([binutils/readelf.c]): the set bits of [f] are visited from least to most
+  * significant, each producing one letter.  An unrecognised OS-specific bit
+  * produces a single [o] and suppresses all remaining OS-specific bits;
+  * likewise an unrecognised processor-specific bit produces a single [p]; any
+  * other unrecognised bit produces [x].  The result is right-justified in a
+  * field of width three (readelf's [%3s]).  Which letters are recognised for
+  * the OS- and processor-specific bits depends on [machine] ([e_machine]) and
+  * [osabi] ([e_ident[EI_OSABI]]).
+  *)
+val section_flag_letter : natural -> natural -> natural -> natural -> (string * natural)
+let section_flag_letter machine osabi bit rest =
+  if bit = shf_write then
+    ("W", rest)
+  else if bit = shf_alloc then
+    ("A", rest)
+  else if bit = shf_execinstr then
+    ("X", rest)
+  else if bit = shf_merge then
+    ("M", rest)
+  else if bit = shf_strings then
+    ("S", rest)
+  else if bit = shf_info_link then
+    ("I", rest)
+  else if bit = shf_link_order then
+    ("L", rest)
+  else if bit = shf_os_nonconforming then
+    ("O", rest)
+  else if bit = shf_group then
+    ("G", rest)
+  else if bit = shf_tls then
+    ("T", rest)
+  else if bit = shf_exclude then
+    ("E", rest)
+  else if bit = shf_compressed then
+    ("C", rest)
+  else if (machine = elf_ma_x86_64 || machine = elf_ma_l10m || machine = elf_ma_k10m)
+          && bit = shf_amd64_large then
+    ("l", rest)
+  else if machine = elf_ma_arm && bit = shf_arm_purecode then
+    ("y", rest)
+  else if machine = elf_ma_ppc && bit = shf_ppc_vle then
+    ("v", rest)
+  else if natural_land bit shf_mask_os <> 0 then
+    if (osabi = elf_osabi_gnu || osabi = elf_osabi_freebsd) && bit = shf_gnu_retain then
+      ("R", rest)
+    else if (osabi = elf_osabi_gnu || osabi = elf_osabi_freebsd || osabi = elf_osabi_none)
+            && bit = shf_gnu_mbind then
+      ("D", rest)
+    else
+      ("o", rest - natural_land rest shf_mask_os)
+  else if natural_land bit shf_mask_proc <> 0 then
+    ("p", rest - natural_land rest shf_mask_proc)
   else
-    "   "
+    ("x", rest)
+
+(** [section_flag_letters machine osabi bit f] visits the bits of [f] from [bit]
+  * upwards (where [bit] is a power of two) and concatenates their letters.
+  *)
+val section_flag_letters : natural -> natural -> natural -> natural -> string
+let rec {ocaml} section_flag_letters machine osabi bit f =
+  if f = 0 || bit > f then
+    ""
+  else if natural_land f bit = 0 then
+    section_flag_letters machine osabi (2 * bit) f
+  else
+    let (letter, rest) = section_flag_letter machine osabi bit (f - bit) in
+      letter ^ section_flag_letters machine osabi (2 * bit) rest
+
+val string_of_section_flags : natural -> natural -> natural -> string
+let {ocaml} string_of_section_flags machine osabi f =
+  let letters = section_flag_letters machine osabi 1 f in
+  let len = String.stringLength letters in
+  let pad =
+    if len < 3 then
+      List.foldr (^) "" (replicate (naturalFromNat (3 - len)) " ")
+    else
+      ""
+  in
+    pad ^ letters
 
 (** Section compression. *)
 
