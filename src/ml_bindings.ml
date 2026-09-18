@@ -122,6 +122,32 @@ let string_index_of (c: char) (s : string) = try Some(Nat_big_num.of_int (String
     with Not_found -> None
 ;;
 
+(* Claude: [string_index_of_from c i s] is the index of the first [c] in [s] at
+   or after position [i], if any; [None] if [i] is out of range or there is no
+   such character.  Unlike searching a suffix produced by [string_suffix], this
+   does not copy the tail of [s]. *)
+let string_index_of_from (c: char) (i : Nat_big_num.num) (s : string) =
+  if Nat_big_num.less i (Nat_big_num.of_int 0) ||
+     Nat_big_num.greater i (Nat_big_num.of_int (String.length s)) then
+    None
+  else
+    match String.index_from_opt s (Nat_big_num.to_int i) c with
+      | Some j -> Some (Nat_big_num.of_int j)
+      | None   -> None
+;;
+
+(* Claude: [string_sub i n s] is the substring of [s] of length [n] starting at
+   position [i], or [None] if that range does not lie within [s]. *)
+let string_sub (i : Nat_big_num.num) (n : Nat_big_num.num) (s : string) =
+  let len = Nat_big_num.of_int (String.length s) in
+  if Nat_big_num.less i (Nat_big_num.of_int 0) ||
+     Nat_big_num.less n (Nat_big_num.of_int 0) ||
+     Nat_big_num.greater (Nat_big_num.add i n) len then
+    None
+  else
+    Some (String.sub s (Nat_big_num.to_int i) (Nat_big_num.to_int n))
+;;
+
 let find_substring (sub: string) (s : string) =
     try Some(Nat_big_num.of_int (Str.search_forward (Str.regexp_string sub) s 0))
     with Not_found -> None

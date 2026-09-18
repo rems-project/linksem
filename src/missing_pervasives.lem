@@ -380,7 +380,9 @@ let intercalate sep xs = intercalate' sep xs []
   *)
 val unlines : list string -> string
 let unlines xs =
-  foldl (^) "" (intercalate "\n" xs)
+  (* Claude: [String.concat] is linear in the total length on the OCaml
+   * backend; folding [^] over the list is quadratic. *)
+  String.concat "\n" xs
 
 (** [bracket xs] concatenates a list of strings [xs], separating each entry with a
   * space, and bracketing the resulting string.
@@ -448,6 +450,7 @@ declare ocaml    target_rep function string_suffix = `Ml_bindings.string_suffix`
 declare isabelle target_rep function string_suffix = `Elf_Types_Local.string_suffix`
 declare hol      target_rep function string_suffix = `string_suffix` (* XXX: add custom binding *)
 declare coq      target_rep function string_suffix = `string_suffix`
+
 
 val nat_length : forall 'a. list 'a -> nat
 declare ocaml target_rep function nat_length = `List.length`
@@ -519,6 +522,37 @@ val string_index_of : char -> string -> maybe natural
 let string_index_of e s = string_index_of' e (String.toCharList s) 0
 
 declare ocaml target_rep function string_index_of = `Ml_bindings.string_index_of`
+
+(** Claude: [string_sub i n s] returns the [n] characters of [s] starting at
+  * index [i], or [Nothing] if that range does not lie within [s].  The OCaml
+  * backend copies only those [n] characters.
+  *)
+val string_sub : natural -> natural -> string -> maybe string
+let string_sub i n s =
+  match string_suffix i s with
+    | Nothing  -> Nothing
+    | Just suf -> string_prefix n suf
+  end
+
+declare ocaml target_rep function string_sub = `Ml_bindings.string_sub`
+
+(** Claude: [string_index_of_from c i s] returns [Just j] where [j] is the index
+  * of the first occurrence of [c] in [s] at or after index [i], [Nothing] if
+  * there is none or [i] is out of range.  The OCaml backend searches in place
+  * rather than copying the suffix of [s].
+  *)
+val string_index_of_from : char -> natural -> string -> maybe natural
+let string_index_of_from c i s =
+  match string_suffix i s with
+    | Nothing  -> Nothing
+    | Just suf ->
+      match string_index_of c suf with
+        | Nothing -> Nothing
+        | Just j  -> Just (i + j)
+      end
+  end
+
+declare ocaml target_rep function string_index_of_from = `Ml_bindings.string_index_of_from`
 
 val index : forall 'a. natural -> list 'a -> maybe 'a
 let rec index m xs =

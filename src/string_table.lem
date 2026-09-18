@@ -89,19 +89,27 @@ declare {isabelle} rename function concat = concat_string_table
   *)
 val get_string_at : natural -> string_table -> error string
 let get_string_at index tbl =
-  match Missing_pervasives.string_suffix index (get_base_string tbl) with
-    | Nothing     -> Fail "get_string_at: index out of range"
-    | Just suffix ->
-      let delim = get_delimiting_character tbl in
-      match string_index_of delim suffix with
+  (* Claude: search for the delimiter in place and copy out only the result.
+   * The previous version first copied the whole remainder of the base string
+   * for every lookup, which made symbol-name lookup linear in the size of the
+   * string table. *)
+  let base  = get_base_string tbl in
+  let delim = get_delimiting_character tbl in
+    if index > naturalFromNat (String.stringLength base) then
+      Fail "get_string_at: index out of range"
+    else
+      match Missing_pervasives.string_index_of_from delim index base with
         | Just idx ->
-          match string_prefix idx suffix with
+          match Missing_pervasives.string_sub index (idx - index) base with
             | Just s  -> Success s
             | Nothing -> Fail "get_string_at: index out of range"
           end
-        | Nothing -> Success suffix
+        | Nothing ->
+          match Missing_pervasives.string_suffix index base with
+            | Just s  -> Success s
+            | Nothing -> Fail "get_string_at: index out of range"
+          end
       end
-  end
 
 val find_string : string -> string_table -> maybe natural
 let find_string s t = 

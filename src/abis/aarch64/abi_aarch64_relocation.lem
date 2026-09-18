@@ -225,7 +225,7 @@ let {ocaml} string_of_aarch64_relocation_type rel_type =
   else if rel_type = r_aarch64_tstbr14 then
     "R_AARCH64_TSTBR14"
   else if rel_type = r_aarch64_condbr19 then
-    "R_AARCH64_CONBR19"
+    "R_AARCH64_CONDBR19" (* Claude: was misspelt CONBR19 *)
   else if rel_type = r_aarch64_jump26 then
     "R_AARCH64_JUMP26"
   else if rel_type = r_aarch64_call26 then
