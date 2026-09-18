@@ -30,6 +30,13 @@
   val compare : num -> num -> int
   val equal : num -> num -> bool
 
+  (* Claude: a total order for sorting values from different sections:
+     lexicographic on the section name and then the offset, with absolute
+     values treated as having the empty section name *)
+  val compare_lexicographic : num -> num -> int
+  val less_lexicographic : num -> num -> bool
+  val greater_lexicographic : num -> num -> bool
+
   val bitwise_or : num -> num -> num
   val bitwise_and : num -> num -> num
   val bitwise_xor : num -> num -> num
@@ -150,6 +157,16 @@ module Num = struct
   let less_equal = comp NBN.less_equal
   let greater_equal = comp NBN.greater_equal
   let equal = comp NBN.equal
+
+  let compare_lexicographic a b = match (a, b) with
+  | (Absolute a, Absolute b) -> NBN.compare a b
+  | (Absolute _, Offset _) -> -1
+  | (Offset _, Absolute _) -> 1
+  | (Offset (s, a'), Offset (t, b')) ->
+      let c = String.compare s t in
+      if c <> 0 then c else NBN.compare a' b'
+  let less_lexicographic a b = compare_lexicographic a b < 0
+  let greater_lexicographic a b = compare_lexicographic a b > 0
 
   let expect_nonneg x =
     let nonneg = match x with

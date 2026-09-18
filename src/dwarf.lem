@@ -7007,7 +7007,14 @@ let analyse_inlined_subroutine_by_range (is:inlined_subroutine) : inlined_subrou
   List.mapi (fun i -> fun (n1,n2) -> ((n1,n2),(symNaturalFromNat i, symNaturalFromNat n_ranges),is)) is.is_pc_ranges
 
 
-let is_lt ((n1,n2),(m,n),is) ((n1',n2'),(m',n'),is') = n1 < n1' || (n1 = n1' && n2 > n2')
+(* Claude: ranges may lie in different sections (or be absolute, e.g. from
+   discarded sections), so use the lexicographic total order *)
+let is_lt ((n1,n2),(m,n),is) ((n1',n2'),(m',n'),is') =
+  match sym_natural_compare_lexicographic n1 n1' with
+  | LT -> true
+  | GT -> false
+  | EQ -> sym_natural_greater_lexicographic n2 n2'
+  end
   
 let analyse_inlined_subroutines_by_range (iss:inlined_subroutine_data) : inlined_subroutine_data_by_range =
   Sorting.sortBy is_lt (List.concat (List.map analyse_inlined_subroutine_by_range iss))

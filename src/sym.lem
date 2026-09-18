@@ -96,6 +96,17 @@ declare ocaml    target_rep function sym_natural_greater = `Sym_ocaml.Num.greate
 declare ocaml    target_rep function sym_natural_greater_equal = `Sym_ocaml.Num.greater_equal`
 declare ocaml    target_rep function sym_natural_eq = `Sym_ocaml.Num.equal`
 
+(* Claude: a total order for sorting values that may lie in different
+   sections: lexicographic on the section name and then the offset, with
+   absolute values treated as having the empty section name.  The Ord
+   instance above fails on values from different sections. *)
+val sym_natural_compare_lexicographic : sym_natural -> sym_natural -> ordering
+val sym_natural_less_lexicographic : sym_natural -> sym_natural -> bool
+val sym_natural_greater_lexicographic : sym_natural -> sym_natural -> bool
+declare ocaml    target_rep function sym_natural_compare_lexicographic = `Sym_ocaml.Num.compare_lexicographic`
+declare ocaml    target_rep function sym_natural_less_lexicographic = `Sym_ocaml.Num.less_lexicographic`
+declare ocaml    target_rep function sym_natural_greater_lexicographic = `Sym_ocaml.Num.greater_lexicographic`
+
 instance (Ord sym_natural)
   let compare = sym_natural_compare
   let (<) = sym_natural_less
