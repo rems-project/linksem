@@ -77,30 +77,31 @@ let bytes_of_elf32_file ef =
         sort_by (fun (off_x, _) (off_y, _) -> natural_ordering off_x off_y)
           pre_layout
       in
+      (* Claude: accumulate the pieces (in reverse) and concatenate them once
+       * at the end; concatenating onto the growing result at every step copied
+       * the whole file once per piece. *)
       let concats =
         foldM (fun x y ->
-          let (current_offset, so_far) = x in
+          let (current_offset, pieces) = x in
           let (point_to_add, body) = y in
             if point_to_add < current_offset then
               let diff = current_offset - point_to_add in
                 (* Completely contained inside other segment *)
                 if Byte_sequence.length body < diff then
-                  return (current_offset, so_far)
+                  return (current_offset, pieces)
                 else
                   Byte_sequence.partition diff body >>= fun (_, cut) ->
-                  let concat = Byte_sequence.concat [so_far; cut] in
                   let delta  = current_offset + Byte_sequence.length cut in
-                    return (delta, concat)
+                    return (delta, cut :: pieces)
             else
               let diff   = point_to_add - current_offset in
               let reps   = Byte_sequence.create diff Missing_pervasives.null_byte in
-              let concat = Byte_sequence.concat [so_far; reps; body] in
               let delta  = point_to_add + Byte_sequence.length body in
-                return (delta, concat)
-        ) (0, Byte_sequence.empty) final_layout
+                return (delta, body :: reps :: pieces)
+        ) (0, []) final_layout
       in
-        concats >>= fun (offset, body) ->
-        return body
+        concats >>= fun (offset, pieces) ->
+        return (Byte_sequence.concat (List.reverse pieces))
     else
       fail "bytes_of_elf32_file: interpreted sections and section header table must have same length"
   else
@@ -166,30 +167,31 @@ let bytes_of_elf64_file ef =
         sort_by (fun (off_x, _) (off_y, _) -> natural_ordering off_x off_y)
           pre_layout
       in
+      (* Claude: accumulate the pieces (in reverse) and concatenate them once
+       * at the end; concatenating onto the growing result at every step copied
+       * the whole file once per piece. *)
       let concats =
         foldM (fun x y ->
-          let (current_offset, so_far) = x in
+          let (current_offset, pieces) = x in
           let (point_to_add, body) = y in
             if point_to_add < current_offset then
               let diff = current_offset - point_to_add in
                 (* Completely contained inside other segment *)
                 if Byte_sequence.length body < diff then
-                  return (current_offset, so_far)
+                  return (current_offset, pieces)
                 else
                   Byte_sequence.partition diff body >>= fun (_, cut) ->
-                  let concat = Byte_sequence.concat [so_far; cut] in
                   let delta  = current_offset + Byte_sequence.length cut in
-                    return (delta, concat)
+                    return (delta, cut :: pieces)
             else
               let diff   = point_to_add - current_offset in
               let reps   = Byte_sequence.create diff Missing_pervasives.null_byte in
-              let concat = Byte_sequence.concat [so_far; reps; body] in
               let delta  = point_to_add + Byte_sequence.length body in
-                return (delta, concat)
-        ) (0, Byte_sequence.empty) final_layout
+                return (delta, body :: reps :: pieces)
+        ) (0, []) final_layout
       in
-        concats >>= fun (offset, body) ->
-        return body
+        concats >>= fun (offset, pieces) ->
+        return (Byte_sequence.concat (List.reverse pieces))
     else
       fail "bytes_of_elf64_file: interpreted sections and section header table must have same length"
   else
@@ -459,54 +461,67 @@ let obtain_elf64_interpreted_sections shstrtab sht bs0 =
           elf64_section_name_as_string = name_string |>
   ) sht
 
-(** [find_first_not_in_range e rngs] for every pair (start, end) in [rngs], finds
-  * the first element, beginning counting from [e], that does not lie between
-  * a start and end value.
+(** Claude: [merge_inclusive_ranges rngs] merges a list of closed integer
+  * intervals [(x, y)], sorted by [x], into disjoint, non-adjacent closed
+  * intervals in the same order.  Two intervals are merged when the second
+  * starts at or before one past the end of the first, since integer positions
+  * [y] and [y + 1] leave no gap between them.
   *)
-val find_first_not_in_range : natural -> list (natural * natural) -> natural
-let rec find_first_not_in_range start ranges =
-  match List.filter (fun (x, y) -> start >= x && start <= y) ranges with
-    | [] -> start
-    | _  -> find_first_not_in_range (start + 1) ranges
+val merge_inclusive_ranges : list (natural * natural) -> list (natural * natural)
+let rec merge_inclusive_ranges ranges =
+  match ranges with
+    | [] -> []
+    | [r] -> [r]
+    | (a, b) :: (c, d) :: rest ->
+      if c <= b + 1 then
+        merge_inclusive_ranges ((a, (if d > b then d else b)) :: rest)
+      else
+        (a, b) :: merge_inclusive_ranges ((c, d) :: rest)
   end
-(* XXX: to sidestep termination horror in Isabelle --- the following is not executable! *)
-declare isabelle target_rep function find_first_not_in_range = `Elf_Types_Local.find_first_not_in_range`
 
-(** [find_first_in_range e rngs] for every pair (start, end) in [rngs], finds
-  * the first element, beginning counting from [e], that lies between
-  * a start and end value.
+(** Claude: [gaps_between start max intervals] lists the maximal runs of
+  * positions in [start .. max) that are not covered by any of the disjoint,
+  * sorted, closed [intervals], each run as [(first, one past last)].  A run
+  * that reaches [max] is reported as [(first, max)].
   *)
-val find_first_in_range : natural -> list (natural * natural) -> natural
-let rec find_first_in_range start ranges =
-  match List.filter (fun (x, y) -> start >= x && start <= y) ranges with
-    | [] -> find_first_in_range (start + 1) ranges
-    | _  -> start
-  end
-(* XXX: to sidestep termination horror in Isabelle --- the following is not executable! *)
-declare isabelle target_rep function find_first_in_range = `Elf_Types_Local.find_first_in_range`
+val gaps_between : natural -> natural -> list (natural * natural) -> list (natural * natural)
+let rec gaps_between start max intervals =
+  if start >= max then
+    []
+  else
+    match intervals with
+      | [] -> [(start, max)]
+      | (a, b) :: rest ->
+        if b < start then
+          gaps_between start max rest
+        else if a <= start then
+          gaps_between (b + 1) max rest
+        else if a > max then
+          [(start, max)]
+        else
+          (start, a) :: gaps_between (b + 1) max rest
+    end
 
-(** [compute_differences start max ranges] is a utility function used for calculating
-  * "dead" spots in an ELF file not covered by any of the interpreted structure
-  * that nevertheless need recording in the bits_and_bobs field of each ELF record
-  * in order to maintain in-out roundtripping up to exact binary equivalence.
+(** [compute_differences start max ranges] computes the list of position ranges
+  * between [start] and [max] that are not covered by any of the closed ranges
+  * in [ranges]: the parts of an ELF file claimed by neither a segment, a section
+  * nor a header.
+  *
+  * Claude: this used to step through the file one byte at a time, filtering
+  * the whole range list at every byte, so it cost (file size x number of
+  * ranges): about 400 s for a 4 MB object with 18,000 sections.  It now sorts
+  * and merges the ranges and walks them once.  The result is the same list of
+  * gaps, including the closed-interval treatment of range ends, except that a
+  * trailing region not followed by any range is now reported as a gap up to
+  * [max] where the old code did not terminate.
   *)
 val compute_differences : natural -> natural -> list (natural * natural) -> error (list (natural * natural))
-let rec compute_differences start max ranges =
-  if start = max then
-    return []
-  else if start > max then
+let compute_differences start max ranges =
+  if start > max then
     fail "compute_differences: passed maximum"
   else
-    let first = find_first_not_in_range start ranges in
-      if first >= max then
-        return []
-      else
-        let last = find_first_in_range first ranges in
-          if last > max then
-            return [(first, max)]
-          else
-            compute_differences last max ranges >>= fun tail ->
-            return ((first, last)::tail)
+    let sorted = sort_by (fun (x1, _) (x2, _) -> natural_ordering x1 x2) ranges in
+      return (gaps_between start max (merge_inclusive_ranges sorted))
 declare isabelle target_rep function compute_differences = `Elf_Types_Local.compute_differences`
 
 (** [obtain_elf32_bits_and_bobs hdr pht segs sht sects bs0] identifies and records
