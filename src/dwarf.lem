@@ -2515,34 +2515,6 @@ let pp_attribute_value c cuh str at av =
       ^ pp_debug_str_entry str n
   end
 
-val pp_attribute_value_like_objdump : p_context -> compilation_unit_header -> sym_byte_sequence -> sym_natural (*attribute tag*) -> attribute_value -> string
-let pp_attribute_value_like_objdump c cuh str at av =
-  match av with
-  | AV_addr x -> (*"AV_addr " ^*) pphex_sym x
-  | AV_block n bs -> (*"AV_block " ^ show n ^ " " ^ ppbytes bs
-      ^ if at = attribute_encode "DW_AT_location" then " " ^ parse_and_pp_operations c cuh bs else ""*) 
-   (* show n ^ " byte block: " *) ppbytesplain c n bs
-      ^ if at = attribute_encode "DW_AT_location" then " " ^ parse_and_pp_operations c cuh bs else ""
-  | AV_constantN n bs -> ppbytes bs (*"AV_constantN " ^ show n ^ " " ^ ppbytes bs*)
-  | AV_constant_SLEB128 i -> (*"AV_constant_SLEB128 " ^*) show i
-  | AV_constant_ULEB128 n -> (*"AV_constant_ULEB128 " ^*) show n
-  | AV_exprloc n bs -> (*"AV_exprloc " ^ show n ^ " " ^*) ppbytes bs
-      ^ " " ^ parse_and_pp_operations c cuh bs
-  | AV_flag b -> (*"AV_flag " ^*)if b then "1" else "0"
-  | AV_ref n -> (*"AV_ref " ^*) "<"^pphex_sym (n + cuh.cuh_offset)^">"
-  | AV_ref_addr n -> (*"AV_ref_addr " ^*) "<"^pphex_sym n^">"
-  | AV_ref_sig8 n -> "AV_ref_sig8 " ^ pphex_sym n
-  | AV_sec_offset n -> (*"AV_sec_offset " ^*) pphex_sym  n
-     ^ if at = attribute_encode "DW_AT_location" then " (location list)"  else ""
-  | AV_string bs -> string_of_sym_byte_sequence bs
-  | AV_strp n -> (*"AV_sec_offset " ^ pphex_sym n ^ " "
-                   ^ pp_debug_str_entry str n*)
-      "(indirect string, offset: "^pphex_sym n ^ "): " ^ pp_debug_str_entry str n
-  end
-
-
-  
-
 val parser_of_attribute_form_non_indirect : p_context -> compilation_unit_header -> sym_natural -> parser attribute_value
 let parser_of_attribute_form_non_indirect c cuh n =
 (* address*)
@@ -2956,31 +2928,56 @@ let indent_level_plus_one indent level =
   else
     " "^"   "
       
-let pp_die_attribute c (cuh:compilation_unit_header) (str : sym_byte_sequence) (indent:bool) (level: natural) (((at: sym_natural), (af: sym_natural)), ((pos: sym_natural),(av:attribute_value))) : string =
-  indent_level_plus_one indent level ^ pp_pos pos  ^ "   "
-  ^ right_space_padded_to 18 (pp_attribute_encoding at) ^ ": "
-  ^
-    if indent then
-      "(" ^ pp_attribute_form_encoding af ^ ") "
-      ^ pp_attribute_value c cuh str at av
-      ^ "\n"
-    else
-      pp_attribute_value_like_objdump c cuh str at av
-      ^ "\n"
-          
+(** Claude: DIE tree pretty-printing is a single walk over the tree,
+  * [pp_die_tree], parameterised by a [die_style]: how to render the line that
+  * introduces a DIE, one attribute line, and whatever follows a DIE's children.
+  * Two styles exist: [style_info], linksem's own view of the parsed data
+  * (--debug-dump=info), and [style_objdump], byte-identical to
+  * `objdump --dwarf=info` (--debug-dump=dies), defined with the other
+  * objdump-compatible printing functions further down.
+  *)
+type die_style =
+  <| ds_die_line   : natural -> die -> string
+   ; ds_attribute  : compilation_unit_header -> natural -> ((sym_natural * sym_natural) * (sym_natural * attribute_value)) -> string
+   ; ds_terminator : natural -> die -> string
+  |>
+
+val pp_die_tree : die_style -> compilation_unit_header -> bool -> natural -> die -> string
+let rec pp_die_tree (st:die_style) (cuh:compilation_unit_header) (descend:bool) (level:natural) (die:die) : string =
+  let ad = die.die_abbreviation_declaration in
+  st.ds_die_line level die
+  ^ String.concat "" (List.map (st.ds_attribute cuh level) (List.zip ad.ad_attribute_specifications die.die_attribute_values))
+  ^ (if descend && ad.ad_has_children then
+       String.concat "" (List.map (pp_die_tree st cuh descend (level + 1)) die.die_children)
+       ^ st.ds_terminator level die
+     else "")
+
+(** linksem's own view: each attribute with its form and the parsed value *)
+val style_info : p_context -> sym_byte_sequence -> bool -> die_style
+let style_info c (str:sym_byte_sequence) (indent:bool) : die_style =
+  <| ds_die_line = (fun level die ->
+       indent_level indent level ^ "<" ^ show level ^ ">"
+       ^ pp_pos die.die_offset
+       ^ ": Abbrev Number: " ^ show die.die_abbreviation_code
+       ^ " (" ^ pp_tag_encoding die.die_abbreviation_declaration.ad_tag ^")\n")
+   ; ds_attribute = (fun cuh level ((at, af), (pos, av)) ->
+       indent_level_plus_one indent level ^ pp_pos pos  ^ "   "
+       ^ right_space_padded_to 18 (pp_attribute_encoding at) ^ ": "
+       ^ "(" ^ pp_attribute_form_encoding af ^ ") "
+       ^ pp_attribute_value c cuh str at av
+       ^ "\n")
+   ; ds_terminator = (fun _ _ -> "")
+  |>
+
+(* Claude: the original entry points, kept with their signatures.  [indent]
+   now only controls indentation: the unindented variant used to be a rough
+   imitation of objdump, superseded by [pp_dwarf_like_objdump]. *)
+let pp_die_attribute c (cuh:compilation_unit_header) (str : sym_byte_sequence) (indent:bool) (level: natural) (spec_and_value : (sym_natural * sym_natural) * (sym_natural * attribute_value)) : string =
+  (style_info c str indent).ds_attribute cuh level spec_and_value
+
 val pp_die : p_context -> compilation_unit_header -> sym_byte_sequence -> bool -> natural -> bool -> die -> string
-let rec pp_die c cuh str indent level (pp_children:bool) die =
-  indent_level indent level ^ "<" ^ show level ^ ">"
-  ^ pp_pos die.die_offset
-  ^ ": Abbrev Number: " ^ show die.die_abbreviation_code
-  ^ " (" ^ pp_tag_encoding die.die_abbreviation_declaration.ad_tag ^")\n"
-  ^
-    let ats = List.zip
-        die.die_abbreviation_declaration.ad_attribute_specifications
-        die.die_attribute_values in
-    (String.concat "" (List.map (pp_die_attribute c cuh str indent level) ats))
-    ^
-      if pp_children then String.concat "" (List.map (pp_die c cuh str indent (level +1) pp_children) die.die_children) else ""
+let pp_die c cuh str indent level (pp_children:bool) die =
+  pp_die_tree (style_info c str indent) cuh pp_children level die
 
 val pp_die_abbrev : p_context -> compilation_unit_header -> sym_byte_sequence -> natural -> bool -> (list die) -> die -> string
 let rec pp_die_abbrev c cuh str level (pp_children:bool) parents die =
@@ -4201,48 +4198,86 @@ let od_arg_block (args: list operation_argument_value) (i:nat) : maybe (sym_natu
   | _ -> Nothing
   end
 
+(* Claude: how objdump renders each operator's arguments (decode_location_expression);
+   operators without a row print just their name *)
+type od_op_shape =
+  | OdOp_addr              (* "name: %x" *)
+  | OdOp_unsigned          (* "name: %u" *)
+  | OdOp_signed            (* "name: %d" *)
+  | OdOp_reg of natural    (* "name (%s)", register = code - base *)
+  | OdOp_breg of natural   (* "name (%s): %d" *)
+  | OdOp_regx              (* "name: %u (%s)" *)
+  | OdOp_bregx             (* "name: %u (%s) %d" *)
+  | OdOp_cu_ref            (* "name: <%#x>", CU-relative *)
+  | OdOp_abs_ref           (* "name: <%#x>" *)
+  | OdOp_index_ref         (* "name <%#x>" *)
+  | OdOp_convert           (* "name <%#x>", CU-relative unless 0 *)
+  | OdOp_implicit_pointer  (* "name: <%#x> %d" *)
+  | OdOp_regval_type       (* "name: %u (%s) <%#x>" *)
+  | OdOp_deref_type        (* "name: %d <%#x>" *)
+  | OdOp_bit_piece         (* "name: size: %u offset: %u " *)
+  | OdOp_implicit_value    (* "name N byte block: .." *)
+  | OdOp_nested            (* "name: (" nested expression ")" *)
+  | OdOp_fixed of string   (* a fixed text *)
+
+(* (lowest code, highest code, shape) *)
+let od_op_shapes : list (natural * natural * od_op_shape) = [
+  (3, 3, OdOp_addr);
+  (8, 8, OdOp_unsigned); (9, 9, OdOp_signed); (10, 10, OdOp_unsigned); (11, 11, OdOp_signed);   (* const1u .. const2s *)
+  (12, 12, OdOp_unsigned); (13, 13, OdOp_signed); (14, 14, OdOp_unsigned); (15, 15, OdOp_signed); (* const4u .. const8s *)
+  (16, 16, OdOp_unsigned); (17, 17, OdOp_signed);          (* constu, consts *)
+  (21, 21, OdOp_unsigned);                                  (* pick *)
+  (35, 35, OdOp_unsigned);                                  (* plus_uconst *)
+  (40, 40, OdOp_signed); (47, 47, OdOp_signed);             (* bra, skip *)
+  (80, 111, OdOp_reg 80); (112, 143, OdOp_breg 112);        (* reg0..31, breg0..31 *)
+  (144, 144, OdOp_regx); (145, 145, OdOp_signed); (146, 146, OdOp_bregx);  (* regx, fbreg, bregx *)
+  (147, 149, OdOp_unsigned);                                (* piece, deref_size, xderef_size *)
+  (152, 153, OdOp_cu_ref); (154, 154, OdOp_abs_ref);        (* call2, call4, call_ref *)
+  (157, 157, OdOp_bit_piece); (158, 158, OdOp_implicit_value);
+  (160, 160, OdOp_implicit_pointer); (161, 162, OdOp_index_ref); (163, 163, OdOp_nested);
+  (165, 165, OdOp_regval_type); (166, 167, OdOp_deref_type); (168, 169, OdOp_convert);
+  (224, 224, OdOp_fixed "DW_OP_GNU_push_tls_address or DW_OP_HP_unknown");
+  (242, 242, OdOp_implicit_pointer); (243, 243, OdOp_nested); (245, 245, OdOp_regval_type);
+  (246, 246, OdOp_deref_type); (247, 247, OdOp_convert); (249, 249, OdOp_convert);
+  (250, 250, OdOp_cu_ref); (251, 252, OdOp_index_ref); (253, 253, OdOp_abs_ref)
+]
+
 val od_op : p_context -> compilation_unit_header -> (natural -> string) -> operation -> string
 let rec od_op c cuh regname (op:operation) : string =
   let code = sym_natural_expect_const op.op_code in
   let args = op.op_argument_values in
   let cu_off = sym_natural_offset_part cuh.cuh_offset in
-  let nested bs = String.concat "; " (List.map (od_op c cuh regname) (parse_operations_bs c cuh bs)) in
-  if code = 3 then "DW_OP_addr: " ^ pphexplain (od_arg_nat args 0)
-  else if code >= 48 && code <= 79 then "DW_OP_lit" ^ show (code - 48)
-  else if code >= 80 && code <= 111 then
-    let r = code - 80 in "DW_OP_reg" ^ show r ^ " (" ^ regname r ^ ")"
-  else if code >= 112 && code <= 143 then
-    let r = code - 112 in "DW_OP_breg" ^ show r ^ " (" ^ regname r ^ "): " ^ show (od_arg_int args 0)
-  else if code = 144 then let r = od_arg_nat args 0 in "DW_OP_regx: " ^ show r ^ " (" ^ regname r ^ ")"
-  else if code = 145 then "DW_OP_fbreg: " ^ show (od_arg_int args 0)
-  else if code = 146 then let r = od_arg_nat args 0 in "DW_OP_bregx: " ^ show r ^ " (" ^ regname r ^ ") " ^ show (od_arg_int args 1)
-  else if code = 147 then "DW_OP_piece: " ^ show (od_arg_nat args 0)
-  else if code = 148 then "DW_OP_deref_size: " ^ show (od_arg_nat args 0)
-  else if code = 149 then "DW_OP_xderef_size: " ^ show (od_arg_nat args 0)
-  else if code = 35 then "DW_OP_plus_uconst: " ^ show (od_arg_nat args 0)
-  else if code = 8 || code = 10 || code = 12 || code = 14 || code = 16 then op.op_string ^ ": " ^ show (od_arg_nat args 0)
-  else if code = 9 || code = 11 || code = 13 || code = 15 || code = 17 then op.op_string ^ ": " ^ show (od_arg_int args 0)
-  else if code = 21 then "DW_OP_pick: " ^ show (od_arg_nat args 0)
-  else if code = 40 || code = 47 then op.op_string ^ ": " ^ show (od_arg_int args 0)
-  else if code = 152 || code = 153 then op.op_string ^ ": <" ^ od_hx (od_arg_nat args 0 + cu_off) ^ ">"
-  else if code = 154 then "DW_OP_call_ref: <" ^ od_hx (od_arg_nat args 0) ^ ">"
-  else if code = 157 then "DW_OP_bit_piece: size: " ^ show (od_arg_nat args 0) ^ " offset: " ^ show (od_arg_nat args 1) ^ " "
-  else if code = 158 then
-    "DW_OP_implicit_value" ^ (match od_arg_block args 0 with Just (n, bs) -> " " ^ od_block c n bs | Nothing -> "" end)
-  else if code = 163 || code = 243 then
-    op.op_string ^ ": (" ^ (match od_arg_block args 0 with Just (_, bs) -> nested bs | Nothing -> "" end) ^ ")"
-  else if code = 160 || code = 242 then op.op_string ^ ": <" ^ od_hx (od_arg_nat args 0) ^ "> " ^ show (od_arg_int args 1)
-  else if code = 165 || code = 245 then
-    let r = od_arg_nat args 0 in op.op_string ^ ": " ^ show r ^ " (" ^ regname r ^ ") <" ^ od_hx (cu_off + od_arg_nat args 1) ^ ">"
-  else if code = 166 || code = 167 || code = 246 then
-    op.op_string ^ ": " ^ show (od_arg_int args 0) ^ " <" ^ od_hx (cu_off + od_arg_nat args 1) ^ ">"
-  else if code = 168 || code = 169 || code = 247 || code = 249 then
-    let v = od_arg_nat args 0 in op.op_string ^ " <" ^ od_hx (if v = 0 then 0 else v + cu_off) ^ ">"
-  else if code = 250 then "DW_OP_GNU_parameter_ref: <" ^ od_hx (cu_off + od_arg_nat args 0) ^ ">"
-  else if code = 161 || code = 162 || code = 251 || code = 252 then op.op_string ^ " <" ^ od_hx (od_arg_nat args 0) ^ ">"
-  else if code = 253 then "DW_OP_GNU_variable_value: <" ^ od_hx (od_arg_nat args 0) ^ ">"
-  else if code = 224 then "DW_OP_GNU_push_tls_address or DW_OP_HP_unknown"
-  else op.op_string
+  let name = op.op_string in
+  match List.find (fun (lo, hi, _) -> lo <= code && code <= hi) od_op_shapes with
+  | Nothing -> name
+  | Just (_, _, shape) ->
+    match shape with
+    | OdOp_addr -> name ^ ": " ^ pphexplain (od_arg_nat args 0)
+    | OdOp_unsigned -> name ^ ": " ^ show (od_arg_nat args 0)
+    | OdOp_signed -> name ^ ": " ^ show (od_arg_int args 0)
+    | OdOp_reg base -> name ^ " (" ^ regname (code - base) ^ ")"
+    | OdOp_breg base -> name ^ " (" ^ regname (code - base) ^ "): " ^ show (od_arg_int args 0)
+    | OdOp_regx -> let r = od_arg_nat args 0 in name ^ ": " ^ show r ^ " (" ^ regname r ^ ")"
+    | OdOp_bregx -> let r = od_arg_nat args 0 in name ^ ": " ^ show r ^ " (" ^ regname r ^ ") " ^ show (od_arg_int args 1)
+    | OdOp_cu_ref -> name ^ ": <" ^ od_hx (od_arg_nat args 0 + cu_off) ^ ">"
+    | OdOp_abs_ref -> name ^ ": <" ^ od_hx (od_arg_nat args 0) ^ ">"
+    | OdOp_index_ref -> name ^ " <" ^ od_hx (od_arg_nat args 0) ^ ">"
+    | OdOp_convert -> let v = od_arg_nat args 0 in name ^ " <" ^ od_hx (if v = 0 then 0 else v + cu_off) ^ ">"
+    | OdOp_implicit_pointer -> name ^ ": <" ^ od_hx (od_arg_nat args 0) ^ "> " ^ show (od_arg_int args 1)
+    | OdOp_regval_type -> let r = od_arg_nat args 0 in name ^ ": " ^ show r ^ " (" ^ regname r ^ ") <" ^ od_hx (cu_off + od_arg_nat args 1) ^ ">"
+    | OdOp_deref_type -> name ^ ": " ^ show (od_arg_int args 0) ^ " <" ^ od_hx (cu_off + od_arg_nat args 1) ^ ">"
+    | OdOp_bit_piece -> name ^ ": size: " ^ show (od_arg_nat args 0) ^ " offset: " ^ show (od_arg_nat args 1) ^ " "
+    | OdOp_implicit_value -> name ^ (match od_arg_block args 0 with Just (n, bs) -> " " ^ od_block c n bs | Nothing -> "" end)
+    | OdOp_nested ->
+        name ^ ": ("
+        ^ (match od_arg_block args 0 with
+           | Just (_, bs) -> String.concat "; " (List.map (od_op c cuh regname) (parse_operations_bs c cuh bs))
+           | Nothing -> ""
+           end)
+        ^ ")"
+    | OdOp_fixed t -> t
+    end
+  end
 
 let od_ops c cuh regname (ops: list operation) : string =
   String.concat "; " (List.map (od_op c cuh regname) ops)
@@ -4430,21 +4465,18 @@ let od_tag_name (t:sym_natural) : string =
         if n >= 16512 && n <= 65535 then "User TAG value: " ^ od_hx n else "Unknown TAG value: " ^ od_hx n
   end
 
-val od_die : p_context -> compilation_unit_header -> sym_byte_sequence -> (natural -> string) -> bool -> natural -> die -> string
-let rec od_die c cuh str regname have_frame_base (level:natural) (die:die) : string =
-  let ad = die.die_abbreviation_declaration in
-  " <" ^ show level ^ "><" ^ od_x_sym die.die_offset ^ ">: Abbrev Number: " ^ od_dec_sym die.die_abbreviation_code
-  ^ " (" ^ od_tag_name ad.ad_tag ^ ")\n"
-  ^ String.concat ""
-      (List.map
-        (fun ((at, af), (pos, av)) ->
-          "    <" ^ od_x_sym pos ^ ">   " ^ right_space_padded_to 18 (pp_attribute_encoding at) ^ ": "
-          ^ od_attribute_value c cuh str regname have_frame_base at af av ^ "\n")
-        (List.zip ad.ad_attribute_specifications die.die_attribute_values))
-  ^ (if ad.ad_has_children then
-       String.concat "" (List.map (od_die c cuh str regname have_frame_base (level + 1)) die.die_children)
-       ^ " <" ^ show (level + 1) ^ "><" ^ pphexplain (sym_natural_offset_part die.die_end - 1) ^ ">: Abbrev Number: 0\n"
-     else "")
+(** byte-identical to `objdump --dwarf=info`: see [pp_die_tree] *)
+val style_objdump : p_context -> sym_byte_sequence -> (natural -> string) -> bool -> die_style
+let style_objdump c (str:sym_byte_sequence) (regname: natural -> string) (have_frame_base:bool) : die_style =
+  <| ds_die_line = (fun level die ->
+       " <" ^ show level ^ "><" ^ od_x_sym die.die_offset ^ ">: Abbrev Number: " ^ od_dec_sym die.die_abbreviation_code
+       ^ " (" ^ od_tag_name die.die_abbreviation_declaration.ad_tag ^ ")\n")
+   ; ds_attribute = (fun cuh level ((at, af), (pos, av)) ->
+       "    <" ^ od_x_sym pos ^ ">   " ^ right_space_padded_to 18 (pp_attribute_encoding at) ^ ": "
+       ^ od_attribute_value c cuh str regname have_frame_base at af av ^ "\n")
+   ; ds_terminator = (fun level die ->
+       " <" ^ show (level + 1) ^ "><" ^ pphexplain (sym_natural_offset_part die.die_end - 1) ^ ">: Abbrev Number: 0\n")
+  |>
 
 let od_compilation_unit c str regname have_frame_base (cu:compilation_unit) : string =
   let h = cu.cu_header in
@@ -4453,7 +4485,7 @@ let od_compilation_unit c str regname have_frame_base (cu:compilation_unit) : st
   ^ "   Version:       " ^ od_dec_sym h.cuh_version ^ "\n"
   ^ "   Abbrev Offset: " ^ od_hx_sym h.cuh_debug_abbrev_offset ^ "\n"
   ^ "   Pointer Size:  " ^ od_dec_sym h.cuh_address_size ^ "\n"
-  ^ od_die c h str regname have_frame_base 0 cu.cu_die
+  ^ pp_die_tree (style_objdump c str regname have_frame_base) h true 0 cu.cu_die
 
 let od_abbreviation_declaration (x:abbreviation_declaration) : string =
   "   " ^ od_dec_sym x.ad_abbreviation_code ^ "      " ^ od_tag_name x.ad_tag ^ "    "
