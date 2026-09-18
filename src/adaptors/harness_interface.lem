@@ -816,122 +816,326 @@ let {ocaml} harness_string_of_elf64_relocs f1 os bs0 =
       | Success shdr -> "\n" ^ harness_string_of_elf64_relocs' endian os f1 rel_secs sht shdr bs0
     end
 
-val harness_string_of_elf32_symbol_table_entry : nat -> (natural -> string) ->
-  (natural -> string) -> byte_sequence -> string_table -> elf32_symbol_table_entry -> string
-let {ocaml} harness_string_of_elf32_symbol_table_entry num os proc bs0 stbl ent =
-  let vlu = unsafe_hex_string_of_natural 8 (natural_of_elf32_addr ent.elf32_st_value) in
-  let siz = show (natural_of_elf32_word ent.elf32_st_size) in
-  let siz_pad =
-    let pad = 5 - stringLength siz in
-    if pad = 0 then
-      ""
-    else
-      concatS (replicate (naturalFromNat pad) " ")
-  in
-  let typ = string_of_symbol_type (get_elf32_symbol_type ent) os proc in
-  let bnd = string_of_symbol_binding (get_elf32_symbol_binding ent) os proc in
-  let bnd_pad =
-    let pad  = 6 - stringLength typ in
-    if pad = 0 then
-      ""
-    else
-      concatS (replicate (naturalFromNat pad) " ")
-  in
-  let vis = string_of_symbol_visibility (natural_of_unsigned_char ent.elf32_st_other) in
-  let vis_pad =
-    let pad  = 6 - stringLength bnd in
-    if pad = 0 then
-      ""
-    else
-      concatS (replicate (naturalFromNat pad) " ")
-  in
-  let ndx =
-    let tmp = natural_of_elf32_half ent.elf32_st_shndx in
-      if tmp = shn_undef then
-        "UND"
-      else if tmp = shn_abs then
-        "ABS"
+(** Claude: symbol table dump in the layout of [readelf -W -s] (binutils 2.42,
+  * [print_symbol] in binutils/readelf.c).  Field widths are readelf's:
+  * ["%6d: "] index, the value in full hex, ["%5d"] size, [" %-7s"] type,
+  * [" %-6s"] binding, [" %-7s"] visibility, an optional [" [other] "], [" %4s "]
+  * section index, then the name and, for .dynsym entries, the symbol version.
+  *)
+
+val rjust : nat -> string -> string
+let {ocaml} rjust w s =
+  let l = String.stringLength s in
+    if l < w then String.concat "" (replicate (naturalFromNat (w - l)) " ") ^ s else s
+
+val ljust : nat -> string -> string
+let {ocaml} ljust w s =
+  let l = String.stringLength s in
+    if l < w then s ^ String.concat "" (replicate (naturalFromNat (w - l)) " ") else s
+
+(** Claude: symbol type name as readelf spells it for the machines and OSABIs
+  * linksem knows about ([get_symbol_type]).  [10] in the OS range is IFUNC on
+  * GNU and FreeBSD systems; ARM's processor-specific [13] is THUMB_FUNC.
+  *)
+val harness_string_of_symbol_type : natural -> natural -> natural -> string
+let {ocaml} harness_string_of_symbol_type mach osabi t =
+  if t = stt_notype then "NOTYPE"
+  else if t = stt_object then "OBJECT"
+  else if t = stt_func then "FUNC"
+  else if t = stt_section then "SECTION"
+  else if t = stt_file then "FILE"
+  else if t = stt_common then "COMMON"
+  else if t = stt_tls then "TLS"
+  else if t = 8 then "RELC"
+  else if t = 9 then "SRELC"
+  else if t >= stt_loproc && t <= stt_hiproc then
+    if mach = elf_ma_arm && t = 13 then "THUMB_FUNC"
+    else "<processor specific>: " ^ show t
+  else if t >= stt_loos && t <= stt_hios then
+    if t = 10 && (osabi = elf_osabi_gnu || osabi = elf_osabi_freebsd) then "IFUNC"
+    else "<OS specific>: " ^ show t
+  else
+    "<unknown>: " ^ show t
+
+(** Claude: symbol binding name as readelf spells it ([get_symbol_binding]);
+  * [10] in the OS range is UNIQUE on GNU systems.
+  *)
+val harness_string_of_symbol_binding : natural -> natural -> string
+let {ocaml} harness_string_of_symbol_binding osabi b =
+  if b = stb_local then "LOCAL"
+  else if b = stb_global then "GLOBAL"
+  else if b = stb_weak then "WEAK"
+  else if b >= stb_loproc && b <= stb_hiproc then "<processor specific>: " ^ show b
+  else if b >= stb_loos && b <= stb_hios then
+    if b = 10 && osabi = elf_osabi_gnu then "UNIQUE"
+    else "<OS specific>: " ^ show b
+  else
+    "<unknown>: " ^ show b
+
+val harness_string_of_symbol_visibility : natural -> string
+let {ocaml} harness_string_of_symbol_visibility v =
+  if v = stv_default then "DEFAULT"
+  else if v = stv_internal then "INTERNAL"
+  else if v = stv_hidden then "HIDDEN"
+  else if v = stv_protected then "PROTECTED"
+  else "<unknown>"
+
+(** Claude: readelf's rendering of the bits of [st_other] beyond the visibility
+  * ([get_symbol_other]).  Only the AArch64 VARIANT_PCS bit is named here; the
+  * MIPS, PPC64, RISC-V, Alpha and IA-64 names are not reproduced.
+  *)
+(** Claude: readelf's ["%5d"] for a symbol size falls back to ["0x%x"] when the
+  * value has more than five digits ([print_vma] with [DEC_5]).
+  *)
+val harness_string_of_symbol_size : natural -> string
+let {ocaml} harness_string_of_symbol_size n =
+  if n <= 99999 then rjust 5 (show n) else "0x" ^ unsafe_hex_string_of_natural 0 n
+
+val harness_string_of_symbol_other : natural -> natural -> string
+let {ocaml} harness_string_of_symbol_other mach other =
+  if mach = elf_ma_ppc64 && natural_land other 31 = 0 then
+    (* PPC64 local entry offset, STO_PPC64_LOCAL_MASK = 0xe0 *)
+    let v = other / 32 in
+      if v <= 6 then
+        (* readelf decodes 2..6 as 1 << v, i.e. 4, 8, 16, 32, 64 *)
+        let v = if v = 2 then 4 else if v = 3 then 8 else if v = 4 then 16
+                else if v = 5 then 32 else if v = 6 then 64 else v in
+          "<localentry>: " ^ show v
       else
-        show tmp
+        "<other>: " ^ unsafe_hex_string_of_natural 0 other
+  else if mach = elf_ma_aarch64 && natural_land other 128 <> 0 then
+    let rest = other - 128 in
+      if rest = 0 then "VARIANT_PCS"
+      else "VARIANT_PCS | " ^ unsafe_hex_string_of_natural 0 rest
+  else
+    "<other>: " ^ unsafe_hex_string_of_natural 0 other
+
+(** Claude: [harness_string_of_symbol_ndx mach nsections ndx] is readelf's text
+  * for a symbol's section index ([printable_section_name_from_index]) together
+  * with whether it is a is_special (non-section) index.
+  *)
+val harness_string_of_symbol_ndx : natural -> natural -> natural -> (string * bool)
+let {ocaml} harness_string_of_symbol_ndx mach nsections ndx =
+  if ndx = shn_undef then ("UND", true)
+  else if ndx = shn_abs then ("ABS", true)
+  else if ndx = shn_common then ("COM", true)
+  else if (mach = elf_ma_x86_64 || mach = elf_ma_l10m || mach = elf_ma_k10m) && ndx = shn_loproc + 2 then
+    ("LARGE_COM", true)
+  else if ndx < nsections then (show ndx, false)
+  else if ndx >= shn_loproc && ndx <= shn_hiproc then ("PRC[0x" ^ unsafe_hex_string_of_natural 4 ndx ^ "]", true)
+  else if ndx >= shn_loos && ndx <= shn_hios then ("OS [0x" ^ unsafe_hex_string_of_natural 4 ndx ^ "]", true)
+  else if ndx >= shn_loreserve then ("RSV[0x" ^ unsafe_hex_string_of_natural 4 ndx ^ "]", true)
+  else if nsections <> 0 then ("BAD[0x" ^ unsafe_hex_string_of_natural 0 ndx ^ "]", true)
+  else ("<section 0x" ^ unsafe_hex_string_of_natural 0 ndx ^ ">", true)
+
+(** Claude: the GNU symbol version information needed to annotate .dynsym
+  * entries: the .gnu.version entries indexed by symbol number, the version
+  * definitions, the version requirements, and the largest definition index.
+  *)
+type harness_symbol_versions =
+  maybe (Map.map natural gnu_ext_interpreted_versym_entry * list gnu_ext_interpreted_verdef * list gnu_ext_interpreted_vernaux * natural)
+
+(** Claude: [harness_symbol_version_suffix versions symidx shndx name] is the
+  * ["@VER"], ["@@VER"] or ["@VER (n)"] suffix readelf appends to a dynamic
+  * symbol's name, following [get_symbol_version_string]: a hidden version is
+  * written with one "@", a public definition with "@@", and a required
+  * (undefined) version with the requirement's index in parentheses.
+  *)
+val harness_symbol_version_suffix : harness_symbol_versions -> natural -> natural -> string -> string
+let {ocaml} harness_symbol_version_suffix versions symidx shndx name =
+  match versions with
+    | Nothing -> ""
+    | Just (entries, verdefs, vernauxs, max_vd_ndx) ->
+      match Map.lookup symidx entries with
+        | Nothing -> ""
+        | Just entry ->
+          let value  = entry.gnu_ext_interpreted_versym_entry_value in
+          let hidden = entry.gnu_ext_interpreted_versym_entry_hidden in
+          let raw    = if hidden then value + 32768 else value in
+          if (not hidden) && value = 0 then ""
+          else
+            let from_verdef =
+              if shndx <> shn_undef && raw <> 32769 && verdefs <> [] then
+                match List.find (fun vd -> vd.gnu_ext_interpreted_verdef_ndx = value) verdefs with
+                  | Just vd ->
+                    if vd.gnu_ext_interpreted_verdef_ndx = 1 && vd.gnu_ext_interpreted_verdef_flags = 1 then
+                      Just ""   (* the base version: readelf prints nothing *)
+                    else if vd.gnu_ext_interpreted_verdef_name <> name then
+                      Just ((if hidden then "@" else "@@") ^ vd.gnu_ext_interpreted_verdef_name)
+                    else
+                      Nothing
+                  | Nothing -> Nothing
+                end
+              else
+                Nothing
+            in
+            match from_verdef with
+              | Just suffix -> suffix
+              | Nothing ->
+                match List.find (fun va -> va.gnu_ext_interpreted_vernaux_other = raw) vernauxs with
+                  | Just va ->
+                    "@" ^ va.gnu_ext_interpreted_vernaux_name ^ " (" ^ show va.gnu_ext_interpreted_vernaux_other ^ ")"
+                  | Nothing ->
+                    if vernauxs <> [] && (max_vd_ndx <> 0 || value <> 1) && value > max_vd_ndx then
+                      (if hidden then "@" else "@@") ^ "<corrupt>"
+                    else
+                      ""
+                end
+            end
+      end
+  end
+
+(** Claude: [harness_symbol_versions_of_elf64_file f1 bs0 ...] reads the GNU
+  * version tables of a dynamically linked file, using the same dynamic-section
+  * interpreters as the --dynamic dump.  Any failure (no .dynamic section, no
+  * DT_VERSYM, ...) simply yields no version information.
+  *)
+val harness_symbol_versions_of_elf64_file : elf64_file -> byte_sequence -> (natural -> bool) ->
+  (natural -> error tag_correspondence) -> (natural -> error tag_correspondence) ->
+  (elf64_dyn -> string_table -> error elf64_dyn_value) ->
+  (elf64_dyn -> string_table -> error elf64_dyn_value) -> harness_symbol_versions
+let {ocaml} harness_symbol_versions_of_elf64_file f1 bs0 os_additional_ranges os_tag proc_tag os_dyn proc_dyn =
+  let endian = get_elf64_header_endianness f1.elf64_file_header in
+  let sht    = f1.elf64_file_section_header_table in
+  let shared_object = is_elf64_shared_object_file f1.elf64_file_header in
+  let res =
+    obtain_elf64_dynamic_section_contents f1 os_additional_ranges os_tag proc_tag bs0 >>= fun dyns ->
+    get_string_table_of_elf64_dyn_section endian dyns sht bs0 >>= fun stbl ->
+    mapM (fun dyn ->
+      let tag = naturalFromInteger (integer_of_elf64_sxword dyn.elf64_dyn_tag) in
+      get_value_of_elf64_dyn shared_object dyn os_additional_ranges os_dyn proc_dyn stbl >>= fun v ->
+      return (tag, v)) dyns >>= fun dyns ->
+    obtain_gnu_ext_elf64_interpreted_versym_table f1 dyns
   in
-  let ndx_pad =
-    let pad = 3 - stringLength ndx in
-    if pad = 0 then
-      ""
-    else
-      concatS (replicate (naturalFromNat pad) " ")
-  in
-  let nm =
-    let idx = natural_of_elf32_word ent.elf32_st_name in
-      if idx = 0 then
-        ""
-      else
-        match String_table.get_string_at idx stbl with
-          | Fail err -> err
-          | Success s -> s
-        end
-  in
-  let sym = "" in
-  let num =
-    let temp = show num in
-    let pad  = 3 - stringLength temp in
-      if pad = 0 then
-        temp
-      else
-        let spcs = concatS (replicate (naturalFromNat pad) " ") in
-          spcs ^ temp
-  in
+    match res with
+      | Success (Just tbl) ->
+        let entries = index_map tbl.gnu_ext_interpreted_versym_table_entries in
+        let verdefs = tbl.gnu_ext_interpreted_versym_table_verdef in
+        let max_vd_ndx = List.foldl (fun m vd ->
+          let n = vd.gnu_ext_interpreted_verdef_ndx in if n > m then n else m) 0 verdefs in
+          Just (entries, verdefs, tbl.gnu_ext_interpreted_versym_table_verneed, max_vd_ndx)
+      | _ -> Nothing
+    end
+
+(** Claude: the name of a symbol: for an unnamed section symbol readelf prints
+  * the name of the section it refers to.
+  *)
+val harness_symbol_name : (natural -> maybe string) -> string_table -> natural -> natural -> bool -> natural -> string
+let {ocaml} harness_symbol_name section_name strtab st_name symtyp is_special ndx =
+  if symtyp = stt_section && (not is_special) && st_name = 0 then
+    match section_name ndx with
+      | Just n  -> n
+      | Nothing -> ""
+    end
+  else
+    match String_table.get_string_at st_name strtab with
+      | Fail _    -> "<corrupt>"
+      | Success s -> s
+    end
+
+val harness_string_of_elf32_symbol_table_entry : natural -> natural -> natural -> (natural -> maybe string) ->
+  nat -> string_table -> elf32_symbol_table_entry -> string
+let {ocaml} harness_string_of_elf32_symbol_table_entry mach osabi nsections section_name num stbl ent =
+  let symtyp = get_elf32_symbol_type ent in
+  let other  = natural_of_unsigned_char ent.elf32_st_other in
+  let vis    = natural_land other 3 in
+  let shndx  = natural_of_elf32_half ent.elf32_st_shndx in
+  let (ndx, is_special) = harness_string_of_symbol_ndx mach nsections shndx in
+  let nm = harness_symbol_name section_name stbl (natural_of_elf32_word ent.elf32_st_name) symtyp is_special shndx in
     concatS [
-      "   "
-    ; num ^ ":"
-    ; " "
-    ; vlu
-    ; " "
-    ; siz_pad; siz
-    ; " "
-    ; typ
-    ; "  "
-    ; bnd_pad; bnd
-    ; " "
-    ; vis_pad; vis
-    ; "  "
-    ; ndx_pad; ndx
-    ; " "
+      rjust 6 (show num) ^ ": "
+    ; unsafe_hex_string_of_natural 8 (natural_of_elf32_addr ent.elf32_st_value)
+    ; " " ^ harness_string_of_symbol_size (natural_of_elf32_word ent.elf32_st_size)
+    ; " " ^ ljust 7 (harness_string_of_symbol_type mach osabi symtyp)
+    ; " " ^ ljust 6 (harness_string_of_symbol_binding osabi (get_elf32_symbol_binding ent))
+    ; " " ^ ljust 7 (harness_string_of_symbol_visibility vis)
+    ; (if other - vis <> 0 then " [" ^ harness_string_of_symbol_other mach (other - vis) ^ "] " else "")
+    ; " " ^ rjust 4 ndx ^ " "
     ; nm
-    ; sym
     ]
 
-val harness_string_of_elf32_syms' : endianness -> (natural -> string) -> (natural -> string) -> elf32_file -> elf32_section_header_table -> elf32_section_header_table -> string_table -> byte_sequence -> string
-let {ocaml} harness_string_of_elf32_syms' endian os proc f1 filtered_sht sht shdr bs0 =
+val harness_string_of_elf64_symbol_table_entry : natural -> natural -> natural -> (natural -> maybe string) ->
+  harness_symbol_versions -> nat -> string_table -> elf64_symbol_table_entry -> string
+let {ocaml} harness_string_of_elf64_symbol_table_entry mach osabi nsections section_name versions num stbl ent =
+  let symtyp = get_elf64_symbol_type ent in
+  let other  = natural_of_unsigned_char ent.elf64_st_other in
+  let vis    = natural_land other 3 in
+  let shndx  = natural_of_elf64_half ent.elf64_st_shndx in
+  let (ndx, is_special) = harness_string_of_symbol_ndx mach nsections shndx in
+  let nm = harness_symbol_name section_name stbl (natural_of_elf64_word ent.elf64_st_name) symtyp is_special shndx in
+    concatS [
+      rjust 6 (show num) ^ ": "
+    ; unsafe_hex_string_of_natural 16 (natural_of_elf64_addr ent.elf64_st_value)
+    ; " " ^ harness_string_of_symbol_size (natural_of_elf64_xword ent.elf64_st_size)
+    ; " " ^ ljust 7 (harness_string_of_symbol_type mach osabi symtyp)
+    ; " " ^ ljust 6 (harness_string_of_symbol_binding osabi (get_elf64_symbol_binding ent))
+    ; " " ^ ljust 7 (harness_string_of_symbol_visibility vis)
+    ; (if other - vis <> 0 then " [" ^ harness_string_of_symbol_other mach (other - vis) ^ "] " else "")
+    ; " " ^ rjust 4 ndx ^ " "
+    ; nm
+    ; harness_symbol_version_suffix versions (naturalFromNat num) shndx nm
+    ]
+
+(** Claude: [section_name_lookup shtmap shdr] names section [ndx] via the
+  * section header string table, for section symbols.
+  *)
+val harness_elf32_section_name : Map.map natural elf32_section_header_table_entry -> string_table -> natural -> maybe string
+let {ocaml} harness_elf32_section_name shtmap shdr ndx =
+  match Map.lookup ndx shtmap with
+    | Nothing -> Nothing
+    | Just sh ->
+      match String_table.get_string_at (natural_of_elf32_word sh.elf32_sh_name) shdr with
+        | Fail _    -> Nothing
+        | Success n -> Just n
+      end
+  end
+
+val harness_elf64_section_name : Map.map natural elf64_section_header_table_entry -> string_table -> natural -> maybe string
+let {ocaml} harness_elf64_section_name shtmap shdr ndx =
+  match Map.lookup ndx shtmap with
+    | Nothing -> Nothing
+    | Just sh ->
+      match String_table.get_string_at (natural_of_elf64_word sh.elf64_sh_name) shdr with
+        | Fail _    -> Nothing
+        | Success n -> Just n
+      end
+  end
+
+val harness_string_of_elf32_syms' : endianness -> elf32_file -> elf32_section_header_table -> elf32_section_header_table -> string_table -> byte_sequence -> string
+let {ocaml} harness_string_of_elf32_syms' endian f1 filtered_sht sht shdr bs0 =
+  let hdr   = f1.elf32_file_header in
+  let mach  = natural_of_elf32_half hdr.elf32_machine in
+  let osabi = get_elf32_osabi hdr in
+  let nsections = naturalFromNat (List.length sht) in
+  let section_name = harness_elf32_section_name (index_map sht) shdr in
   let rels =
     mapM (fun ent ->
       let off = natural_of_elf32_off  ent.elf32_sh_offset in
       let siz = natural_of_elf32_word ent.elf32_sh_size in
       let lnk = natural_of_elf32_word ent.elf32_sh_link in
-      let typ = natural_of_elf32_word ent.elf32_sh_type in
         Byte_sequence.offset_and_cut off siz bs0 >>= fun syms ->
         Elf_symbol_table.read_elf32_symbol_table endian syms >>= fun sect ->
         Elf_file.get_elf32_string_table_by_index f1 lnk >>= fun strtab ->
-        return (sect, ent, strtab, typ)
+        return (sect, ent, strtab)
     ) filtered_sht >>= fun sects ->
-    mapM (fun (syms, ent, strtab, typ) ->
+    mapM (fun (syms, ent, strtab) ->
       let nm  = natural_of_elf32_word ent.elf32_sh_name in
       let len = show (List.length syms) ^ " " ^ entries_word (List.length syms) in
       String_table.get_string_at nm shdr >>= fun nm ->
       let hdr = "Symbol table '" ^ nm ^ "' contains " ^ len ^ ":\n" in
       let ttl = "   Num:    Value  Size Type    Bind   Vis      Ndx Name\n" in
-      let body = (String.concat "\n" (List.mapi (fun n ->
-        harness_string_of_elf32_symbol_table_entry n os proc bs0 strtab) syms))
+      let body = String.concat "\n" (List.mapi (fun n ->
+        harness_string_of_elf32_symbol_table_entry mach osabi nsections section_name n strtab) syms)
       in
       return (hdr ^ ttl ^ body)) sects
   in
     match rels with
       | Fail err -> err
-      | Success s -> (String.concat "\n\n" s)
+      | Success s -> String.concat "\n\n" s
     end
 
-val harness_string_of_elf32_syms : elf32_file -> (natural -> string) -> (natural -> string) -> byte_sequence -> string
-let {ocaml} harness_string_of_elf32_syms f1 os proc bs0 =
+val harness_string_of_elf32_syms : elf32_file -> byte_sequence -> string
+let {ocaml} harness_string_of_elf32_syms f1 bs0 =
   let hdr = f1.elf32_file_header in
   let sht = f1.elf32_file_section_header_table in
   let endian = get_elf32_header_endianness hdr in
@@ -942,97 +1146,18 @@ let {ocaml} harness_string_of_elf32_syms f1 os proc bs0 =
   if List.length sym_secs = 0 then
     "\nThere are no symbols in this file."
   else
-    match (* Claude: read from the file bytes; the file-level helper re-serialises the whole file first *) get_elf32_string_table_by_index f1 (natural_of_elf32_half f1.elf32_file_header.elf32_shstrndx) with
+    match get_elf32_string_table_by_index f1 (natural_of_elf32_half hdr.elf32_shstrndx) with
       | Fail err     -> err
-      | Success shdr ->
-        "\n" ^
-        harness_string_of_elf32_syms' endian os proc f1 sym_secs sht shdr bs0
+      | Success shdr -> "\n" ^ harness_string_of_elf32_syms' endian f1 sym_secs sht shdr bs0
     end
 
-val harness_string_of_elf64_symbol_table_entry : nat -> (natural -> string) -> (natural -> string) -> string_table -> elf64_symbol_table_entry -> string
-let {ocaml} harness_string_of_elf64_symbol_table_entry num os proc stbl ent =
-  let vlu = unsafe_hex_string_of_natural 16 (natural_of_elf64_addr ent.elf64_st_value) in
-  let siz = show (natural_of_elf64_xword ent.elf64_st_size) in
-  let siz_pad =
-    let pad = 5 - stringLength siz in
-    if pad = 0 then
-      ""
-    else
-      concatS (replicate (naturalFromNat pad) " ")
-  in
-  let typ = string_of_symbol_type (get_elf64_symbol_type ent) os proc in
-  let bnd = string_of_symbol_binding (get_elf64_symbol_binding ent) os proc in
-  let bnd_pad =
-    let pad  = 8 - stringLength typ in
-    if pad = 0 then
-      ""
-    else
-      concatS (replicate (naturalFromNat pad) " ")
-  in
-  let vis = string_of_symbol_visibility (natural_of_unsigned_char ent.elf64_st_other) in
-  let vis_pad =
-    let pad  = 6 - stringLength bnd in
-    if pad = 0 then
-      ""
-    else
-      concatS (replicate (naturalFromNat pad) " ")
-  in
-  let ndx =
-    let tmp = natural_of_elf64_half ent.elf64_st_shndx in
-      if tmp = shn_undef then
-        "UND"
-      else if tmp = shn_abs then
-        "ABS"
-      else
-        show tmp
-  in
-  let ndx_pad =
-    let pad = 3 - stringLength ndx in
-    if pad = 0 then
-      ""
-    else
-      concatS (replicate (naturalFromNat pad) " ")
-  in
-  let nm =
-    let idx = natural_of_elf64_word ent.elf64_st_name in
-      if idx = 0 then
-        ""
-      else
-        match String_table.get_string_at idx stbl with
-          | Fail err -> err
-          | Success s -> s
-        end
-  in
-  let num =
-    let temp = show num in
-    let pad  = 3 - stringLength temp in
-      if pad = 0 then
-        temp
-      else
-        let spcs = concatS (replicate (naturalFromNat pad) " ") in
-          spcs ^ temp
-  in
-    concatS [
-      "   "
-    ; num ^ ":"
-    ; " "
-    ; vlu
-    ; " "
-    ; siz_pad; siz
-    ; " "
-    ; typ
-    ; bnd_pad; bnd
-    ; " "
-    ; vis_pad; vis
-    ; "  "
-    ; ndx_pad; ndx
-    ; " "
-    ; nm
-    ]
-
-
-val harness_string_of_elf64_syms' : endianness -> (natural -> string) -> (natural -> string) -> elf64_file -> elf64_section_header_table -> elf64_section_header_table -> string_table -> byte_sequence -> string
-let {ocaml} harness_string_of_elf64_syms' endian os proc f1 filtered_sht sht shdr bs0 =
+val harness_string_of_elf64_syms' : endianness -> elf64_file -> elf64_section_header_table -> elf64_section_header_table -> string_table -> harness_symbol_versions -> byte_sequence -> string
+let {ocaml} harness_string_of_elf64_syms' endian f1 filtered_sht sht shdr versions bs0 =
+  let hdr   = f1.elf64_file_header in
+  let mach  = natural_of_elf64_half hdr.elf64_machine in
+  let osabi = get_elf64_osabi hdr in
+  let nsections = naturalFromNat (List.length sht) in
+  let section_name = harness_elf64_section_name (index_map sht) shdr in
   let rels =
     mapM (fun ent ->
       let off = natural_of_elf64_off  ent.elf64_sh_offset in
@@ -1043,27 +1168,30 @@ let {ocaml} harness_string_of_elf64_syms' endian os proc f1 filtered_sht sht shd
         Elf_symbol_table.read_elf64_symbol_table endian syms >>= fun sect ->
         Elf_file.get_elf64_string_table_by_index f1 lnk >>= fun strtab ->
         return (sect, ent, strtab, typ)
-    ) filtered_sht
-  >>=
+    ) filtered_sht >>= fun sects ->
     mapM (fun (syms, ent, strtab, typ) ->
       let nm  = natural_of_elf64_word ent.elf64_sh_name in
       let len = show (List.length syms) ^ " " ^ entries_word (List.length syms) in
+      (* Claude: readelf annotates versions only in .dynsym *)
+      let versions = if typ = sht_dynsym then versions else Nothing in
       String_table.get_string_at nm shdr >>= fun nm ->
       let hdr = "Symbol table '" ^ nm ^ "' contains " ^ len ^ ":\n" in
       let ttl = "   Num:    Value          Size Type    Bind   Vis      Ndx Name\n" in
-      let body = (String.concat "\n" (List.mapi (fun n ->
-        harness_string_of_elf64_symbol_table_entry n os proc strtab) syms))
+      let body = String.concat "\n" (List.mapi (fun n ->
+        harness_string_of_elf64_symbol_table_entry mach osabi nsections section_name versions n strtab) syms)
       in
-      return (hdr ^ ttl ^ body))
+      return (hdr ^ ttl ^ body)) sects
   in
     match rels with
       | Fail err -> err
-      | Success s -> (String.concat "\n\n" s)
+      | Success s -> String.concat "\n\n" s
     end
 
-   
-val harness_string_of_elf64_syms : elf64_file -> (natural -> string) -> (natural -> string) -> byte_sequence -> string
-let {ocaml} harness_string_of_elf64_syms f1 os proc bs0 =
+val harness_string_of_elf64_syms : elf64_file -> byte_sequence -> (natural -> bool) ->
+  (natural -> error tag_correspondence) -> (natural -> error tag_correspondence) ->
+  (elf64_dyn -> string_table -> error elf64_dyn_value) ->
+  (elf64_dyn -> string_table -> error elf64_dyn_value) -> string
+let {ocaml} harness_string_of_elf64_syms f1 bs0 os_additional_ranges os_tag proc_tag os_dyn proc_dyn =
   let hdr = f1.elf64_file_header in
   let sht = f1.elf64_file_section_header_table in
   let endian = get_elf64_header_endianness hdr in
@@ -1074,14 +1202,17 @@ let {ocaml} harness_string_of_elf64_syms f1 os proc bs0 =
   if List.length sym_secs = 0 then
     "\nThere are no symbols in this file."
   else
-    match (* Claude: read from the file bytes; the file-level helper re-serialises the whole file first *) get_elf64_string_table_by_index f1 (natural_of_elf64_half f1.elf64_file_header.elf64_shstrndx) with
+    let has_dynsym = List.any (fun x -> x.elf64_sh_type = elf64_word_of_natural sht_dynsym) sht in
+    let versions =
+      if has_dynsym then
+        harness_symbol_versions_of_elf64_file f1 bs0 os_additional_ranges os_tag proc_tag os_dyn proc_dyn
+      else
+        Nothing
+    in
+    match get_elf64_string_table_by_index f1 (natural_of_elf64_half hdr.elf64_shstrndx) with
       | Fail err     -> err
-      | Success shdr ->
-        "\n" ^
-        harness_string_of_elf64_syms' endian os proc f1 sym_secs sht shdr bs0
+      | Success shdr -> "\n" ^ harness_string_of_elf64_syms' endian f1 sym_secs sht shdr versions bs0
     end
-
-
 
 (* convenient symbol table extractor for read-dwarf *)
 (*
@@ -1127,7 +1258,8 @@ let {ocaml} read_dwarf_symbol_table_of_elf64_syms f1 os proc bs0 =
   if List.length sym_secs = 0 then
     [] (*"\nThere are no symbols in this file."*)
   else
-    match (* Claude: read from the file bytes; the file-level helper re-serialises the whole file first *) get_elf64_string_table_by_index f1 (natural_of_elf64_half f1.elf64_file_header.elf64_shstrndx) with
+    (* Claude: read from the file bytes; the file-level helper re-serialises the whole file first *)
+    match get_elf64_string_table_by_index f1 (natural_of_elf64_half f1.elf64_file_header.elf64_shstrndx) with
       | Fail err     -> err
       | Success shdr ->
 (*        "\n" ^ *)

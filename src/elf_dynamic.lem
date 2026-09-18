@@ -179,6 +179,13 @@ let dt_preinit_array : natural = 32
   * pre-initialisation functions.
   *)
 let dt_preinit_arraysz : natural = 33
+(** Claude: further generic-ABI tags: the address of the SHT_SYMTAB_SHNDX
+  * section, and the RELR relative-relocation table (size, address, entry size).
+  *)
+let dt_symtab_shndx : natural = 34
+let dt_relrsz       : natural = 35
+let dt_relr         : natural = 36
+let dt_relrent      : natural = 37
 (** [dt_loos] and [dt_hios]: this inclusive range is reserved for OS-specific
   * semantics.
   *)
@@ -269,6 +276,14 @@ let string_of_dynamic_tag shared_object tag os_additional_ranges os proc =
       "PREINIT_ARRAY"
   else if tag = dt_preinit_arraysz then
     "PREINIT_ARRAYSZ"
+  else if tag = dt_symtab_shndx then
+    "SYMTAB_SHNDX"
+  else if tag = dt_relrsz then
+    "RELRSZ"
+  else if tag = dt_relr then
+    "RELR"
+  else if tag = dt_relrent then
+    "RELRENT"
   else if tag >= dt_loproc && tag <= dt_hiproc then
     proc tag
   else if tag >= dt_loos && tag <= dt_hios then
@@ -367,6 +382,14 @@ let tag_correspondence_of_tag shared_object tag os_additional_ranges os proc =
     else
       return C_Ptr
   else if tag = dt_preinit_arraysz then
+    return C_Val
+  else if tag = dt_symtab_shndx then
+    return C_Ptr
+  else if tag = dt_relrsz then
+    return C_Val
+  else if tag = dt_relr then
+    return C_Ptr
+  else if tag = dt_relrent then
     return C_Val
   else if tag >= dt_loproc && tag <= dt_hiproc then
     proc tag
@@ -948,6 +971,20 @@ let get_value_of_elf32_dyn shared_object dyn os_additional_ranges os proc stab =
         | D_Ignored i -> fail "get_value_of_elf32_dyn_entry: PREINIT_ARRAYSZ must be a VAL"
       end >>= fun sz ->
       return (Checksum (natural_of_elf32_word sz)) (** XXX: bug in readelf does not print this as a size! *)
+    else if tag = dt_symtab_shndx || tag = dt_relr then
+      match dyn.elf32_dyn_d_un with
+        | D_Val     v -> fail "get_value_of_elf32_dyn_entry: SYMTAB_SHNDX/RELR must be a PTR"
+        | D_Ptr     p -> return p
+        | D_Ignored i -> fail "get_value_of_elf32_dyn_entry: SYMTAB_SHNDX/RELR must be a PTR"
+      end >>= fun ptr ->
+      return (Address ptr)
+    else if tag = dt_relrsz || tag = dt_relrent then
+      match dyn.elf32_dyn_d_un with
+        | D_Val     v -> return v
+        | D_Ptr     p -> fail "get_value_of_elf32_dyn_entry: RELRSZ/RELRENT must be a VAL"
+        | D_Ignored i -> fail "get_value_of_elf32_dyn_entry: RELRSZ/RELRENT must be a VAL"
+      end >>= fun sz ->
+      return (Size sz)
     else if tag >= dt_loproc && tag <= dt_hiproc then
       proc dyn stab
     else if tag >= dt_loos && tag <= dt_hios then
@@ -1191,6 +1228,20 @@ let get_value_of_elf64_dyn shared_object dyn os_additional_ranges os_dyn proc_dy
         | D_Ignored i -> fail "get_value_of_elf64_dyn_entry: PREINIT_ARRAYSZ must be a VAL"
       end >>= fun sz ->
       return (Checksum (natural_of_elf64_xword sz)) (** XXX: bug in readelf does not print this as a size! *)
+    else if tag = dt_symtab_shndx || tag = dt_relr then
+      match dyn.elf64_dyn_d_un with
+        | D_Val     v -> fail "get_value_of_elf64_dyn_entry: SYMTAB_SHNDX/RELR must be a PTR"
+        | D_Ptr     p -> return p
+        | D_Ignored i -> fail "get_value_of_elf64_dyn_entry: SYMTAB_SHNDX/RELR must be a PTR"
+      end >>= fun ptr ->
+      return (Address ptr)
+    else if tag = dt_relrsz || tag = dt_relrent then
+      match dyn.elf64_dyn_d_un with
+        | D_Val     v -> return v
+        | D_Ptr     p -> fail "get_value_of_elf64_dyn_entry: RELRSZ/RELRENT must be a VAL"
+        | D_Ignored i -> fail "get_value_of_elf64_dyn_entry: RELRSZ/RELRENT must be a VAL"
+      end >>= fun sz ->
+      return (Size sz)
     else if tag >= dt_loproc && tag <= dt_hiproc then
       proc_dyn dyn stab
     else if tag >= dt_loos && tag <= dt_hios then
