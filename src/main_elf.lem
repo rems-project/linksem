@@ -4,11 +4,16 @@
   * where:
   *   BINARY is an ELF binary
   *   FLAG   is in the set { file-header, program-headers, section-headers,
-  *                            dynamic, relocs, symbols }
+  *                            dynamic, relocs, symbols,
+  *                            debug-dump=info<raw>, debug-dump=info<resolved>,
+  *                            debug-dump=info<objdump>, debug-dump=info<full> }
+  *          (Claude: debug-dump=info alone means debug-dump=info<resolved>; the
+  *           angle brackets need quoting from the shell)
   *
   *)
 
 open import Basic_classes
+open import Bool
 open import Function
 open import Maybe
 open import List
@@ -271,9 +276,9 @@ let _ =
                     let lines  = concatS (intercalate "\n" (List.map print_chunk chunks)) in
                       return lines
                 end
-              else if flag = "--debug-dump=info" then
-                Error.fail "not implemented"
-              else if flag = "--debug-dump=dies" then
+              else if flag = "--debug-dump=info" || flag = "--debug-dump=info<raw>"
+                      || flag = "--debug-dump=info<resolved>" || flag = "--debug-dump=info<objdump>"
+                      || flag = "--debug-dump=info<full>" then
                 Error.fail "not implemented"
               else
                 failwith "Unrecognised flag"
@@ -344,31 +349,23 @@ let _ =
                     let lines  = concatS (intercalate "\n" (List.map print_chunk chunks)) in
                       return lines
                 end
-              else if flag = "--debug-dump=info" then
-                Elf_file.read_elf64_file bs0 >>= fun f1 ->
-                get_elf64_file_section_header_string_table f1 >>= fun stbl ->
-                return (Dwarf.harness_string_of_elf64_debug_info_section
-                  f1
-                  (interpret_data_relocation (natural_of_elf64_half f1.elf64_file_header.elf64_machine))
-                  (*string_of_gnu_ext_section_type
-                  (fun x -> show x)
-                  (fun x -> show x)
-                  f1.elf64_file_header
-                  f1.elf64_file_section_header_table
-                  stbl*)
-                  )
-              else if flag = "--debug-dump=raw" then
-                (* Claude: exactly what the DWARF parser stored, nothing resolved *)
+              (* Claude: the DWARF .debug_info dumps come in four styles, selected
+                 by --debug-dump=info<STYLE>; plain --debug-dump=info is info<resolved>:
+                   info<raw>       exactly what the parser stored, nothing resolved
+                   info<resolved>  the DIE tree with strings, references, types, files,
+                                   expressions and lists resolved
+                   info<objdump>   byte-identical to objdump --dwarf=abbrev,info
+                   info<full>      linksem's full analysis dump (frame, line, location and
+                                   inlined-subroutine information as well as the DIE tree) *)
+              else if flag = "--debug-dump=info<raw>" then
                 Elf_file.read_elf64_file bs0 >>= fun f1 ->
                 let mach = natural_of_elf64_half f1.elf64_file_header.elf64_machine in
                 return (Dwarf.harness_string_of_elf64_debug_info_raw f1 (interpret_data_relocation mach))
-              else if flag = "--debug-dump=resolved" then
-                (* Claude: the DIE tree with strings, references, types, files, expressions and lists resolved *)
+              else if flag = "--debug-dump=info" || flag = "--debug-dump=info<resolved>" then
                 Elf_file.read_elf64_file bs0 >>= fun f1 ->
                 let mach = natural_of_elf64_half f1.elf64_file_header.elf64_machine in
                 return (Dwarf.harness_string_of_elf64_debug_info_resolved f1 (interpret_data_relocation mach) (Dwarf.objdump_regname mach))
-              else if flag = "--debug-dump=dies" then
-                (* Claude: the text of `objdump --dwarf=abbrev,info` *)
+              else if flag = "--debug-dump=info<objdump>" then
                 Elf_file.read_elf64_file bs0 >>= fun f1 ->
                 let mach = natural_of_elf64_half f1.elf64_file_header.elf64_machine in
                 let little = (get_elf64_header_endianness f1.elf64_file_header = Little) in
@@ -377,6 +374,10 @@ let _ =
                       f1
                       (interpret_data_relocation mach)
                       (Dwarf.objdump_regname mach))
+              else if flag = "--debug-dump=info<full>" then
+                Elf_file.read_elf64_file bs0 >>= fun f1 ->
+                let mach = natural_of_elf64_half f1.elf64_file_header.elf64_machine in
+                return (Dwarf.harness_string_of_elf64_debug_info_section f1 (interpret_data_relocation mach))
               else
                 failwith ("Unimplemented (for ELF64) or unrecognised flag: "^flag)
             in
