@@ -376,6 +376,7 @@ type die =
     die_abbreviation_declaration: abbreviation_declaration;
     die_attribute_values: list (sym_natural (*pos*) * attribute_value);
     die_children: list die;
+    die_end: sym_natural;  (** Claude: offset just past this DIE's subtree, including its null terminator entry if it has children *)
   |>
 
 type die_index = Map.map sym_natural (list die * die)
@@ -963,6 +964,36 @@ let tag_encodings = [
   ("DW_TAG_type_unit"                , sym_natural_of_hex "0x41"  );
   ("DW_TAG_rvalue_reference_type"    , sym_natural_of_hex "0x42"  );
   ("DW_TAG_template_alias"           , sym_natural_of_hex "0x43"  );
+  (* Claude: vendor extension tags from binutils include/dwarf2.def (2.42) *)
+  ("DW_TAG_template_type_param"        , sym_natural_of_hex "0x2f");
+  ("DW_TAG_template_value_param"       , sym_natural_of_hex "0x30");
+  ("DW_TAG_coarray_type"               , sym_natural_of_hex "0x44");
+  ("DW_TAG_generic_subrange"           , sym_natural_of_hex "0x45");
+  ("DW_TAG_dynamic_type"               , sym_natural_of_hex "0x46");
+  ("DW_TAG_atomic_type"                , sym_natural_of_hex "0x47");
+  ("DW_TAG_call_site"                  , sym_natural_of_hex "0x48");
+  ("DW_TAG_call_site_parameter"        , sym_natural_of_hex "0x49");
+  ("DW_TAG_skeleton_unit"              , sym_natural_of_hex "0x4a");
+  ("DW_TAG_immutable_type"             , sym_natural_of_hex "0x4b");
+  ("DW_TAG_MIPS_loop"                  , sym_natural_of_hex "0x4081");
+  ("DW_TAG_HP_array_descriptor"        , sym_natural_of_hex "0x4090");
+  ("DW_TAG_HP_Bliss_field"             , sym_natural_of_hex "0x4091");
+  ("DW_TAG_HP_Bliss_field_set"         , sym_natural_of_hex "0x4092");
+  ("DW_TAG_format_label"               , sym_natural_of_hex "0x4101");
+  ("DW_TAG_function_template"          , sym_natural_of_hex "0x4102");
+  ("DW_TAG_class_template"             , sym_natural_of_hex "0x4103");
+  ("DW_TAG_GNU_BINCL"                  , sym_natural_of_hex "0x4104");
+  ("DW_TAG_GNU_EINCL"                  , sym_natural_of_hex "0x4105");
+  ("DW_TAG_GNU_template_template_param", sym_natural_of_hex "0x4106");
+  ("DW_TAG_GNU_template_parameter_pack", sym_natural_of_hex "0x4107");
+  ("DW_TAG_GNU_formal_parameter_pack"  , sym_natural_of_hex "0x4108");
+  ("DW_TAG_GNU_call_site"              , sym_natural_of_hex "0x4109");
+  ("DW_TAG_GNU_call_site_parameter"    , sym_natural_of_hex "0x410a");
+  ("DW_TAG_upc_shared_type"            , sym_natural_of_hex "0x8765");
+  ("DW_TAG_upc_strict_type"            , sym_natural_of_hex "0x8766");
+  ("DW_TAG_upc_relaxed_type"           , sym_natural_of_hex "0x8767");
+  ("DW_TAG_PGI_kanji_type"             , sym_natural_of_hex "0xa000");
+  ("DW_TAG_PGI_interface_block"        , sym_natural_of_hex "0xa020");
   ("DW_TAG_lo_user"                  , sym_natural_of_hex "0x4080");
   ("DW_TAG_hi_user"                  , sym_natural_of_hex "0xffff")
 ]
@@ -1072,6 +1103,122 @@ let attribute_encodings = [
 (* DW_AT_noreturn is a gcc extension to support the C11 _Noreturn keyword*)
   ("DW_AT_noreturn"             , sym_natural_of_hex "0x87", [DWA_flag])                                      ;
   ("DW_AT_alignment"            , sym_natural_of_hex "0x88", [DWA_constant])                                      ;
+  (* Claude: names from binutils include/dwarf2.def (2.42) that were missing, so that dumps can name them as readelf/objdump do *)
+  ("DW_AT_subscr_data"           , sym_natural_of_hex "0x0a", [DWA_dash])                                      ;
+  ("DW_AT_element_list"          , sym_natural_of_hex "0x0f", [DWA_dash])                                      ;
+  ("DW_AT_member"                , sym_natural_of_hex "0x14", [DWA_dash])                                      ;
+  ("DW_AT_string_length_bit_size", sym_natural_of_hex "0x6f", [DWA_dash])                                      ;
+  ("DW_AT_string_length_byte_size", sym_natural_of_hex "0x70", [DWA_dash])                                      ;
+  ("DW_AT_rank"                  , sym_natural_of_hex "0x71", [DWA_dash])                                      ;
+  ("DW_AT_str_offsets_base"      , sym_natural_of_hex "0x72", [DWA_dash])                                      ;
+  ("DW_AT_addr_base"             , sym_natural_of_hex "0x73", [DWA_dash])                                      ;
+  ("DW_AT_rnglists_base"         , sym_natural_of_hex "0x74", [DWA_dash])                                      ;
+  ("DW_AT_dwo_name"              , sym_natural_of_hex "0x76", [DWA_dash])                                      ;
+  ("DW_AT_reference"             , sym_natural_of_hex "0x77", [DWA_dash])                                      ;
+  ("DW_AT_rvalue_reference"      , sym_natural_of_hex "0x78", [DWA_dash])                                      ;
+  ("DW_AT_macros"                , sym_natural_of_hex "0x79", [DWA_dash])                                      ;
+  ("DW_AT_call_all_calls"        , sym_natural_of_hex "0x7a", [DWA_dash])                                      ;
+  ("DW_AT_call_all_source_calls" , sym_natural_of_hex "0x7b", [DWA_dash])                                      ;
+  ("DW_AT_call_all_tail_calls"   , sym_natural_of_hex "0x7c", [DWA_dash])                                      ;
+  ("DW_AT_call_return_pc"        , sym_natural_of_hex "0x7d", [DWA_dash])                                      ;
+  ("DW_AT_call_value"            , sym_natural_of_hex "0x7e", [DWA_dash])                                      ;
+  ("DW_AT_call_origin"           , sym_natural_of_hex "0x7f", [DWA_dash])                                      ;
+  ("DW_AT_call_parameter"        , sym_natural_of_hex "0x80", [DWA_dash])                                      ;
+  ("DW_AT_call_pc"               , sym_natural_of_hex "0x81", [DWA_dash])                                      ;
+  ("DW_AT_call_tail_call"        , sym_natural_of_hex "0x82", [DWA_dash])                                      ;
+  ("DW_AT_call_target"           , sym_natural_of_hex "0x83", [DWA_dash])                                      ;
+  ("DW_AT_call_target_clobbered" , sym_natural_of_hex "0x84", [DWA_dash])                                      ;
+  ("DW_AT_call_data_location"    , sym_natural_of_hex "0x85", [DWA_dash])                                      ;
+  ("DW_AT_call_data_value"       , sym_natural_of_hex "0x86", [DWA_dash])                                      ;
+  ("DW_AT_export_symbols"        , sym_natural_of_hex "0x89", [DWA_dash])                                      ;
+  ("DW_AT_deleted"               , sym_natural_of_hex "0x8a", [DWA_dash])                                      ;
+  ("DW_AT_defaulted"             , sym_natural_of_hex "0x8b", [DWA_dash])                                      ;
+  ("DW_AT_loclists_base"         , sym_natural_of_hex "0x8c", [DWA_dash])                                      ;
+  ("DW_AT_MIPS_fde"              , sym_natural_of_hex "0x2001", [DWA_dash])                                      ;
+  ("DW_AT_MIPS_loop_begin"       , sym_natural_of_hex "0x2002", [DWA_dash])                                      ;
+  ("DW_AT_MIPS_tail_loop_begin"  , sym_natural_of_hex "0x2003", [DWA_dash])                                      ;
+  ("DW_AT_MIPS_epilog_begin"     , sym_natural_of_hex "0x2004", [DWA_dash])                                      ;
+  ("DW_AT_MIPS_loop_unroll_factor", sym_natural_of_hex "0x2005", [DWA_dash])                                      ;
+  ("DW_AT_MIPS_software_pipeline_depth", sym_natural_of_hex "0x2006", [DWA_dash])                                      ;
+  ("DW_AT_MIPS_linkage_name"     , sym_natural_of_hex "0x2007", [DWA_dash])                                      ;
+  ("DW_AT_MIPS_stride"           , sym_natural_of_hex "0x2008", [DWA_dash])                                      ;
+  ("DW_AT_MIPS_abstract_name"    , sym_natural_of_hex "0x2009", [DWA_dash])                                      ;
+  ("DW_AT_MIPS_clone_origin"     , sym_natural_of_hex "0x200a", [DWA_dash])                                      ;
+  ("DW_AT_MIPS_has_inlines"      , sym_natural_of_hex "0x200b", [DWA_dash])                                      ;
+  ("DW_AT_HP_block_index"        , sym_natural_of_hex "0x2000", [DWA_dash])                                      ;
+  ("DW_AT_HP_actuals_stmt_list"  , sym_natural_of_hex "0x2010", [DWA_dash])                                      ;
+  ("DW_AT_HP_proc_per_section"   , sym_natural_of_hex "0x2011", [DWA_dash])                                      ;
+  ("DW_AT_HP_raw_data_ptr"       , sym_natural_of_hex "0x2012", [DWA_dash])                                      ;
+  ("DW_AT_HP_pass_by_reference"  , sym_natural_of_hex "0x2013", [DWA_dash])                                      ;
+  ("DW_AT_HP_opt_level"          , sym_natural_of_hex "0x2014", [DWA_dash])                                      ;
+  ("DW_AT_HP_prof_version_id"    , sym_natural_of_hex "0x2015", [DWA_dash])                                      ;
+  ("DW_AT_HP_opt_flags"          , sym_natural_of_hex "0x2016", [DWA_dash])                                      ;
+  ("DW_AT_HP_cold_region_low_pc" , sym_natural_of_hex "0x2017", [DWA_dash])                                      ;
+  ("DW_AT_HP_cold_region_high_pc", sym_natural_of_hex "0x2018", [DWA_dash])                                      ;
+  ("DW_AT_HP_all_variables_modifiable", sym_natural_of_hex "0x2019", [DWA_dash])                                      ;
+  ("DW_AT_HP_linkage_name"       , sym_natural_of_hex "0x201a", [DWA_dash])                                      ;
+  ("DW_AT_HP_prof_flags"         , sym_natural_of_hex "0x201b", [DWA_dash])                                      ;
+  ("DW_AT_HP_unit_name"          , sym_natural_of_hex "0x201f", [DWA_dash])                                      ;
+  ("DW_AT_HP_unit_size"          , sym_natural_of_hex "0x2020", [DWA_dash])                                      ;
+  ("DW_AT_HP_widened_byte_size"  , sym_natural_of_hex "0x2021", [DWA_dash])                                      ;
+  ("DW_AT_HP_definition_points"  , sym_natural_of_hex "0x2022", [DWA_dash])                                      ;
+  ("DW_AT_HP_default_location"   , sym_natural_of_hex "0x2023", [DWA_dash])                                      ;
+  ("DW_AT_HP_is_result_param"    , sym_natural_of_hex "0x2029", [DWA_dash])                                      ;
+  ("DW_AT_sf_names"              , sym_natural_of_hex "0x2101", [DWA_dash])                                      ;
+  ("DW_AT_src_info"              , sym_natural_of_hex "0x2102", [DWA_dash])                                      ;
+  ("DW_AT_mac_info"              , sym_natural_of_hex "0x2103", [DWA_dash])                                      ;
+  ("DW_AT_src_coords"            , sym_natural_of_hex "0x2104", [DWA_dash])                                      ;
+  ("DW_AT_body_begin"            , sym_natural_of_hex "0x2105", [DWA_dash])                                      ;
+  ("DW_AT_body_end"              , sym_natural_of_hex "0x2106", [DWA_dash])                                      ;
+  ("DW_AT_GNU_vector"            , sym_natural_of_hex "0x2107", [DWA_dash])                                      ;
+  ("DW_AT_GNU_guarded_by"        , sym_natural_of_hex "0x2108", [DWA_dash])                                      ;
+  ("DW_AT_GNU_pt_guarded_by"     , sym_natural_of_hex "0x2109", [DWA_dash])                                      ;
+  ("DW_AT_GNU_guarded"           , sym_natural_of_hex "0x210a", [DWA_dash])                                      ;
+  ("DW_AT_GNU_pt_guarded"        , sym_natural_of_hex "0x210b", [DWA_dash])                                      ;
+  ("DW_AT_GNU_locks_excluded"    , sym_natural_of_hex "0x210c", [DWA_dash])                                      ;
+  ("DW_AT_GNU_exclusive_locks_required", sym_natural_of_hex "0x210d", [DWA_dash])                                      ;
+  ("DW_AT_GNU_shared_locks_required", sym_natural_of_hex "0x210e", [DWA_dash])                                      ;
+  ("DW_AT_GNU_odr_signature"     , sym_natural_of_hex "0x210f", [DWA_dash])                                      ;
+  ("DW_AT_GNU_template_name"     , sym_natural_of_hex "0x2110", [DWA_dash])                                      ;
+  ("DW_AT_GNU_call_site_value"   , sym_natural_of_hex "0x2111", [DWA_dash])                                      ;
+  ("DW_AT_GNU_call_site_data_value", sym_natural_of_hex "0x2112", [DWA_dash])                                      ;
+  ("DW_AT_GNU_call_site_target"  , sym_natural_of_hex "0x2113", [DWA_dash])                                      ;
+  ("DW_AT_GNU_call_site_target_clobbered", sym_natural_of_hex "0x2114", [DWA_dash])                                      ;
+  ("DW_AT_GNU_tail_call"         , sym_natural_of_hex "0x2115", [DWA_dash])                                      ;
+  ("DW_AT_GNU_all_tail_call_sites", sym_natural_of_hex "0x2116", [DWA_dash])                                      ;
+  ("DW_AT_GNU_all_call_sites"    , sym_natural_of_hex "0x2117", [DWA_dash])                                      ;
+  ("DW_AT_GNU_all_source_call_sites", sym_natural_of_hex "0x2118", [DWA_dash])                                      ;
+  ("DW_AT_GNU_macros"            , sym_natural_of_hex "0x2119", [DWA_dash])                                      ;
+  ("DW_AT_GNU_deleted"           , sym_natural_of_hex "0x211a", [DWA_dash])                                      ;
+  ("DW_AT_GNU_dwo_name"          , sym_natural_of_hex "0x2130", [DWA_dash])                                      ;
+  ("DW_AT_GNU_dwo_id"            , sym_natural_of_hex "0x2131", [DWA_dash])                                      ;
+  ("DW_AT_GNU_ranges_base"       , sym_natural_of_hex "0x2132", [DWA_dash])                                      ;
+  ("DW_AT_GNU_addr_base"         , sym_natural_of_hex "0x2133", [DWA_dash])                                      ;
+  ("DW_AT_GNU_pubnames"          , sym_natural_of_hex "0x2134", [DWA_dash])                                      ;
+  ("DW_AT_GNU_pubtypes"          , sym_natural_of_hex "0x2135", [DWA_dash])                                      ;
+  ("DW_AT_GNU_discriminator"     , sym_natural_of_hex "0x2136", [DWA_dash])                                      ;
+  ("DW_AT_GNU_locviews"          , sym_natural_of_hex "0x2137", [DWA_dash])                                      ;
+  ("DW_AT_GNU_entry_view"        , sym_natural_of_hex "0x2138", [DWA_dash])                                      ;
+  ("DW_AT_VMS_rtnbeg_pd_address" , sym_natural_of_hex "0x2201", [DWA_dash])                                      ;
+  ("DW_AT_use_GNAT_descriptive_type", sym_natural_of_hex "0x2301", [DWA_dash])                                      ;
+  ("DW_AT_GNAT_descriptive_type" , sym_natural_of_hex "0x2302", [DWA_dash])                                      ;
+  ("DW_AT_upc_threads_scaled"    , sym_natural_of_hex "0x3210", [DWA_dash])                                      ;
+  ("DW_AT_PGI_lbase"             , sym_natural_of_hex "0x3a00", [DWA_dash])                                      ;
+  ("DW_AT_PGI_soffset"           , sym_natural_of_hex "0x3a01", [DWA_dash])                                      ;
+  ("DW_AT_PGI_lstride"           , sym_natural_of_hex "0x3a02", [DWA_dash])                                      ;
+  ("DW_AT_APPLE_optimized"       , sym_natural_of_hex "0x3fe1", [DWA_dash])                                      ;
+  ("DW_AT_APPLE_flags"           , sym_natural_of_hex "0x3fe2", [DWA_dash])                                      ;
+  ("DW_AT_APPLE_isa"             , sym_natural_of_hex "0x3fe3", [DWA_dash])                                      ;
+  ("DW_AT_APPLE_block"           , sym_natural_of_hex "0x3fe4", [DWA_dash])                                      ;
+  ("DW_AT_APPLE_major_runtime_vers", sym_natural_of_hex "0x3fe5", [DWA_dash])                                      ;
+  ("DW_AT_APPLE_runtime_class"   , sym_natural_of_hex "0x3fe6", [DWA_dash])                                      ;
+  ("DW_AT_APPLE_omit_frame_ptr"  , sym_natural_of_hex "0x3fe7", [DWA_dash])                                      ;
+  ("DW_AT_APPLE_property_name"   , sym_natural_of_hex "0x3fe8", [DWA_dash])                                      ;
+  ("DW_AT_APPLE_property_getter" , sym_natural_of_hex "0x3fe9", [DWA_dash])                                      ;
+  ("DW_AT_APPLE_property_setter" , sym_natural_of_hex "0x3fea", [DWA_dash])                                      ;
+  ("DW_AT_APPLE_property_attribute", sym_natural_of_hex "0x3feb", [DWA_dash])                                      ;
+  ("DW_AT_APPLE_objc_complete_type", sym_natural_of_hex "0x3fec", [DWA_dash])                                      ;
+  ("DW_AT_APPLE_property"        , sym_natural_of_hex "0x3fed", [DWA_dash])                                      ;
   ("DW_AT_lo_user"              , sym_natural_of_hex "0x2000", [DWA_dash])                                      ;
   ("DW_AT_hi_user"              , sym_natural_of_hex "0x3fff", [DWA_dash])
 ]
@@ -1273,8 +1420,28 @@ let operation_encodings = [
 (* GCC also produces these for our example:
 https://fedorahosted.org/elfutils/wiki/DwarfExtensions
 http://dwarfstd.org/ShowIssue.php?issue=100909.1 *)
-("DW_GNU_OP_entry_value",     sym_natural_of_hex "0xf3", [OAT_block], OpSem_not_supported); (*2*) (* ULEB128 size followed by DWARF expression block of that size*)
-("DW_OP_GNU_implicit_pointer", sym_natural_of_hex "0xf2", [OAT_dwarf_format_t;OAT_SLEB128], OpSem_not_supported)
+("DW_OP_GNU_entry_value" (* Claude: was misspelt DW_GNU_OP_entry_value *),     sym_natural_of_hex "0xf3", [OAT_block], OpSem_not_supported); (*2*) (* ULEB128 size followed by DWARF expression block of that size*)
+("DW_OP_GNU_implicit_pointer", sym_natural_of_hex "0xf2", [OAT_dwarf_format_t;OAT_SLEB128], OpSem_not_supported);
+(* Claude: DWARF 5 and GNU operators, added so that expressions using them parse;
+   none of them are evaluated (OpSem_not_supported) *)
+("DW_OP_implicit_pointer",    sym_natural_of_hex "0xa0", [OAT_dwarf_format_t;OAT_SLEB128], OpSem_not_supported);
+("DW_OP_addrx",               sym_natural_of_hex "0xa1", [OAT_ULEB128]              , OpSem_not_supported);
+("DW_OP_constx",              sym_natural_of_hex "0xa2", [OAT_ULEB128]              , OpSem_not_supported);
+("DW_OP_entry_value",         sym_natural_of_hex "0xa3", [OAT_block]                , OpSem_not_supported);
+("DW_OP_regval_type",         sym_natural_of_hex "0xa5", [OAT_ULEB128;OAT_ULEB128]  , OpSem_not_supported);
+("DW_OP_deref_type",          sym_natural_of_hex "0xa6", [OAT_uint8;OAT_ULEB128]    , OpSem_not_supported);
+("DW_OP_xderef_type",         sym_natural_of_hex "0xa7", [OAT_uint8;OAT_ULEB128]    , OpSem_not_supported);
+("DW_OP_convert",             sym_natural_of_hex "0xa8", [OAT_ULEB128]              , OpSem_not_supported);
+("DW_OP_reinterpret",         sym_natural_of_hex "0xa9", [OAT_ULEB128]              , OpSem_not_supported);
+("DW_OP_GNU_uninit",          sym_natural_of_hex "0xf0", []                         , OpSem_not_supported);
+("DW_OP_GNU_regval_type",     sym_natural_of_hex "0xf5", [OAT_ULEB128;OAT_ULEB128]  , OpSem_not_supported);
+("DW_OP_GNU_deref_type",      sym_natural_of_hex "0xf6", [OAT_uint8;OAT_ULEB128]    , OpSem_not_supported);
+("DW_OP_GNU_convert",         sym_natural_of_hex "0xf7", [OAT_ULEB128]              , OpSem_not_supported);
+("DW_OP_GNU_reinterpret",     sym_natural_of_hex "0xf9", [OAT_ULEB128]              , OpSem_not_supported);
+("DW_OP_GNU_parameter_ref",   sym_natural_of_hex "0xfa", [OAT_uint32]               , OpSem_not_supported);
+("DW_OP_GNU_addr_index",      sym_natural_of_hex "0xfb", [OAT_ULEB128]              , OpSem_not_supported);
+("DW_OP_GNU_const_index",     sym_natural_of_hex "0xfc", [OAT_ULEB128]              , OpSem_not_supported);
+("DW_OP_GNU_variable_value",  sym_natural_of_hex "0xfd", [OAT_dwarf_format_t]       , OpSem_not_supported)
 
 ]
 
@@ -2909,6 +3076,7 @@ let rec parse_die c str cuh find_abbreviation_declaration =
                   die_abbreviation_declaration = ad;
                   die_attribute_values = avs;
                   die_children = dies;
+                  die_end = sym_natural_const pc'''.pc_offset;
                   |> in
                   let _ = my_debug3 ("die entire " ^ pp_die c cuh str true 0 false die) in
                   die)) pc''')))
@@ -3938,26 +4106,399 @@ let pp_line_info li
 
 (** all dwarf info: pp and parsing *)
 
-(* roughly matching objdump --dwarf=abbrev,info *)
-let pp_dwarf_like_objdump d =
+(** ************************************************************ *)
+(** Claude: objdump-compatible pretty printing                    *)
+(** ************************************************************ *)
+
+(* Claude: The [od_*] functions reproduce the text of
+   `objdump --dwarf=abbrev,info` (binutils 2.42, binutils/dwarf.c:
+   display_debug_abbrev, process_debug_info, read_and_display_attr_value,
+   decode_location_expression), so that `main_elf --debug-dump=dies` can be
+   diffed against it.  objdump applies the relocations of a relocatable file
+   using section symbols of value 0, so a relocated field shows just its
+   addend; here that is the offset part of the symbolic value.  Values that
+   objdump writes with C's %#x print 0 as a bare "0". *)
+
+let od_hx (n:natural) : string = unsafe_hex_string_of_natural_alternate n
+let od_hx_sym (n:sym_natural) : string = od_hx (sym_natural_offset_part n)
+let od_x_sym (n:sym_natural) : string = pphexplain (sym_natural_offset_part n)
+let od_dec_sym (n:sym_natural) : string = show (sym_natural_offset_part n)
+
+(* DWARF register names, as in binutils dwarf.c; "" marks an unnamed number *)
+let od_regnames_aarch64 : list string = ["x0"; "x1"; "x2"; "x3"; "x4"; "x5"; "x6"; "x7"; "x8"; "x9"; "x10"; "x11"; "x12"; "x13"; "x14"; "x15"; "x16"; "x17"; "x18"; "x19"; "x20"; "x21"; "x22"; "x23"; "x24"; "x25"; "x26"; "x27"; "x28"; "x29"; "x30"; "sp"; ""; "elr"; ""; ""; ""; ""; ""; ""; ""; ""; ""; ""; ""; ""; "vg"; "ffr"; "p0"; "p1"; "p2"; "p3"; "p4"; "p5"; "p6"; "p7"; "p8"; "p9"; "p10"; "p11"; "p12"; "p13"; "p14"; "p15"; "v0"; "v1"; "v2"; "v3"; "v4"; "v5"; "v6"; "v7"; "v8"; "v9"; "v10"; "v11"; "v12"; "v13"; "v14"; "v15"; "v16"; "v17"; "v18"; "v19"; "v20"; "v21"; "v22"; "v23"; "v24"; "v25"; "v26"; "v27"; "v28"; "v29"; "v30"; "v31"; "z0"; "z1"; "z2"; "z3"; "z4"; "z5"; "z6"; "z7"; "z8"; "z9"; "z10"; "z11"; "z12"; "z13"; "z14"; "z15"; "z16"; "z17"; "z18"; "z19"; "z20"; "z21"; "z22"; "z23"; "z24"; "z25"; "z26"; "z27"; "z28"; "z29"; "z30"; "z31"]
+let od_regnames_x86_64 : list string = ["rax"; "rdx"; "rcx"; "rbx"; "rsi"; "rdi"; "rbp"; "rsp"; "r8"; "r9"; "r10"; "r11"; "r12"; "r13"; "r14"; "r15"; "rip"; "xmm0"; "xmm1"; "xmm2"; "xmm3"; "xmm4"; "xmm5"; "xmm6"; "xmm7"; "xmm8"; "xmm9"; "xmm10"; "xmm11"; "xmm12"; "xmm13"; "xmm14"; "xmm15"; "st0"; "st1"; "st2"; "st3"; "st4"; "st5"; "st6"; "st7"; "mm0"; "mm1"; "mm2"; "mm3"; "mm4"; "mm5"; "mm6"; "mm7"; "rflags"; "es"; "cs"; "ss"; "ds"; "fs"; "gs"; ""; ""; "fs.base"; "gs.base"; ""; ""; "tr"; "ldtr"; "mxcsr"; "fcw"; "fsw"; "xmm16"; "xmm17"; "xmm18"; "xmm19"; "xmm20"; "xmm21"; "xmm22"; "xmm23"; "xmm24"; "xmm25"; "xmm26"; "xmm27"; "xmm28"; "xmm29"; "xmm30"; "xmm31"; ""; ""; ""; ""; ""; ""; ""; ""; ""; ""; ""; ""; ""; ""; ""; ""; ""; ""; ""; ""; ""; ""; ""; ""; ""; ""; ""; ""; ""; ""; ""; ""; ""; ""; ""; "k0"; "k1"; "k2"; "k3"; "k4"; "k5"; "k6"; "k7"]
+let od_regnames_i386 : list string = ["eax"; "ecx"; "edx"; "ebx"; "esp"; "ebp"; "esi"; "edi"; "eip"; "eflags"; ""; "st0"; "st1"; "st2"; "st3"; "st4"; "st5"; "st6"; "st7"; ""; ""; "xmm0"; "xmm1"; "xmm2"; "xmm3"; "xmm4"; "xmm5"; "xmm6"; "xmm7"; "mm0"; "mm1"; "mm2"; "mm3"; "mm4"; "mm5"; "mm6"; "mm7"; "fcw"; "fsw"; "mxcsr"; "es"; "cs"; "ss"; "ds"; "fs"; "gs"; ""; ""; "tr"; "ldtr"; ""; ""; ""; ""; ""; ""; ""; ""; ""; ""; ""; ""; ""; ""; ""; ""; ""; ""; ""; ""; ""; ""; ""; ""; ""; ""; ""; ""; ""; ""; ""; ""; ""; ""; ""; ""; ""; ""; ""; ""; ""; ""; ""; "k0"; "k1"; "k2"; "k3"; "k4"; "k5"; "k6"; "k7"]
+
+let od_regname_from_table (tbl: list string) (r:natural) : string =
+  match List.index tbl (unsafe_nat_of_natural r) with
+  | Just s -> if s = "" then "r" ^ show r else s
+  | Nothing -> "r" ^ show r
+  end
+
+val objdump_regname : natural -> natural -> string
+let objdump_regname (mach:natural) : natural -> string =
+  if mach = elf_ma_aarch64 then od_regname_from_table od_regnames_aarch64
+  else if mach = elf_ma_x86_64 then od_regname_from_table od_regnames_x86_64
+  else if mach = elf_ma_386 then od_regname_from_table od_regnames_i386
+  else (fun r -> "r" ^ show r)
+
+(** the BFD target name objdump prints in its "file format" line *)
+val objdump_target_name_64 : natural -> bool -> string
+let objdump_target_name_64 (mach:natural) (little:bool) : string =
+  if mach = elf_ma_aarch64 then (if little then "elf64-littleaarch64" else "elf64-bigaarch64")
+  else if mach = elf_ma_x86_64 then "elf64-x86-64"
+  else if mach = elf_ma_riscv then (if little then "elf64-littleriscv" else "elf64-bigriscv")
+  else if mach = elf_ma_ppc64 then (if little then "elf64-powerpcle" else "elf64-powerpc")
+  else if mach = elf_ma_mips then (if little then "elf64-tradlittlemips" else "elf64-tradbigmips")
+  else "[...]"
+
+(* the bytes objdump would show for a (possibly partly symbolic) byte sequence:
+   symbolic parts are rendered as the offset part of their value *)
+let rec od_bytes_le (n:natural) (w:natural) : list natural =
+  if w = 0 then [] else (n mod 256) :: od_bytes_le (n div 256) (w - 1)
+
+let rec od_concrete_bytes' (en:endianness) (raw: list natural) (mask: list sym_mask_entry) : list natural =
+  match mask with
+  | [] -> raw
+  | NoSym k :: mask' ->
+      let k' = unsafe_nat_of_natural k in
+        List.take k' raw ++ od_concrete_bytes' en (List.drop k' raw) mask'
+  | SymVal k v :: mask' ->
+      let bs = od_bytes_le (sym_natural_offset_part v) k in
+      let bs = match en with Little -> bs | Big -> List.reverse bs end in
+        bs ++ od_concrete_bytes' en (List.drop (unsafe_nat_of_natural k) raw) mask'
+  end
+
+let od_concrete_bytes (c:p_context) (bs:sym_byte_sequence) : list natural =
+  od_concrete_bytes' c.endianness (List.map natural_of_byte (byte_list_of_byte_sequence bs.sbs_bytes)) bs.sbs_symbolic
+
+let od_value_of_bytes (c:p_context) (bs:sym_byte_sequence) : natural =
+  let bytes = od_concrete_bytes c bs in
+  let le = match c.endianness with Little -> bytes | Big -> List.reverse bytes end in
+    List.foldr (fun b acc -> b + 256 * acc) 0 le
+
+let od_block (c:p_context) (n:sym_natural) (bs:sym_byte_sequence) : string =
+  od_dec_sym n ^ " byte block: " ^ String.concat "" (List.map (fun b -> pphexplain b ^ " ") (od_concrete_bytes c bs))
+
+(* location expressions *)
+let od_arg_nat (args: list operation_argument_value) (i:nat) : natural =
+  match List.index args i with
+  | Just (OAV_natural n) -> sym_natural_offset_part n
+  | Just (OAV_integer n) -> let i = sym_integer_expect_const n in if i < 0 then 0 else naturalFromInteger i
+  | _ -> 0
+  end
+
+let od_arg_int (args: list operation_argument_value) (i:nat) : integer =
+  match List.index args i with
+  | Just (OAV_integer n) -> sym_integer_expect_const n
+  | Just (OAV_natural n) -> integerFromNatural (sym_natural_offset_part n)
+  | _ -> 0
+  end
+
+let od_arg_block (args: list operation_argument_value) (i:nat) : maybe (sym_natural * sym_byte_sequence) =
+  match List.index args i with
+  | Just (OAV_block n bs) -> Just (n, bs)
+  | _ -> Nothing
+  end
+
+val od_op : p_context -> compilation_unit_header -> (natural -> string) -> operation -> string
+let rec od_op c cuh regname (op:operation) : string =
+  let code = sym_natural_expect_const op.op_code in
+  let args = op.op_argument_values in
+  let cu_off = sym_natural_offset_part cuh.cuh_offset in
+  let nested bs = String.concat "; " (List.map (od_op c cuh regname) (parse_operations_bs c cuh bs)) in
+  if code = 3 then "DW_OP_addr: " ^ pphexplain (od_arg_nat args 0)
+  else if code >= 48 && code <= 79 then "DW_OP_lit" ^ show (code - 48)
+  else if code >= 80 && code <= 111 then
+    let r = code - 80 in "DW_OP_reg" ^ show r ^ " (" ^ regname r ^ ")"
+  else if code >= 112 && code <= 143 then
+    let r = code - 112 in "DW_OP_breg" ^ show r ^ " (" ^ regname r ^ "): " ^ show (od_arg_int args 0)
+  else if code = 144 then let r = od_arg_nat args 0 in "DW_OP_regx: " ^ show r ^ " (" ^ regname r ^ ")"
+  else if code = 145 then "DW_OP_fbreg: " ^ show (od_arg_int args 0)
+  else if code = 146 then let r = od_arg_nat args 0 in "DW_OP_bregx: " ^ show r ^ " (" ^ regname r ^ ") " ^ show (od_arg_int args 1)
+  else if code = 147 then "DW_OP_piece: " ^ show (od_arg_nat args 0)
+  else if code = 148 then "DW_OP_deref_size: " ^ show (od_arg_nat args 0)
+  else if code = 149 then "DW_OP_xderef_size: " ^ show (od_arg_nat args 0)
+  else if code = 35 then "DW_OP_plus_uconst: " ^ show (od_arg_nat args 0)
+  else if code = 8 || code = 10 || code = 12 || code = 14 || code = 16 then op.op_string ^ ": " ^ show (od_arg_nat args 0)
+  else if code = 9 || code = 11 || code = 13 || code = 15 || code = 17 then op.op_string ^ ": " ^ show (od_arg_int args 0)
+  else if code = 21 then "DW_OP_pick: " ^ show (od_arg_nat args 0)
+  else if code = 40 || code = 47 then op.op_string ^ ": " ^ show (od_arg_int args 0)
+  else if code = 152 || code = 153 then op.op_string ^ ": <" ^ od_hx (od_arg_nat args 0 + cu_off) ^ ">"
+  else if code = 154 then "DW_OP_call_ref: <" ^ od_hx (od_arg_nat args 0) ^ ">"
+  else if code = 157 then "DW_OP_bit_piece: size: " ^ show (od_arg_nat args 0) ^ " offset: " ^ show (od_arg_nat args 1) ^ " "
+  else if code = 158 then
+    "DW_OP_implicit_value" ^ (match od_arg_block args 0 with Just (n, bs) -> " " ^ od_block c n bs | Nothing -> "" end)
+  else if code = 163 || code = 243 then
+    op.op_string ^ ": (" ^ (match od_arg_block args 0 with Just (_, bs) -> nested bs | Nothing -> "" end) ^ ")"
+  else if code = 160 || code = 242 then op.op_string ^ ": <" ^ od_hx (od_arg_nat args 0) ^ "> " ^ show (od_arg_int args 1)
+  else if code = 165 || code = 245 then
+    let r = od_arg_nat args 0 in op.op_string ^ ": " ^ show r ^ " (" ^ regname r ^ ") <" ^ od_hx (cu_off + od_arg_nat args 1) ^ ">"
+  else if code = 166 || code = 167 || code = 246 then
+    op.op_string ^ ": " ^ show (od_arg_int args 0) ^ " <" ^ od_hx (cu_off + od_arg_nat args 1) ^ ">"
+  else if code = 168 || code = 169 || code = 247 || code = 249 then
+    let v = od_arg_nat args 0 in op.op_string ^ " <" ^ od_hx (if v = 0 then 0 else v + cu_off) ^ ">"
+  else if code = 250 then "DW_OP_GNU_parameter_ref: <" ^ od_hx (cu_off + od_arg_nat args 0) ^ ">"
+  else if code = 161 || code = 162 || code = 251 || code = 252 then op.op_string ^ " <" ^ od_hx (od_arg_nat args 0) ^ ">"
+  else if code = 253 then "DW_OP_GNU_variable_value: <" ^ od_hx (od_arg_nat args 0) ^ ">"
+  else if code = 224 then "DW_OP_GNU_push_tls_address or DW_OP_HP_unknown"
+  else op.op_string
+
+let od_ops c cuh regname (ops: list operation) : string =
+  String.concat "; " (List.map (od_op c cuh regname) ops)
+
+let od_ops_need_frame_base (ops: list operation) : bool =
+  List.any (fun op -> sym_natural_expect_const op.op_code = 145) ops
+
+(* attribute classification: the codes are looked up once, at module
+   initialisation, since these tests run for every attribute of every DIE *)
+let od_code (s:string) : sym_natural =
+  match lookup_Abc_b s attribute_encodings with Just n -> n | Nothing -> sym_natural_const 0 end
+let od_codes (names: list string) : list sym_natural = List.map od_code names
+let od_at_in (at:sym_natural) (codes: list sym_natural) : bool = List.any (fun c -> c = at) codes
+
+let od_form_data1 = attribute_form_encode "DW_FORM_data1"
+let od_form_data2 = attribute_form_encode "DW_FORM_data2"
+let od_form_data4 = attribute_form_encode "DW_FORM_data4"
+let od_form_data8 = attribute_form_encode "DW_FORM_data8"
+let od_form_sec_offset = attribute_form_encode "DW_FORM_sec_offset"
+let od_form_exprloc = attribute_form_encode "DW_FORM_exprloc"
+
+let od_location_attrs = ["DW_AT_frame_base"; "DW_AT_location"; "DW_AT_GNU_locviews"; "DW_AT_string_length";
+  "DW_AT_return_addr"; "DW_AT_data_member_location"; "DW_AT_vtable_elem_location"; "DW_AT_segment";
+  "DW_AT_static_link"; "DW_AT_use_location"; "DW_AT_call_value"; "DW_AT_GNU_call_site_value";
+  "DW_AT_call_data_value"; "DW_AT_GNU_call_site_data_value"; "DW_AT_call_target"; "DW_AT_GNU_call_site_target";
+  "DW_AT_call_target_clobbered"; "DW_AT_GNU_call_site_target_clobbered"]
+let od_base_attrs = ["DW_AT_loclists_base"; "DW_AT_rnglists_base"; "DW_AT_str_offsets_base"]
+let od_expr_attrs = ["DW_AT_allocated"; "DW_AT_associated"; "DW_AT_data_location"; "DW_AT_byte_stride";
+  "DW_AT_upper_bound"; "DW_AT_lower_bound"; "DW_AT_rank"]
+let od_exprloc_only_attrs = ["DW_AT_data_bit_offset"; "DW_AT_byte_size"; "DW_AT_bit_size";
+  "DW_AT_string_length_byte_size"; "DW_AT_string_length_bit_size"; "DW_AT_bit_stride"]
+let od_location_codes = od_codes od_location_attrs
+let od_base_codes = od_codes od_base_attrs
+let od_expr_codes = od_codes od_expr_attrs
+let od_exprloc_only_codes = od_codes od_exprloc_only_attrs
+let od_nonloclist_base_codes = od_codes ["DW_AT_rnglists_base"; "DW_AT_str_offsets_base"]
+let od_at_inline = od_code "DW_AT_inline"
+let od_at_language = od_code "DW_AT_language"
+let od_at_encoding = od_code "DW_AT_encoding"
+let od_at_accessibility = od_code "DW_AT_accessibility"
+let od_at_visibility = od_code "DW_AT_visibility"
+let od_at_endianity = od_code "DW_AT_endianity"
+let od_at_virtuality = od_code "DW_AT_virtuality"
+let od_at_identifier_case = od_code "DW_AT_identifier_case"
+let od_at_calling_convention = od_code "DW_AT_calling_convention"
+let od_at_ordering = od_code "DW_AT_ordering"
+let od_at_decimal_sign = od_code "DW_AT_decimal_sign"
+let od_at_defaulted = od_code "DW_AT_defaulted"
+
+let od_lang (u:natural) : string =
+  if u = 1 then "ANSI C" else if u = 2 then "non-ANSI C" else if u = 3 then "Ada" else if u = 4 then "C++"
+  else if u = 5 then "Cobol 74" else if u = 6 then "Cobol 85" else if u = 7 then "FORTRAN 77" else if u = 8 then "Fortran 90"
+  else if u = 9 then "ANSI Pascal" else if u = 10 then "Modula 2" else if u = 11 then "Java" else if u = 12 then "ANSI C99"
+  else if u = 13 then "ADA 95" else if u = 14 then "Fortran 95" else if u = 15 then "PLI" else if u = 16 then "Objective C"
+  else if u = 17 then "Objective C++" else if u = 18 then "Unified Parallel C" else if u = 19 then "D" else if u = 20 then "Python"
+  else if u = 21 then "OpenCL" else if u = 22 then "Go" else if u = 23 then "Modula 3" else if u = 24 then "Haskell"
+  else if u = 25 then "C++03" else if u = 26 then "C++11" else if u = 27 then "OCaml" else if u = 28 then "Rust"
+  else if u = 29 then "C11" else if u = 30 then "Swift" else if u = 31 then "Julia" else if u = 32 then "Dylan"
+  else if u = 33 then "C++14" else if u = 34 then "Fortran 03" else if u = 35 then "Fortran 08" else if u = 36 then "RenderScript"
+  else if u = 32769 then "MIPS assembler" else if u = 34661 then "Unified Parallel C"
+  else if u >= 32768 && u <= 65535 then "implementation defined: " ^ od_hx u
+  else "unknown: " ^ od_hx u
+
+let od_ate (u:natural) : string =
+  if u = 0 then "(void)" else if u = 1 then "(machine address)" else if u = 2 then "(boolean)"
+  else if u = 3 then "(complex float)" else if u = 4 then "(float)" else if u = 5 then "(signed)"
+  else if u = 6 then "(signed char)" else if u = 7 then "(unsigned)" else if u = 8 then "(unsigned char)"
+  else if u = 9 then "(imaginary float)" else if u = 10 then "(packed_decimal)" else if u = 11 then "(numeric_string)"
+  else if u = 12 then "(edited)" else if u = 13 then "(signed_fixed)" else if u = 14 then "(unsigned_fixed)"
+  else if u = 15 then "(decimal float)" else if u = 16 then "(unicode string)" else if u = 17 then "(UCS)" else if u = 18 then "(ASCII)"
+  else if u = 128 then "(HP_float80)" else if u = 129 then "(HP_complex_float80)" else if u = 130 then "(HP_float128)"
+  else if u = 131 then "(HP_complex_float128)" else if u = 132 then "(HP_floathpintel)" else if u = 133 then "(HP_imaginary_float80)"
+  else if u = 134 then "(HP_imaginary_float128)"
+  else if u >= 128 && u <= 255 then "(user defined type)"
+  else "(unknown type)"
+
+(* the "\t(...)" annotation objdump adds after certain attributes' values *)
+let od_annotation (at:sym_natural) (u:natural) : string =
+  if at = od_at_inline then
+    "\t" ^ (if u = 0 then "(not inlined)" else if u = 1 then "(inlined)" else if u = 2 then "(declared as inline but ignored)"
+            else if u = 3 then "(declared as inline and inlined)" else "  (Unknown inline attribute value: " ^ od_hx u ^ ")")
+  else if at = od_at_language then "\t(" ^ od_lang u ^ ")"
+  else if at = od_at_encoding then "\t" ^ od_ate u
+  else if at = od_at_accessibility then
+    "\t" ^ (if u = 1 then "(public)" else if u = 2 then "(protected)" else if u = 3 then "(private)" else "(unknown accessibility)")
+  else if at = od_at_visibility then
+    "\t" ^ (if u = 1 then "(local)" else if u = 2 then "(exported)" else if u = 3 then "(qualified)" else "(unknown visibility)")
+  else if at = od_at_endianity then
+    "\t" ^ (if u = 0 then "(default)" else if u = 1 then "(big)" else if u = 2 then "(little)"
+            else if u >= 64 && u <= 255 then "(user specified)" else "(unknown endianity)")
+  else if at = od_at_virtuality then
+    "\t" ^ (if u = 0 then "(none)" else if u = 1 then "(virtual)" else if u = 2 then "(pure_virtual)" else "(unknown virtuality)")
+  else if at = od_at_identifier_case then
+    "\t" ^ (if u = 0 then "(case_sensitive)" else if u = 1 then "(up_case)" else if u = 2 then "(down_case)"
+            else if u = 3 then "(case_insensitive)" else "(unknown case)")
+  else if at = od_at_calling_convention then
+    "\t" ^ (if u = 1 then "(normal)" else if u = 2 then "(program)" else if u = 3 then "(nocall)"
+            else if u = 4 then "(pass by ref)" else if u = 5 then "(pass by value)"
+            else if u = 64 then "(Rensas SH)" else if u = 65 then "(Borland fastcall i386)"
+            else if u >= 64 && u <= 255 then "(user defined)" else "(unknown convention)")
+  else if at = od_at_ordering then
+    "\t" ^ (if u = 0 then "(row major)" else if u = 1 then "(column major)" else "(undefined)")
+  else if at = od_at_decimal_sign then
+    "\t" ^ (if u = 1 then "(unsigned)" else if u = 2 then "(leading overpunch)" else if u = 3 then "(trailing overpunch)"
+            else if u = 4 then "(leading separate)" else if u = 5 then "(trailing separate)" else "(unrecognised)")
+  else if at = od_at_defaulted then
+    "\t" ^ (if u = 0 then "(no)" else if u = 1 then "(in class)" else if u = 2 then "(out of class)" else "(unrecognised)")
+  else ""
+
+val od_attribute_value : p_context -> compilation_unit_header -> sym_byte_sequence -> (natural -> string) -> bool ->
+  sym_natural -> sym_natural -> attribute_value -> string
+let od_attribute_value c cuh str regname have_frame_base (at:sym_natural) (af:sym_natural) (av:attribute_value) : string =
+  let cu_off = sym_natural_offset_part cuh.cuh_offset in
+  let small_data = af = od_form_data1 || af = od_form_data2 in
+  let wide_data  = af = od_form_data4 || af = od_form_data8 in
+  let value =
+    match av with
+    | AV_addr x -> od_hx_sym x
+    | AV_block n bs ->
+        if small_data then show (od_value_of_bytes c bs)
+        else if wide_data then od_hx (od_value_of_bytes c bs)
+        else od_block c n bs
+    | AV_constantN n bs ->
+        if wide_data then od_hx (od_value_of_bytes c bs) else show (od_value_of_bytes c bs)
+    | AV_constant_SLEB128 i -> show (sym_integer_expect_const i)
+    | AV_constant_ULEB128 n -> od_dec_sym n
+    | AV_exprloc n bs -> od_block c n bs
+    | AV_flag b -> if b then "1" else "0"
+    | AV_ref n -> "<" ^ od_hx (sym_natural_offset_part n + cu_off) ^ ">"
+    | AV_ref_addr n -> "<" ^ od_hx_sym n ^ ">"
+    | AV_ref_sig8 n -> "signature: " ^ od_hx_sym n
+    | AV_sec_offset n -> od_hx_sym n
+    | AV_string bs -> string_of_sym_byte_sequence bs
+    | AV_strp n -> "(indirect string, offset: " ^ od_hx_sym n ^ "): " ^ pp_debug_str_entry str n
+    end
+  in
+  let block =
+    match av with
+    | AV_block _ bs -> if small_data || wide_data then Nothing else Just bs
+    | AV_exprloc _ bs -> Just bs
+    | _ -> Nothing
+    end
+  in
+  let uvalue : natural =
+    match av with
+    | AV_block _ bs -> if small_data || wide_data then od_value_of_bytes c bs else 0
+    | AV_constantN _ bs -> od_value_of_bytes c bs
+    | AV_constant_ULEB128 n -> sym_natural_offset_part n
+    | AV_constant_SLEB128 i -> let i = sym_integer_expect_const i in if i < 0 then 0 else naturalFromInteger i
+    | AV_flag b -> if b then 1 else 0
+    | AV_addr x -> sym_natural_offset_part x
+    | AV_sec_offset x -> sym_natural_offset_part x
+    | _ -> 0
+    end
+  in
+  let is_loc = od_at_in at od_location_codes in
+  let is_base = od_at_in at od_base_codes in
+  let version = sym_natural_offset_part cuh.cuh_version in
+  let loclist =
+    if (is_loc || is_base)
+       && (af = od_form_sec_offset || (version < 4 && wide_data))
+       && not (od_at_in at od_nonloclist_base_codes)
+    then " (location list)" else ""
+  in
+  let expr =
+    match block with
+    | Just bs ->
+        if is_loc || is_base || od_at_in at od_expr_codes
+           || (od_at_in at od_exprloc_only_codes && af = od_form_exprloc) then
+          let ops = parse_operations_bs c cuh bs in
+            "\t(" ^ od_ops c cuh regname ops ^ ")"
+            ^ (if (is_loc || is_base || od_at_in at od_expr_codes) && od_ops_need_frame_base ops && not have_frame_base
+               then " [without DW_AT_frame_base]" else "")
+        else ""
+    | Nothing -> ""
+    end
+  in
+    value ^ loclist ^ expr ^ od_annotation at uvalue
+
+let od_tag_name (t:sym_natural) : string =
+  match lookup_aB_a t tag_encodings with
+  | Just s -> s
+  | Nothing ->
+      let n = sym_natural_offset_part t in
+        if n >= 16512 && n <= 65535 then "User TAG value: " ^ od_hx n else "Unknown TAG value: " ^ od_hx n
+  end
+
+val od_die : p_context -> compilation_unit_header -> sym_byte_sequence -> (natural -> string) -> bool -> natural -> die -> string
+let rec od_die c cuh str regname have_frame_base (level:natural) (die:die) : string =
+  let ad = die.die_abbreviation_declaration in
+  " <" ^ show level ^ "><" ^ od_x_sym die.die_offset ^ ">: Abbrev Number: " ^ od_dec_sym die.die_abbreviation_code
+  ^ " (" ^ od_tag_name ad.ad_tag ^ ")\n"
+  ^ String.concat ""
+      (List.map
+        (fun ((at, af), (pos, av)) ->
+          "    <" ^ od_x_sym pos ^ ">   " ^ right_space_padded_to 18 (pp_attribute_encoding at) ^ ": "
+          ^ od_attribute_value c cuh str regname have_frame_base at af av ^ "\n")
+        (List.zip ad.ad_attribute_specifications die.die_attribute_values))
+  ^ (if ad.ad_has_children then
+       String.concat "" (List.map (od_die c cuh str regname have_frame_base (level + 1)) die.die_children)
+       ^ " <" ^ show (level + 1) ^ "><" ^ pphexplain (sym_natural_offset_part die.die_end - 1) ^ ">: Abbrev Number: 0\n"
+     else "")
+
+let od_compilation_unit c str regname have_frame_base (cu:compilation_unit) : string =
+  let h = cu.cu_header in
+  "  Compilation Unit @ offset " ^ od_hx_sym h.cuh_offset ^ ":\n"
+  ^ "   Length:        " ^ od_hx_sym h.cuh_unit_length ^ " " ^ pp_dwarf_format h.cuh_dwarf_format ^ "\n"
+  ^ "   Version:       " ^ od_dec_sym h.cuh_version ^ "\n"
+  ^ "   Abbrev Offset: " ^ od_hx_sym h.cuh_debug_abbrev_offset ^ "\n"
+  ^ "   Pointer Size:  " ^ od_dec_sym h.cuh_address_size ^ "\n"
+  ^ od_die c h str regname have_frame_base 0 cu.cu_die
+
+let od_abbreviation_declaration (x:abbreviation_declaration) : string =
+  "   " ^ od_dec_sym x.ad_abbreviation_code ^ "      " ^ od_tag_name x.ad_tag ^ "    "
+  ^ (if x.ad_has_children then "[has children]" else "[no children]") ^ "\n"
+  ^ String.concat ""
+      (List.map
+        (fun (n1, n2) -> "    " ^ right_space_padded_to 18 (pp_attribute_encoding n1) ^ " " ^ pp_attribute_form_encoding n2 ^ "\n")
+        x.ad_attribute_specifications)
+  ^ "    DW_AT value: 0     DW_FORM value: 0\n"
+
+let od_abbreviations_table (x:abbreviations_table) : string =
+  "  Number TAG (" ^ od_hx_sym x.at_offset ^ ")\n"
+  ^ String.concat "" (List.map od_abbreviation_declaration x.at_table)
+
+let od_abbreviations_tables (d:dwarf) : string =
+  let xs = List.map (fun cu -> (cu.cu_header.cuh_debug_abbrev_offset, cu.cu_abbreviations_table)) d.d_compilation_units in
+  let ys = remove_duplicates xs [] in
+  let ys = sort_by (fun (x, _) (y, _) -> natural_ordering (sym_natural_offset_part x) (sym_natural_offset_part y)) ys in
+    String.concat "" (List.map (fun (_, t) -> od_abbreviations_table t) ys)
+
+(* objdump's have_frame_base is set on the first DW_AT_frame_base it reads in
+   its initial pass over the whole section and never reset, so "[without
+   DW_AT_frame_base]" only ever appears in files with no frame base at all *)
+let rec od_die_has_attribute (at:sym_natural) (die:die) : bool =
+  List.any (fun (a, _) -> a = at) die.die_abbreviation_declaration.ad_attribute_specifications
+  || List.any (od_die_has_attribute at) die.die_children
+
+let od_file_has_frame_base (d:dwarf) : bool =
+  match lookup_Abc_b "DW_AT_frame_base" attribute_encodings with
+  | Just at -> List.any (fun cu -> od_die_has_attribute at cu.cu_die) d.d_compilation_units
+  | Nothing -> false
+  end
+
+(* Claude: text of `objdump --dwarf=abbrev,info`; [regname] names DWARF registers for the machine *)
+val pp_dwarf_like_objdump : (natural -> string) -> dwarf -> string
+let pp_dwarf_like_objdump regname (d:dwarf) : string =
   let c = p_context_of_d d in
-  ""
-
-(*  ^ "\n*** compilation unit abbreviation table ***\n" *)
-  ^ "Contents of the .debug_abbrev section:\n\n"
-  ^ "  Number TAG (0x0)\n"
-  ^ pp_abbreviations_tables d
-(*  ^ "\n*** compilation unit die tree           ***\n"*)
-
-(*  "\n************** .debug_info section - abbreviated *****************\n"
-  ^ pp_compilation_units_abbrev c d.d_str d.d_compilation_units
-    ^*)
-(*  ^"\n************** .debug_info section - full ************************\n"*)
-  ^ "\nContents of the .debug_info section:\n\n"
-  ^ pp_compilation_units c false (*false for no indent, like objdump; true for nice indent *) d.d_str d.d_compilation_units
+  let have_frame_base = od_file_has_frame_base d in
+  "Contents of the .debug_abbrev section:\n\n"
+  ^ od_abbreviations_tables d
+  ^ "\n"
+  ^ "Contents of the .debug_info section:\n\n"
+  ^ String.concat "" (List.map (od_compilation_unit c d.d_str regname have_frame_base) d.d_compilation_units)
 
 
-    
 let pp_dwarf d =
   let c = p_context_of_d d in
 
@@ -6524,14 +7065,14 @@ let pp_text_section f ri =
 (** **  top level for main_elf  ******************************** *)
 (** ************************************************************ *)
 
-val harness_string_of_elf_like_objdump : elf_file -> relocation_interpreter reloc_target_data -> string
-let harness_string_of_elf_like_objdump f1 ri =
+val harness_string_of_elf_like_objdump : elf_file -> relocation_interpreter reloc_target_data -> (natural -> string) -> string
+let harness_string_of_elf_like_objdump f1 ri regname =
   let mds = extract_dwarf_static f1 ri in
   match mds with
   | Nothing -> "<no dwarf information extracted>"
   | Just ds ->
    "" (*pp_text_section f1*)
-   ^ pp_dwarf_like_objdump ds.ds_dwarf
+   ^ pp_dwarf_like_objdump regname ds.ds_dwarf
   end
 
     
@@ -6583,12 +7124,12 @@ let {ocaml} harness_string_of_elf32_debug_info_section f1 (*os proc usr hdr sht 
 
 
 
-val harness_string_of_elf64_like_objdump : elf64_file -> relocation_interpreter reloc_target_data -> (*(sym_natural -> string) -> (sym_natural -> string) -> (sym_natural -> string) -> elf64_header -> elf64_section_header_table -> string_table -> *) string
-let {ocaml} harness_string_of_elf64_like_objdump f1 (*os proc usr hdr sht stbl*) =
-  harness_string_of_elf_like_objdump (ELF_File_64 f1)
+val harness_string_of_elf64_like_objdump : elf64_file -> relocation_interpreter reloc_target_data -> (natural -> string) -> string
+let {ocaml} harness_string_of_elf64_like_objdump f1 ri regname =
+  harness_string_of_elf_like_objdump (ELF_File_64 f1) ri regname
 
-val harness_string_of_elf32_like_objdump : elf32_file -> relocation_interpreter reloc_target_data -> (* (sym_natural -> string) -> (sym_natural -> string) -> (sym_natural -> string) -> elf32_header -> elf32_section_header_table -> string_table ->*) string
-let {ocaml} harness_string_of_elf32_like_objdump f1 (*os proc usr hdr sht stbl*) =
-  harness_string_of_elf_like_objdump (ELF_File_32 f1)
+val harness_string_of_elf32_like_objdump : elf32_file -> relocation_interpreter reloc_target_data -> (natural -> string) -> string
+let {ocaml} harness_string_of_elf32_like_objdump f1 ri regname =
+  harness_string_of_elf_like_objdump (ELF_File_32 f1) ri regname
 
     

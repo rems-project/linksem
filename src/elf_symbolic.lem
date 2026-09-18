@@ -129,7 +129,12 @@ let extract_elf64_relocations_for_section' f1 interp sidx =
     (* let symtab_map = symbol_map_from_elf64_symtab f1 symtab in *)
     mapM (interp f1 symtab sidx) rels >>= fun rel_maps ->
     let rel_map = Map.fromList (List.concatMap Map_extra.toList rel_maps) in
-    if Map.size rel_map <> List.length rels then
+    (* Claude: compare against the number of entries the interpreter produced,
+     * not the number of relocations: relocations such as R_AARCH64_NONE
+     * produce no entry, and comparing against the relocation count made every
+     * object containing one fail here. *)
+    let n_entries = List.foldl (fun n m -> n + Map.size m) 0 rel_maps in
+    if Map.size rel_map <> n_entries then
       fail "Multiple relocations at the same location"
     else
       return rel_map

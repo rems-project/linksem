@@ -358,18 +358,15 @@ let _ =
                   stbl*)
                   )
               else if flag = "--debug-dump=dies" then
+                (* Claude: the text of `objdump --dwarf=abbrev,info` *)
                 Elf_file.read_elf64_file bs0 >>= fun f1 ->
-                get_elf64_file_section_header_string_table f1 >>= fun stbl ->
-                return ("\n"^arg^":     file format [...]" ^"\n\n"^ Dwarf.harness_string_of_elf64_like_objdump
-                  f1
-                  (interpret_data_relocation (natural_of_elf64_half f1.elf64_file_header.elf64_machine))
-                  (*string_of_gnu_ext_section_type
-                  (fun x -> show x)
-                  (fun x -> show x)
-                  f1.elf64_file_header
-                  f1.elf64_file_section_header_table
-                  stbl*)
-                  )
+                let mach = natural_of_elf64_half f1.elf64_file_header.elf64_machine in
+                let little = (get_elf64_header_endianness f1.elf64_file_header = Little) in
+                return ("\n" ^ arg ^ ":     file format " ^ Dwarf.objdump_target_name_64 mach little ^ "\n\n"
+                  ^ Dwarf.harness_string_of_elf64_like_objdump
+                      f1
+                      (interpret_data_relocation mach)
+                      (Dwarf.objdump_regname mach))
               else
                 failwith ("Unimplemented (for ELF64) or unrecognised flag: "^flag)
             in

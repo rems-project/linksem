@@ -82,6 +82,11 @@ module Num = struct
 
   let of_num x = Absolute x
 
+  (* Claude: numeric part, ignoring any section a value is relative to *)
+  let offset_part = function
+  | Absolute x -> x
+  | Offset (_, x) -> x
+
   let to_num x = match x with
   | Absolute x -> x
   | _ -> fail ("to_num " ^ to_string x)

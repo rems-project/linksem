@@ -21,6 +21,14 @@ declare ocaml    target_rep function sym_natural_section = `Sym_ocaml.Num.sectio
 val sym_natural_expect_const : sym_natural -> natural
 declare ocaml    target_rep function sym_natural_expect_const = `Sym_ocaml.Num.to_num`
 
+(** Claude: [sym_natural_offset_part n] is the numeric part of [n]: the constant
+  * itself for an absolute value, the offset for a section-relative one.  This is
+  * what objdump shows for a relocated field of a relocatable file, since there
+  * the section symbols have value 0 and only the addend remains.
+  *)
+val sym_natural_offset_part : sym_natural -> natural
+declare ocaml    target_rep function sym_natural_offset_part = `Sym_ocaml.Num.offset_part`
+
 val sym_natural_map : (natural -> natural) -> sym_natural -> sym_natural
 declare ocaml    target_rep function sym_natural_map = `Sym_ocaml.Num.map`
 
