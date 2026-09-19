@@ -88,6 +88,8 @@ let gnu_df_1_confalt    : natural = 8192  (*0x00002000*)
 let gnu_df_1_endfiltee  : natural = 16384 (*0x00004000*)
 let gnu_df_1_dispreldne : natural = 32768 (*0x00008000*)
 let gnu_df_1_disprelpnd : natural = 65536 (*0x00010000*)
+(** Claude: the object is a position-independent executable (binutils and glibc). *)
+let gnu_df_1_pie        : natural = 134217728 (*0x08000000*)
 
 (** [gnu_string_of_dt_flag1 m] produces a string based representation of GNU
   * extensions flag_1 value [m].

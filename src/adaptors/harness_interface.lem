@@ -79,8 +79,46 @@ val section_headers_title : nat -> string
 let section_headers_title n =
   if n = 1 then "Section Header:" else "Section Headers:"
 
-val harness_string_of_elf32_file_header : elf32_header -> string
-let {ocaml} harness_string_of_elf32_file_header hdr =
+(** Claude: readelf describes an ET_DYN file as a "Position-Independent
+  * Executable file" when its dynamic section has DT_FLAGS_1 with DF_1_PIE set,
+  * and as a "Shared object file" otherwise; [harness_elf64_is_pie] and its
+  * ELF32 twin read that flag, and are false when there is no readable dynamic
+  * section. *)
+val harness_string_of_elf_file_type : bool -> natural -> string
+let harness_string_of_elf_file_type pie m =
+  if pie && m = elf_ft_dyn then "DYN (Position-Independent Executable file)"
+  else string_of_elf_file_type default_os_specific_print default_proc_specific_print m
+
+val harness_elf64_is_pie : elf64_file -> byte_sequence -> (natural -> bool) ->
+  (natural -> error tag_correspondence) -> (natural -> error tag_correspondence) -> bool
+let {ocaml} harness_elf64_is_pie f1 bs0 os_additional_ranges os_tag proc_tag =
+  match obtain_elf64_dynamic_section_contents f1 os_additional_ranges os_tag proc_tag bs0 with
+    | Success dyns ->
+      List.any (fun d ->
+        naturalFromInteger (integer_of_elf64_sxword d.elf64_dyn_tag) = elf_dt_gnu_flags_1 &&
+        (match d.elf64_dyn_d_un with
+          | D_Val v -> natural_land (natural_of_elf64_xword v) gnu_df_1_pie <> 0
+          | _       -> false
+        end)) dyns
+    | Fail _ -> false
+  end
+
+val harness_elf32_is_pie : elf32_file -> byte_sequence -> (natural -> bool) ->
+  (natural -> error tag_correspondence) -> (natural -> error tag_correspondence) -> bool
+let {ocaml} harness_elf32_is_pie f1 bs0 os_additional_ranges os_tag proc_tag =
+  match obtain_elf32_dynamic_section_contents f1 os_additional_ranges os_tag proc_tag bs0 with
+    | Success dyns ->
+      List.any (fun d ->
+        naturalFromInteger (integer_of_elf32_sword d.elf32_dyn_tag) = elf_dt_gnu_flags_1 &&
+        (match d.elf32_dyn_d_un with
+          | D_Val v -> natural_land (natural_of_elf32_word v) gnu_df_1_pie <> 0
+          | _       -> false
+        end)) dyns
+    | Fail _ -> false
+  end
+
+val harness_string_of_elf32_file_header_gen : bool -> elf32_header -> string
+let {ocaml} harness_string_of_elf32_file_header_gen pie hdr =
   unlines [
     "ELF Header:"
   ; "  Magic:" ^ "   "                           ^ unsafe_hex_string_of_uc_list (hdr.elf32_ident)
@@ -89,7 +127,7 @@ let {ocaml} harness_string_of_elf32_file_header hdr =
   ; "  Version:" ^ "                           " ^ string_of_elf_version_number (get_elf32_version_number hdr)
   ; "  OS/ABI:" ^ "                            " ^ string_of_elf_osabi_version (const "Architecture defined") (get_elf32_osabi hdr)
   ; "  ABI Version:" ^ "                       " ^ show (get_elf32_abi_version hdr)
-  ; "  Type:" ^ "                              " ^ string_of_elf_file_type default_os_specific_print default_proc_specific_print (natural_of_elf32_half hdr.elf32_type)
+  ; "  Type:" ^ "                              " ^ harness_string_of_elf_file_type pie (natural_of_elf32_half hdr.elf32_type)
   ; "  Machine:" ^ "                           " ^ string_of_elf_machine_architecture (natural_of_elf32_half hdr.elf32_machine)
   ; "  Version:" ^ "                           " ^ "0x" ^ unsafe_hex_string_of_natural 1 (natural_of_elf32_word hdr.elf32_version)
   ; "  Entry point address:" ^ "               " ^ "0x" ^ unsafe_hex_string_of_natural 1 (natural_of_elf32_addr hdr.elf32_entry)
@@ -104,8 +142,8 @@ let {ocaml} harness_string_of_elf32_file_header hdr =
   ; "  Section header string table index:" ^ " " ^ show hdr.elf32_shstrndx
   ]
 
-val harness_string_of_elf64_file_header : elf64_header -> string
-let {ocaml} harness_string_of_elf64_file_header hdr =
+val harness_string_of_elf64_file_header_gen : bool -> elf64_header -> string
+let {ocaml} harness_string_of_elf64_file_header_gen pie hdr =
   unlines [
     "ELF Header:"
   ; "  Magic:" ^ "   "                           ^ unsafe_hex_string_of_uc_list (hdr.elf64_ident)
@@ -114,7 +152,7 @@ let {ocaml} harness_string_of_elf64_file_header hdr =
   ; "  Version:" ^ "                           " ^ string_of_elf_version_number (get_elf64_version_number hdr)
   ; "  OS/ABI:" ^ "                            " ^ string_of_elf_osabi_version (const "Architecture defined") (get_elf64_osabi hdr)
   ; "  ABI Version:" ^ "                       " ^ show (get_elf64_abi_version hdr)
-  ; "  Type:" ^ "                              " ^ string_of_elf_file_type default_os_specific_print default_proc_specific_print (natural_of_elf64_half hdr.elf64_type)
+  ; "  Type:" ^ "                              " ^ harness_string_of_elf_file_type pie (natural_of_elf64_half hdr.elf64_type)
   ; "  Machine:" ^ "                           " ^ string_of_elf_machine_architecture (natural_of_elf64_half hdr.elf64_machine)
   ; "  Version:" ^ "                           " ^ "0x" ^ unsafe_hex_string_of_natural 1 (natural_of_elf64_word hdr.elf64_version)
   ; "  Entry point address:" ^ "               " ^ "0x" ^ unsafe_hex_string_of_natural 1 (natural_of_elf64_addr hdr.elf64_entry)
@@ -261,15 +299,24 @@ let {ocaml} harness_string_of_elf64_segment_section_mappings hdr pht sht stbl =
   in
     (String.concat "\n" map)
 
-val harness_string_of_elf32_program_headers : (natural -> string) -> (natural -> string) -> elf32_header -> elf32_program_header_table -> elf32_section_header_table -> string_table -> byte_sequence -> string
-let {ocaml} harness_string_of_elf32_program_headers os proc hdr pht sht stbl bs0 =
+(** Claude: the file header printers without a PIE flag, for callers that do
+  * not read the dynamic section (the file is then described as readelf does
+  * when it cannot read it). *)
+val harness_string_of_elf32_file_header : elf32_header -> string
+let harness_string_of_elf32_file_header hdr = harness_string_of_elf32_file_header_gen false hdr
+
+val harness_string_of_elf64_file_header : elf64_header -> string
+let harness_string_of_elf64_file_header hdr = harness_string_of_elf64_file_header_gen false hdr
+
+val harness_string_of_elf32_program_headers_gen : bool -> (natural -> string) -> (natural -> string) -> elf32_header -> elf32_program_header_table -> elf32_section_header_table -> string_table -> byte_sequence -> string
+let {ocaml} harness_string_of_elf32_program_headers_gen pie os proc hdr pht sht stbl bs0 =
   let pht_len = List.length pht in
     if pht_len = 0 then
       "\nThere are no program headers in this file."
     else
       unlines [
         ""
-      ; "Elf file type is " ^ string_of_elf_file_type default_os_specific_print default_proc_specific_print (natural_of_elf32_half hdr.elf32_type)
+      ; "Elf file type is " ^ harness_string_of_elf_file_type pie (natural_of_elf32_half hdr.elf32_type)
       ; "Entry point " ^ "0x" ^ unsafe_hex_string_of_natural 1 (natural_of_elf32_addr hdr.elf32_entry)
       ; there_are (List.length pht) "program header" ^ ", starting at offset " ^ show hdr.elf32_phoff
       ; ""
@@ -299,15 +346,15 @@ let {ocaml} harness_string_of_elf64_program_headers_body os proc hdr pht sht stb
       ; harness_string_of_elf64_segment_section_mappings hdr pht sht stbl
       ]
 
-val harness_string_of_elf64_program_headers : (natural -> string) -> (natural -> string) -> elf64_header -> elf64_program_header_table -> elf64_section_header_table -> string_table -> byte_sequence -> string
-let {ocaml} harness_string_of_elf64_program_headers os proc hdr pht sht stbl bs0 =
+val harness_string_of_elf64_program_headers_gen : bool -> (natural -> string) -> (natural -> string) -> elf64_header -> elf64_program_header_table -> elf64_section_header_table -> string_table -> byte_sequence -> string
+let {ocaml} harness_string_of_elf64_program_headers_gen pie os proc hdr pht sht stbl bs0 =
   let pht_len = List.length pht in
     if pht_len = 0 then
       "\nThere are no program headers in this file."
     else
       unlines [
         ""
-      ; "Elf file type is " ^ string_of_elf_file_type default_os_specific_print default_proc_specific_print (natural_of_elf64_half hdr.elf64_type)
+      ; "Elf file type is " ^ harness_string_of_elf_file_type pie (natural_of_elf64_half hdr.elf64_type)
       ; "Entry point " ^ "0x" ^ unsafe_hex_string_of_natural 1 (natural_of_elf64_addr hdr.elf64_entry)
       ; there_are (List.length pht) "program header" ^ ", starting at offset " ^ show hdr.elf64_phoff
       ] ^ "\n" ^ harness_string_of_elf64_program_headers_body os proc hdr pht sht stbl bs0
@@ -520,6 +567,12 @@ let {ocaml} harness_string_of_elf64_sht mach osabi os proc usr sht stbl =
     let str = str ^ gap ^ align in
       str) sht)
 
+
+val harness_string_of_elf32_program_headers : (natural -> string) -> (natural -> string) -> elf32_header -> elf32_program_header_table -> elf32_section_header_table -> string_table -> byte_sequence -> string
+let harness_string_of_elf32_program_headers os proc hdr pht sht stbl bs0 = harness_string_of_elf32_program_headers_gen false os proc hdr pht sht stbl bs0
+
+val harness_string_of_elf64_program_headers : (natural -> string) -> (natural -> string) -> elf64_header -> elf64_program_header_table -> elf64_section_header_table -> string_table -> byte_sequence -> string
+let harness_string_of_elf64_program_headers os proc hdr pht sht stbl bs0 = harness_string_of_elf64_program_headers_gen false os proc hdr pht sht stbl bs0
 
 val harness_string_of_elf32_section_headers : (natural -> string) -> (natural -> string) -> (natural -> string) -> elf32_header -> elf32_section_header_table -> string_table -> string
 let {ocaml} harness_string_of_elf32_section_headers os proc usr hdr sht stbl =

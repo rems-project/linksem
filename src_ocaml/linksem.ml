@@ -81,14 +81,18 @@ let text s = if s = "" then None else Some s
 let dump_elf32 bs0 dump =
   let open Elf_file in
   let read = Elf_file.read_elf32_file bs0 in
+  (* Claude: whether the file is a PIE, for the file type descriptions; false
+     when the file cannot be read as a whole, so that -h still prints *)
+  let pie f1 = Harness_interface.harness_elf32_is_pie f1 bs0 os_ranges os_tag os_tag in
+  let pie_if_readable () = match read with Error.Success f1 -> pie f1 | Error.Fail _ -> false in
   match dump with
   | File_header ->
       Elf_header.read_elf32_header bs0 >>= fun (hdr, _) ->
-      some (Harness_interface.harness_string_of_elf32_file_header hdr)
+      some (Harness_interface.harness_string_of_elf32_file_header_gen (pie_if_readable ()) hdr)
   | Program_headers ->
       read >>= fun f1 ->
       get_elf32_file_section_header_string_table f1 >>= fun stbl ->
-      some (Harness_interface.harness_string_of_elf32_program_headers
+      some (Harness_interface.harness_string_of_elf32_program_headers_gen (pie f1)
         Gnu_ext_program_header_table.string_of_gnu_ext_segment_type
         Nat_big_num.to_string
         f1.elf32_file_header f1.elf32_file_program_header_table f1.elf32_file_section_header_table
@@ -134,16 +138,18 @@ let dump_elf64 ~with_header file bs0 dump =
     ( Gnu_ext_section_header_table.string_of_gnu_ext_section_type,
       Harness_interface.harness_string_of_proc_section_type (machine f1),
       Harness_interface.harness_string_of_user_section_type ) in
+  let pie f1 = Harness_interface.harness_elf64_is_pie f1 bs0 os_ranges os_tag proc_tag64 in
+  let pie_if_readable () = match read with Error.Success f1 -> pie f1 | Error.Fail _ -> false in
   match dump with
   | File_header ->
       Elf_header.read_elf64_header bs0 >>= fun (hdr, _) ->
-      some (Harness_interface.harness_string_of_elf64_file_header hdr)
+      some (Harness_interface.harness_string_of_elf64_file_header_gen (pie_if_readable ()) hdr)
   | Program_headers ->
       read >>= fun f1 ->
       get_elf64_file_section_header_string_table f1 >>= fun stbl ->
       let printer =
         if with_header then Harness_interface.harness_string_of_elf64_program_headers_body
-        else Harness_interface.harness_string_of_elf64_program_headers in
+        else Harness_interface.harness_string_of_elf64_program_headers_gen (pie f1) in
       some (printer
         Gnu_ext_program_header_table.string_of_gnu_ext_segment_type
         Nat_big_num.to_string
