@@ -117,6 +117,21 @@ let {ocaml} harness_elf32_is_pie f1 bs0 os_additional_ranges os_tag proc_tag =
     | Fail _ -> false
   end
 
+(** Claude: the entry size readelf displays and uses for a section: for the
+  * symbol table, relocation and dynamic section types it substitutes the
+  * size the ABI fixes (its CHECK_ENTSIZE), warning when the header's value
+  * differs; other types show the header's value. *)
+val harness_effective_entsize : bool -> natural -> natural -> natural
+let harness_effective_entsize is64 typ entsize =
+  let fixed =
+    if typ = sht_symtab || typ = sht_dynsym then Just (if is64 then 24 else 16)
+    else if typ = sht_rela then Just (if is64 then 24 else 12)
+    else if typ = sht_rel then Just (if is64 then 16 else 8)
+    else if typ = sht_dynamic then Just (if is64 then 16 else 8)
+    else Nothing
+  in
+  match fixed with Just n -> n | Nothing -> entsize end
+
 val harness_string_of_elf32_file_header_gen : bool -> elf32_header -> string
 let {ocaml} harness_string_of_elf32_file_header_gen pie hdr =
   unlines [
@@ -475,7 +490,7 @@ let {ocaml} harness_string_of_elf32_sht mach osabi os proc usr sht stbl =
     let str = str ^ " " ^ off in
     let size = unsafe_hex_string_of_natural 6 (natural_of_elf32_word sec.elf32_sh_size) in
     let str = str ^ " " ^ size in
-    let es  = unsafe_hex_string_of_natural 2 (natural_of_elf32_word sec.elf32_sh_entsize) in
+    let es  = unsafe_hex_string_of_natural 2 (harness_effective_entsize false (natural_of_elf32_word sec.elf32_sh_type) (natural_of_elf32_word sec.elf32_sh_entsize)) in
     let str = str ^ " " ^ es in
     let flg = string_of_section_flags mach osabi (natural_of_elf32_word sec.elf32_sh_flags) in
     let str = str ^ " " ^ flg in
@@ -540,7 +555,7 @@ let {ocaml} harness_string_of_elf64_sht mach osabi os proc usr sht stbl =
     let str = str ^ " " ^ off in
     let size = unsafe_hex_string_of_natural 6 (natural_of_elf64_xword sec.elf64_sh_size) in
     let str = str ^ " " ^ size in
-    let es  = unsafe_hex_string_of_natural 2 (natural_of_elf64_xword sec.elf64_sh_entsize) in
+    let es  = unsafe_hex_string_of_natural 2 (harness_effective_entsize true (natural_of_elf64_word sec.elf64_sh_type) (natural_of_elf64_xword sec.elf64_sh_entsize)) in
     let str = str ^ " " ^ es in
     let flg = string_of_section_flags mach osabi (natural_of_elf64_xword sec.elf64_sh_flags) in
     let str = str ^ " " ^ flg in
@@ -1856,7 +1871,7 @@ let {ocaml} harness_string_of_elf64_section_details_body os proc usr hdr sht stb
       ^ " " ^ unsafe_hex_string_of_natural 16 (natural_of_elf64_addr sec.elf64_sh_addr)
       ^ " " ^ unsafe_hex_string_of_natural 6 (natural_of_elf64_off sec.elf64_sh_offset)
       ^ " " ^ unsafe_hex_string_of_natural 6 (natural_of_elf64_xword sec.elf64_sh_size)
-      ^ " " ^ unsafe_hex_string_of_natural 2 (natural_of_elf64_xword sec.elf64_sh_entsize)
+      ^ " " ^ unsafe_hex_string_of_natural 2 (harness_effective_entsize true (natural_of_elf64_word sec.elf64_sh_type) (natural_of_elf64_xword sec.elf64_sh_entsize))
       ^ "  " ^ rjust 2 (show (natural_of_elf64_word sec.elf64_sh_link))
       ^ " " ^ rjust 3 (show (natural_of_elf64_word sec.elf64_sh_info))
       ^ " " ^ rjust 2 (show (natural_of_elf64_xword sec.elf64_sh_addralign))
