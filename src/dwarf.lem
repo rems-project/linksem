@@ -3071,7 +3071,7 @@ let pp_die_abbrev_var_parents c d cu str parents =
     
 
 
-val parse_die : p_context -> sym_byte_sequence -> compilation_unit_header -> (sym_natural->abbreviation_declaration) -> parser (maybe die)
+val parse_die : p_context -> sym_byte_sequence -> compilation_unit_header -> (sym_natural -> maybe abbreviation_declaration) -> parser (maybe die)
 let rec parse_die c str cuh find_abbreviation_declaration =
   fun (pc: parse_context) ->
     let _ = my_debug3 ("parse_die called at " ^ pp_parse_context pc ^ "\n") in
@@ -3079,7 +3079,9 @@ let rec parse_die c str cuh find_abbreviation_declaration =
       if abbreviation_code = 0 then PR_success Nothing pc'
       else
         let _ = my_debug3 ("parse_die abbreviation code "^pphex_sym abbreviation_code ^"\n") in
-        let ad = find_abbreviation_declaration abbreviation_code in
+        match find_abbreviation_declaration abbreviation_code with
+        | Nothing -> PR_fail ("abbreviation code " ^ pphex_sym abbreviation_code ^ " not in the abbreviation table") pc'   (* Claude *)
+        | Just ad ->
         let attribute_value_parsers = List.map (fun (at,af) -> pr_with_pos (parser_of_attribute_form c cuh af)) ad.ad_attribute_specifications in
         pr_bind (parse_parser_list attribute_value_parsers pc') (fun avs pc'' ->
 
@@ -3106,7 +3108,7 @@ let rec parse_die c str cuh find_abbreviation_declaration =
                   die_end = sym_natural_const pc'''.pc_offset;
                   |> in
                   let _ = my_debug3 ("die entire " ^ pp_die c cuh str true 0 false die) in
-                  die)) pc''')))
+                  die)) pc''')) end)
 
 let has_attribute (an: string) (die: die) : bool =
   List.elem
@@ -3176,9 +3178,8 @@ let parse_compilation_unit c (debug_str_section_body: sym_byte_sequence) (debug_
 
       let _ = my_debug4 (pp_abbreviations_table abbreviations_table) in
 
-      let find_abbreviation_declaration (ac:sym_natural) : abbreviation_declaration =
-        (* let _ = my_debug4 ("find_abbreviation_declaration "^pphex ac) in *)
-        myfindNonPure (fun ad -> sym_eq ad.ad_abbreviation_code ac) abbreviations_table.at_table  in
+      let find_abbreviation_declaration (ac:sym_natural) : maybe abbreviation_declaration =
+        List.find (fun ad -> sym_eq ad.ad_abbreviation_code ac) abbreviations_table.at_table  in
 
       let _ = my_debug3 (pp_abbreviations_table abbreviations_table) in
 
@@ -3252,9 +3253,8 @@ let parse_type_unit c (debug_str_section_body: sym_byte_sequence) (debug_abbrev_
 
       (* let _ = my_debug4 (pp_abbreviations_table abbreviations_table) in *)
 
-      let find_abbreviation_declaration (ac:sym_natural) : abbreviation_declaration =
-        (* let _ = my_debug4 ("find_abbreviation_declaration "^pphex ac) in *)
-        myfindNonPure (fun ad -> sym_eq ad.ad_abbreviation_code ac) abbreviations_table.at_table  in
+      let find_abbreviation_declaration (ac:sym_natural) : maybe abbreviation_declaration =
+        List.find (fun ad -> sym_eq ad.ad_abbreviation_code ac) abbreviations_table.at_table  in
 
       (* let _ = my_debug3 (pp_abbreviations_table abbreviations_table) in *)
 
@@ -4611,13 +4611,17 @@ let pp_dwarf d =
   ^ pp_compilation_units_abbrev c d.d_str d.d_compilation_units
   ^*) "\n************** .debug_info section - full ************************\n"
   ^ pp_compilation_units c true d.d_str d.d_compilation_units
-  ^ "\n************** .debug_loc section: location lists ****************\n"
-  ^ let (cuh_default : compilation_unit_header) = let cu = myhead d.d_compilation_units in cu.cu_header in
-    pp_loc c cuh_default d.d_loc
-  ^ "\n************** .debug_ranges section: range lists ****************\n"
-  ^ pp_ranges c cuh_default d.d_ranges
-  ^ "\n************** .debug_frame section: frame info   ****************\n"
-  ^ pp_frame_info c cuh_default d.d_frame_info
+  ^ (match d.d_compilation_units with
+     | [] -> "\n(no compilation units: the .debug_loc, .debug_ranges and .debug_frame sections are not shown)\n"   (* Claude *)
+     | cu :: _ ->
+       let (cuh_default : compilation_unit_header) = cu.cu_header in
+       "\n************** .debug_loc section: location lists ****************\n"
+       ^ pp_loc c cuh_default d.d_loc
+       ^ "\n************** .debug_ranges section: range lists ****************\n"
+       ^ pp_ranges c cuh_default d.d_ranges
+       ^ "\n************** .debug_frame section: frame info   ****************\n"
+       ^ pp_frame_info c cuh_default d.d_frame_info
+     end)
   ^ "\n************** .debug_line section: line number info   ****************\n"
   ^ pp_line_info d.d_line_info
 
@@ -6214,20 +6218,27 @@ let subprogram_line_extents_compilation_unit d cu : list (string * unpacked_file
   let c = p_context_of_d d in
   let subprogram_dies = List.filter (fun die' -> die'.die_abbreviation_declaration.ad_tag = tag_encode "DW_TAG_subprogram") cu.cu_die.die_children in
 
-  let lnp = line_number_program_of_compilation_unit d cu in
-  let lnh = lnp.lnp_header in
-
-  List.mapMaybe
-    (fun die -> 
-      match (find_name_of_die d.d_str die,
-             find_natural_attribute_value_of_die c "DW_AT_decl_file" die, 
-             find_natural_attribute_value_of_die c "DW_AT_decl_line" die) with
-      | (Just name, Just file, Just line) -> 
-         Just (name, unpack_file_entry lnh file, line)
-      | (_,_,_) ->
-         Nothing
-      end)
-    subprogram_dies
+  (* Claude: a unit without line information contributes no extents *)
+  match line_number_offset_of_compilation_unit c cu with
+  | Nothing -> []
+  | Just offset ->
+    match List.find (fun lnp -> sym_eq lnp.lnp_header.lnh_offset offset) d.d_line_info with
+    | Nothing -> []
+    | Just lnp ->
+      let lnh = lnp.lnp_header in
+      List.mapMaybe
+        (fun die -> 
+          match (find_name_of_die d.d_str die,
+                 find_natural_attribute_value_of_die c "DW_AT_decl_file" die, 
+                 find_natural_attribute_value_of_die c "DW_AT_decl_line" die) with
+          | (Just name, Just file, Just line) -> 
+             Just (name, unpack_file_entry lnh file, line)
+          | (_,_,_) ->
+             Nothing
+          end)
+        subprogram_dies
+    end
+  end
 
 (* lookup in an association list and also return the list with that entry (if any) removed *)
 val extract : forall 'b 'c. Eq 'b => 'b -> list ('b * 'c) -> (maybe 'c) * list ('b * 'c)
@@ -7179,12 +7190,11 @@ let pp_text_section f ri =
 
 val harness_string_of_elf_like_objdump : elf_file -> relocation_interpreter reloc_target_data -> (natural -> string) -> string
 let harness_string_of_elf_like_objdump f1 ri regname =
-  let mds = extract_dwarf_static f1 ri in
-  match mds with
+  match extract_dwarf f1 ri with   (* Claude: the dump needs no analysis *)
   | Nothing -> "<no dwarf information extracted>"
-  | Just ds ->
+  | Just d ->
    "" (*pp_text_section f1*)
-   ^ pp_dwarf_like_objdump regname ds.ds_dwarf
+   ^ pp_dwarf_like_objdump regname d
   end
 
     
@@ -7426,16 +7436,16 @@ let pp_dwarf_resolved regname (d:dwarf) : string =
 
 val harness_string_of_elf64_debug_info_raw : elf64_file -> relocation_interpreter reloc_target_data -> string
 let {ocaml} harness_string_of_elf64_debug_info_raw f1 ri =
-  match extract_dwarf_static (ELF_File_64 f1) ri with
+  match extract_dwarf (ELF_File_64 f1) ri with   (* Claude: the dumps need no analysis *)
   | Nothing -> "<no dwarf information extracted>"
-  | Just ds -> pp_dwarf_raw ds.ds_dwarf
+  | Just d -> pp_dwarf_raw d
   end
 
 val harness_string_of_elf64_debug_info_resolved : elf64_file -> relocation_interpreter reloc_target_data -> (natural -> string) -> string
 let {ocaml} harness_string_of_elf64_debug_info_resolved f1 ri regname =
-  match extract_dwarf_static (ELF_File_64 f1) ri with
+  match extract_dwarf (ELF_File_64 f1) ri with   (* Claude: the dumps need no analysis *)
   | Nothing -> "<no dwarf information extracted>"
-  | Just ds -> pp_dwarf_resolved regname ds.ds_dwarf
+  | Just d -> pp_dwarf_resolved regname d
   end
 
 val harness_string_of_elf64_debug_info_section : elf64_file -> relocation_interpreter reloc_target_data -> (*(sym_natural -> string) -> (sym_natural -> string) -> (sym_natural -> string) -> elf64_header -> elf64_section_header_table -> string_table -> *) string
@@ -7457,16 +7467,16 @@ let {ocaml} harness_string_of_elf64_like_objdump f1 ri regname =
    objdump's file-format header *)
 val harness_string_of_elf64_debug_abbrev_like_readelf : elf64_file -> relocation_interpreter reloc_target_data -> string
 let {ocaml} harness_string_of_elf64_debug_abbrev_like_readelf f1 ri =
-  match extract_dwarf_static (ELF_File_64 f1) ri with
+  match extract_dwarf (ELF_File_64 f1) ri with   (* Claude: the dumps need no analysis *)
   | Nothing -> "<no dwarf information extracted>"
-  | Just ds -> od_debug_abbrev_section ds.ds_dwarf
+  | Just d -> od_debug_abbrev_section d
   end
 
 val harness_string_of_elf64_debug_info_like_readelf : elf64_file -> relocation_interpreter reloc_target_data -> (natural -> string) -> string
 let {ocaml} harness_string_of_elf64_debug_info_like_readelf f1 ri regname =
-  match extract_dwarf_static (ELF_File_64 f1) ri with
+  match extract_dwarf (ELF_File_64 f1) ri with   (* Claude: the dumps need no analysis *)
   | Nothing -> "<no dwarf information extracted>"
-  | Just ds -> od_debug_info_section regname ds.ds_dwarf
+  | Just d -> od_debug_info_section regname d
   end
 
 val harness_string_of_elf32_like_objdump : elf32_file -> relocation_interpreter reloc_target_data -> (natural -> string) -> string
