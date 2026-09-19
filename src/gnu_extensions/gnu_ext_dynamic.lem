@@ -4,10 +4,12 @@
 
 open import Basic_classes
 open import Bool
+open import List
 open import Num
 open import String
 
 open import Error
+open import Missing_pervasives
 open import Show
 open import String_table
 
@@ -94,50 +96,27 @@ let gnu_df_1_pie        : natural = 134217728 (*0x08000000*)
 (** [gnu_string_of_dt_flag1 m] produces a string based representation of GNU
   * extensions flag_1 value [m].
   *)
+(** Claude: the DT_FLAGS_1 flag names as readelf prints them, in bit order,
+  * followed by any bits it has no name for in hexadecimal; "None" for 0. *)
+val gnu_dt_flag_1_names : list (natural * string)
+let gnu_dt_flag_1_names = [
+    (gnu_df_1_now, "NOW"); (gnu_df_1_global, "GLOBAL"); (gnu_df_1_group, "GROUP"); (gnu_df_1_nodelete, "NODELETE");
+    (gnu_df_1_loadfltr, "LOADFLTR"); (gnu_df_1_initfirst, "INITFIRST"); (gnu_df_1_noopen, "NOOPEN"); (gnu_df_1_origin, "ORIGIN");
+    (gnu_df_1_direct, "DIRECT"); (gnu_df_1_trans, "TRANS"); (gnu_df_1_interpose, "INTERPOSE"); (gnu_df_1_nodeflib, "NODEFLIB");
+    (gnu_df_1_nodump, "NODUMP"); (gnu_df_1_confalt, "CONFALT"); (gnu_df_1_endfiltee, "ENDFILTEE"); (gnu_df_1_dispreldne, "DISPRELDNE");
+    (gnu_df_1_disprelpnd, "DISPRELPND"); (131072, "NODIRECT"); (262144, "IGNMULDEF"); (524288, "NOKSYMS");
+    (1048576, "NOHDR"); (2097152, "EDITED"); (4194304, "NORELOC"); (8388608, "SYMINTPOSE");
+    (16777216, "GLOBAUDIT"); (33554432, "SINGLETON"); (67108864, "STUB"); (gnu_df_1_pie, "PIE");
+    (268435456, "KMOD"); (536870912, "WEAKFILTER"); (1073741824, "NOCOMMON")
+  ]
+
 val gnu_string_of_dt_flag_1 : natural -> string
 let {ocaml} gnu_string_of_dt_flag_1 flag =
-  if check_flag flag 0 then
-    "None"
-  else if check_flag flag gnu_df_1_now then
-    "NOW"
-  else if check_flag flag gnu_df_1_global then
-    "GLOBAL"
-  else if check_flag flag gnu_df_1_group then
-    "GROUP"
-  else if check_flag flag gnu_df_1_nodelete then
-    "NODELETE"
-  else if check_flag flag gnu_df_1_loadfltr then
-    "LOADFLTR"
-  else if check_flag flag gnu_df_1_initfirst then
-    "INITFIRST"
-  else if check_flag flag gnu_df_1_noopen then
-    "NOOPEN"
-  else if check_flag flag gnu_df_1_origin then
-    "ORIGIN"
-  else if check_flag flag gnu_df_1_direct then
-    "DIRECT"
-  else if check_flag flag gnu_df_1_trans then
-    "TRANS"
-  else if check_flag flag gnu_df_1_interpose then
-    "INTERPOSE"
-  else if check_flag flag gnu_df_1_nodeflib then
-    "NODEFLIB"
-  else if check_flag flag gnu_df_1_nodump then
-    "NODUMP"
-  else if check_flag flag gnu_df_1_confalt then
-    "CONFALT"
-  else if check_flag flag gnu_df_1_endfiltee then
-    "ENDFILTEE"
-  else if check_flag flag gnu_df_1_dispreldne then
-    "DISPRELDNE"
-  else if check_flag flag gnu_df_1_disprelpnd then
-    "DISPRELPND"
-  else if check_flag flag (gnu_df_1_nodelete + gnu_df_1_now) then
-    "NOW NODELETE"
-  else if check_flag flag (gnu_df_1_nodelete + gnu_df_1_initfirst) then
-    "NODELETE INITFIRST"
-  else (* XXX: add more as necessary *)
-    "Invalid GNU dynamic flag"
+  if flag = 0 then "None" else
+  let named = List.filter (fun (bit, _) -> natural_land flag bit <> 0) gnu_dt_flag_1_names in
+  let residue = List.foldl (fun f (bit, _) -> f - bit) flag named in
+  String.concat " " (List.map (fun (_, name) -> name) named)
+  ^ (if residue <> 0 then " " ^ hex_string_of_natural residue else "")
 
 (** [gnu_ext_os_additional_ranges m] checks whether dynamic section type [m]
   * lies within the ranges set aside for GNU specific functionality.
