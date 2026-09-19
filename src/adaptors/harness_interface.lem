@@ -545,6 +545,17 @@ let {ocaml} harness_string_of_elf64_section_headers os proc usr hdr sht stbl =
   there_are (List.length sht) "section header" ^ ", starting at offset 0x" ^ unsafe_hex_string_of_natural 0 (natural_of_elf64_off hdr.elf64_shoff) ^ ":\n"
   ^ harness_string_of_elf64_section_headers_body os proc usr hdr sht stbl
 
+(** Claude: readelf prints a RELA addend in hexadecimal with its sign in front
+  * of the magnitude, "-28" rather than the two's complement, and after a
+  * symbol name as " + 10" or " - 4". *)
+val harness_hex_of_integer : integer -> string
+let harness_hex_of_integer i =
+  if i < 0 then "-" ^ hex_string_of_big_int_no_padding' (0 - i) else hex_string_of_big_int_no_padding' i
+
+val harness_signed_addend : integer -> string
+let harness_signed_addend i =
+  if i < 0 then " - " ^ hex_string_of_big_int_no_padding' (0 - i) else " + " ^ hex_string_of_big_int_no_padding' i
+
 val harness_string_of_elf32_reloc_entry : (natural -> string) -> Map.map natural elf32_section_header_table_entry ->
   Map.map natural elf32_symbol_table_entry -> string_table -> string_table -> elf32_relocation -> string
 let {ocaml} harness_string_of_elf32_reloc_entry os sht symtab stbl sechdr_stbl rel =
@@ -665,8 +676,7 @@ let {ocaml} harness_string_of_elf64_reloc_a_entry os symtab sht stbl sechdr_stbl
         ; vlu
         ; " "
         ; nm
-        ; " + "
-        ; hex_string_of_big_int_no_padding' add
+        ; harness_signed_addend add
         ]
     else if nm = stn_undef then
       concatS [
@@ -677,7 +687,7 @@ let {ocaml} harness_string_of_elf64_reloc_a_entry os symtab sht stbl sechdr_stbl
       ; typ
       ; typs
       ; "                    "
-      ; hex_string_of_big_int_no_padding' add
+      ; harness_hex_of_integer add
       ]
     else
       let vlu = " " ^ unsafe_hex_string_of_natural 16 value in
@@ -697,8 +707,7 @@ let {ocaml} harness_string_of_elf64_reloc_a_entry os symtab sht stbl sechdr_stbl
         ; vlu
         ; " "
         ; nm
-        ; " + "
-        ; hex_string_of_big_int_no_padding' add
+        ; harness_signed_addend add
         ]
 
 val harness_string_of_elf32_relocs' : endianness -> (natural -> string) -> elf32_file -> elf32_section_header_table ->
