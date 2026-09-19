@@ -53,14 +53,20 @@ let section_with_offset f sidx offset =
   | Just sec -> return (BinOp(Section sec.elf64_section_name_as_string, Add, Const (integerFromNatural (natural_of_elf64_addr offset))))
 end
 
-(* TODO handle special shndx *)
+(* Claude: the special section indices: an undefined symbol has no value here
+   and a common symbol's st_value is only its alignment, so both stay symbolic
+   (named UND. and COM. with the symbol's name); an absolute symbol is its
+   value.  Anything else is section-relative. *)
 let symbolic_address_from_elf64_symbol_table_entry f ste =
-  if natural_of_elf64_half ste.elf64_st_shndx = shn_undef then
+  let shndx = natural_of_elf64_half ste.elf64_st_shndx in
+  if shndx = shn_undef || shndx = shn_common then
     let name = natural_of_elf64_word ste.elf64_st_name in
     (* Claude: use the string table linked from .symtab, not the concatenation of all string tables *)
     get_elf64_file_symtab_string_table f >>= fun strtab ->
     String_table.get_string_at name strtab >>= fun str ->
-    return (Section ("UND."^str))
+    return (Section ((if shndx = shn_undef then "UND." else "COM.") ^ str))
+  else if shndx = shn_abs then
+    return (Const (integerFromNatural (natural_of_elf64_addr ste.elf64_st_value)))
   else
     section_with_offset f ste.elf64_st_shndx ste.elf64_st_value
 
