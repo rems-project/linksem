@@ -2619,6 +2619,10 @@ let {ocaml} harness_string_of_elf64_histogram f1 bs0 os_additional_ranges os_tag
         let nchains = naturalFromNat (List.length chain_list) in
         let chains = map_of chain_list in
         let lengths = List.map (fun b -> if b = 0 || b < symidx then 0 else 1 + harness_gnu_chain_run chains nchains (b - symidx)) buckets in
+        (* Claude: readelf gives up on a GNU hash table all of whose buckets are
+         * empty (it cannot find the number of dynamic symbols from it) and
+         * prints no histogram for it. *)
+        if List.all (fun b -> b = 0) buckets then [] else
         harness_histogram_lines
           ("\nHistogram for `.gnu.hash' bucket list length (total of " ^ show nbuckets ^ " " ^ buckets_word nbuckets ^ "):")
           nbuckets lengths
