@@ -5,6 +5,7 @@
 open import Basic_classes
 open import Map
 open import Maybe
+open import List
 open import Num
 open import String
 
@@ -129,218 +130,180 @@ let r_ppc64_dtprel16_highesta : natural = 106
 (** [string_of_ppc64_relocation_type rel_type] produces a string representation
   * of relocation type [rel_type].
   *)
+(** Claude: the relocation type names as readelf prints them (checked against
+  * readelf on a generated object carrying every type), and the printer that
+  * uses them with readelf's "unrecognized: N" for anything else. *)
+val ppc64_relocation_type_names : list (natural * string)
+let ppc64_relocation_type_names = [
+    (0, "R_PPC64_NONE");
+    (1, "R_PPC64_ADDR32");
+    (2, "R_PPC64_ADDR24");
+    (3, "R_PPC64_ADDR16");
+    (4, "R_PPC64_ADDR16_LO");
+    (5, "R_PPC64_ADDR16_HI");
+    (6, "R_PPC64_ADDR16_HA");
+    (7, "R_PPC64_ADDR14");
+    (8, "R_PPC64_ADDR14_BRTAKEN");
+    (9, "R_PPC64_ADDR14_BRNTAKEN");
+    (10, "R_PPC64_REL24");
+    (11, "R_PPC64_REL14");
+    (12, "R_PPC64_REL14_BRTAKEN");
+    (13, "R_PPC64_REL14_BRNTAKEN");
+    (14, "R_PPC64_GOT16");
+    (15, "R_PPC64_GOT16_LO");
+    (16, "R_PPC64_GOT16_HI");
+    (17, "R_PPC64_GOT16_HA");
+    (19, "R_PPC64_COPY");
+    (20, "R_PPC64_GLOB_DAT");
+    (21, "R_PPC64_JMP_SLOT");
+    (22, "R_PPC64_RELATIVE");
+    (24, "R_PPC64_UADDR32");
+    (25, "R_PPC64_UADDR16");
+    (26, "R_PPC64_REL32");
+    (27, "R_PPC64_PLT32");
+    (28, "R_PPC64_PLTREL32");
+    (29, "R_PPC64_PLT16_LO");
+    (30, "R_PPC64_PLT16_HI");
+    (31, "R_PPC64_PLT16_HA");
+    (33, "R_PPC64_SECTOFF");
+    (34, "R_PPC64_SECTOFF_LO");
+    (35, "R_PPC64_SECTOFF_HI");
+    (36, "R_PPC64_SECTOFF_HA");
+    (37, "R_PPC64_REL30");
+    (38, "R_PPC64_ADDR64");
+    (39, "R_PPC64_ADDR16_HIGHER");
+    (40, "R_PPC64_ADDR16_HIGHERA");
+    (41, "R_PPC64_ADDR16_HIGHEST");
+    (42, "R_PPC64_ADDR16_HIGHESTA");
+    (43, "R_PPC64_UADDR64");
+    (44, "R_PPC64_REL64");
+    (45, "R_PPC64_PLT64");
+    (46, "R_PPC64_PLTREL64");
+    (47, "R_PPC64_TOC16");
+    (48, "R_PPC64_TOC16_LO");
+    (49, "R_PPC64_TOC16_HI");
+    (50, "R_PPC64_TOC16_HA");
+    (51, "R_PPC64_TOC");
+    (52, "R_PPC64_PLTGOT16");
+    (53, "R_PPC64_PLTGOT16_LO");
+    (54, "R_PPC64_PLTGOT16_HI");
+    (55, "R_PPC64_PLTGOT16_HA");
+    (56, "R_PPC64_ADDR16_DS");
+    (57, "R_PPC64_ADDR16_LO_DS");
+    (58, "R_PPC64_GOT16_DS");
+    (59, "R_PPC64_GOT16_LO_DS");
+    (60, "R_PPC64_PLT16_LO_DS");
+    (61, "R_PPC64_SECTOFF_DS");
+    (62, "R_PPC64_SECTOFF_LO_DS");
+    (63, "R_PPC64_TOC16_DS");
+    (64, "R_PPC64_TOC16_LO_DS");
+    (65, "R_PPC64_PLTGOT16_DS");
+    (66, "R_PPC64_PLTGOT16_LO_DS");
+    (67, "R_PPC64_TLS");
+    (68, "R_PPC64_DTPMOD64");
+    (69, "R_PPC64_TPREL16");
+    (70, "R_PPC64_TPREL16_LO");
+    (71, "R_PPC64_TPREL16_HI");
+    (72, "R_PPC64_TPREL16_HA");
+    (73, "R_PPC64_TPREL64");
+    (74, "R_PPC64_DTPREL16");
+    (75, "R_PPC64_DTPREL16_LO");
+    (76, "R_PPC64_DTPREL16_HI");
+    (77, "R_PPC64_DTPREL16_HA");
+    (78, "R_PPC64_DTPREL64");
+    (79, "R_PPC64_GOT_TLSGD16");
+    (80, "R_PPC64_GOT_TLSGD16_LO");
+    (81, "R_PPC64_GOT_TLSGD16_HI");
+    (82, "R_PPC64_GOT_TLSGD16_HA");
+    (83, "R_PPC64_GOT_TLSLD16");
+    (84, "R_PPC64_GOT_TLSLD16_LO");
+    (85, "R_PPC64_GOT_TLSLD16_HI");
+    (86, "R_PPC64_GOT_TLSLD16_HA");
+    (87, "R_PPC64_GOT_TPREL16_DS");
+    (88, "R_PPC64_GOT_TPREL16_LO_DS");
+    (89, "R_PPC64_GOT_TPREL16_HI");
+    (90, "R_PPC64_GOT_TPREL16_HA");
+    (91, "R_PPC64_GOT_DTPREL16_DS");
+    (92, "R_PPC64_GOT_DTPREL16_LO_DS");
+    (93, "R_PPC64_GOT_DTPREL16_HI");
+    (94, "R_PPC64_GOT_DTPREL16_HA");
+    (95, "R_PPC64_TPREL16_DS");
+    (96, "R_PPC64_TPREL16_LO_DS");
+    (97, "R_PPC64_TPREL16_HIGHER");
+    (98, "R_PPC64_TPREL16_HIGHERA");
+    (99, "R_PPC64_TPREL16_HIGHEST");
+    (100, "R_PPC64_TPREL16_HIGHESTA");
+    (101, "R_PPC64_DTPREL16_DS");
+    (102, "R_PPC64_DTPREL16_LO_DS");
+    (103, "R_PPC64_DTPREL16_HIGHER");
+    (104, "R_PPC64_DTPREL16_HIGHERA");
+    (105, "R_PPC64_DTPREL16_HIGHEST");
+    (106, "R_PPC64_DTPREL16_HIGHESTA");
+    (107, "R_PPC64_TLSGD");
+    (108, "R_PPC64_TLSLD");
+    (109, "R_PPC64_TOCSAVE");
+    (110, "R_PPC64_ADDR16_HIGH");
+    (111, "R_PPC64_ADDR16_HIGHA");
+    (112, "R_PPC64_TPREL16_HIGH");
+    (113, "R_PPC64_TPREL16_HIGHA");
+    (114, "R_PPC64_DTPREL16_HIGH");
+    (115, "R_PPC64_DTPREL16_HIGHA");
+    (116, "R_PPC64_REL24_NOTOC");
+    (117, "R_PPC64_ADDR64_LOCAL");
+    (118, "R_PPC64_ENTRY");
+    (119, "R_PPC64_PLTSEQ");
+    (120, "R_PPC64_PLTCALL");
+    (121, "R_PPC64_PLTSEQ_NOTOC");
+    (122, "R_PPC64_PLTCALL_NOTOC");
+    (123, "R_PPC64_PCREL_OPT");
+    (124, "R_PPC64_REL24_P9NOTOC");
+    (128, "R_PPC64_D34");
+    (129, "R_PPC64_D34_LO");
+    (130, "R_PPC64_D34_HI30");
+    (131, "R_PPC64_D34_HA30");
+    (132, "R_PPC64_PCREL34");
+    (133, "R_PPC64_GOT_PCREL34");
+    (134, "R_PPC64_PLT_PCREL34");
+    (135, "R_PPC64_PLT_PCREL34_NOTOC");
+    (136, "R_PPC64_ADDR16_HIGHER34");
+    (137, "R_PPC64_ADDR16_HIGHERA34");
+    (138, "R_PPC64_ADDR16_HIGHEST34");
+    (139, "R_PPC64_ADDR16_HIGHESTA34");
+    (140, "R_PPC64_REL16_HIGHER34");
+    (141, "R_PPC64_REL16_HIGHERA34");
+    (142, "R_PPC64_REL16_HIGHEST34");
+    (143, "R_PPC64_REL16_HIGHESTA34");
+    (144, "R_PPC64_D28");
+    (145, "R_PPC64_PCREL28");
+    (146, "R_PPC64_TPREL34");
+    (147, "R_PPC64_DTPREL34");
+    (148, "R_PPC64_GOT_TLSGD_PCREL34");
+    (149, "R_PPC64_GOT_TLSLD_PCREL34");
+    (150, "R_PPC64_GOT_TPREL_PCREL34");
+    (151, "R_PPC64_GOT_DTPREL_PCREL34");
+    (240, "R_PPC64_REL16_HIGH");
+    (241, "R_PPC64_REL16_HIGHA");
+    (242, "R_PPC64_REL16_HIGHER");
+    (243, "R_PPC64_REL16_HIGHERA");
+    (244, "R_PPC64_REL16_HIGHEST");
+    (245, "R_PPC64_REL16_HIGHESTA");
+    (246, "R_PPC64_REL16DX_HA");
+    (247, "R_PPC64_JMP_IREL");
+    (248, "R_PPC64_IRELATIVE");
+    (249, "R_PPC64_REL16");
+    (250, "R_PPC64_REL16_LO");
+    (251, "R_PPC64_REL16_HI");
+    (252, "R_PPC64_REL16_HA");
+    (253, "R_PPC64_GNU_VTINHERIT");
+    (254, "R_PPC64_GNU_VTENTRY")
+  ]
+
 val string_of_ppc64_relocation_type : natural -> string
 let string_of_ppc64_relocation_type rel_type =
-  if rel_type = r_ppc64_none then
-    "R_PPC64_NONE"
-  else if rel_type = r_ppc64_addr32 then
-  	"R_PPC64_ADDR32"
-  else if rel_type = r_ppc64_addr24 then
-    "R_PPC64_ADDR24"
-	else if rel_type = r_ppc64_addr16 then
-	  "R_PPC64_ADDR16"
-  else if rel_type = r_ppc64_addr16_lo then
-    "R_PPC64_ADDR16_LO"
-  else if rel_type = r_ppc64_addr16_hi then
-    "R_PPC64_ADDR16_HI"
-  else if rel_type = r_ppc64_addr16_ha then
-    "R_PPC64_ADDR16_HA"
-  else if rel_type = r_ppc64_addr14 then
-    "R_PPC64_ADDR14"
-  else if rel_type = r_ppc64_addr14_brtaken then
-    "R_PPC64_ADDR14_BRTAKEN"
-  else if rel_type = r_ppc64_addr14_brntaken then
-    "R_PPC64_ADDR14_BRNTAKEN"
-  else if rel_type = r_ppc64_rel24 then
-    "R_PPC64_REL24"
-  else if rel_type = r_ppc64_rel14 then
-    "R_PPC64_REL14"
-  else if rel_type = r_ppc64_rel14_brtaken then
-    "R_PPC64_REL14_BRTAKEN"
-  else if rel_type = r_ppc64_rel14_brntaken then
-    "R_PPC64_REL14_BRNTAKEN"
-  else if rel_type = r_ppc64_got16 then
-    "R_PPC64_GOT16"
-  else if rel_type = r_ppc64_got16_lo then
-    "R_PPC64_GOT16_LO"
-  else if rel_type = r_ppc64_got16_hi then
-    "R_PPC64_GOT16_HI"
-  else if rel_type = r_ppc64_got16_ha then
-    "R_PPC64_GOT16_HA"
-  else if rel_type = r_ppc64_copy then
-    "R_PPC64_COPY"
-  else if rel_type = r_ppc64_glob_dat then
-    "R_PPC64_GLOB_DAT"
-  else if rel_type = r_ppc64_jmp_slot then
-    "R_PPC64_JMP_SLOT"
-  else if rel_type = r_ppc64_relative then
-    "R_PPC64_RELATIVE"
-  else if rel_type = r_ppc64_uaddr32 then
-    "R_PPC64_UADDR32"
-  else if rel_type = r_ppc64_uaddr16 then
-    "R_PPC64_UADDR16"
-  else if rel_type = r_ppc64_rel32 then
-    "R_PPC64_REL32"
-  else if rel_type = r_ppc64_plt32 then
-    "R_PPC64_PLT32"
-  else if rel_type = r_ppc64_pltrel32 then
-    "R_PPC64_PLTREL32"
-  else if rel_type = r_ppc64_plt16_lo then
-    "R_PPC64_PLT16_LO"
-  else if rel_type = r_ppc64_plt16_hi then
-    "R_PPC64_PLT16_HI"
-  else if rel_type = r_ppc64_plt16_ha then
-    "R_PPC64_PLT16_HA"
-  else if rel_type = r_ppc64_sectoff then
-    "R_PPC64_SECTOFF"
-  else if rel_type = r_ppc64_sectoff_lo then
-    "R_PPC64_SECTOFF_LO"
-  else if rel_type = r_ppc64_sectoff_hi then
-    "R_PPC64_SECTOFF_HI"
-  else if rel_type = r_ppc64_sectoff_ha then
-    "R_PPC64_SECTOFF_HA"
-  else if rel_type = r_ppc64_addr30 then
-    "R_PPC64_ADDR30"
-  else if rel_type = r_ppc64_addr64 then
-    "R_PPC64_ADDR64"
-  else if rel_type = r_ppc64_addr16_higher then
-    "R_PPC64_ADDR16_HIGHER"
-  else if rel_type = r_ppc64_addr16_highera then
-    "R_PPC64_ADDR16_HIGHERA"
-  else if rel_type = r_ppc64_addr16_highest then
-    "R_PPC64_ADDR16_HIGHEST"
-  else if rel_type = r_ppc64_addr16_highesta then
-    "R_PPC64_ADDR16_HIGHESTA"
-  else if rel_type = r_ppc64_uaddr64 then
-    "R_PPC64_UADDR64"
-  else if rel_type = r_ppc64_rel64 then
-    "R_PPC64_REL64"
-  else if rel_type = r_ppc64_plt64 then
-    "R_PPC64_PLT64"
-  else if rel_type = r_ppc64_pltrel64 then
-    "R_PPC64_PLTREL64"
-  else if rel_type = r_ppc64_toc16 then
-    "R_PPC64_TOC16"
-  else if rel_type = r_ppc64_toc16_lo then
-    "R_PPC64_TOC16_LO"
-  else if rel_type = r_ppc64_toc16_hi then
-    "R_PPC64_TOC16_HI"
-  else if rel_type = r_ppc64_toc16_ha then
-    "R_PPC64_TOC16_HA"
-  else if rel_type = r_ppc64_toc then
-    "R_PPC64_TOC"
-  else if rel_type = r_ppc64_pltgot16 then
-    "R_PPC64_PLTGOT16"
-  else if rel_type = r_ppc64_pltgot16_lo then
-    "R_PPC64_PLTGOT16_LO"
-  else if rel_type = r_ppc64_pltgot16_hi then
-    "R_PPC64_PLTGOT16_HI"
-  else if rel_type = r_ppc64_pltgot16_ha then
-    "R_PPC64_PLTGOT16_HA"
-  else if rel_type = r_ppc64_addr16_ds then
-    "R_PPC64_ADDR16_DS"
-  else if rel_type = r_ppc64_addr16_lo_ds then
-    "R_PPC64_ADDR16_DS"
-  else if rel_type = r_ppc64_got16_ds then
-    "R_PPC64_GOT16_DS"
-  else if rel_type = r_ppc64_got16_lo_ds then
-    "R_PPC64_GOT16_LO_DS"
-  else if rel_type = r_ppc64_plt16_lo_ds then
-    "R_PPC64_PLT16_LO_DS"
-  else if rel_type = r_ppc64_sectoff_ds then
-    "R_PPC64_SECTOFF_DS"
-  else if rel_type = r_ppc64_sectoff_lo_ds then
-    "R_PPC64_SECTOFF_LO_DS"
-  else if rel_type = r_ppc64_toc16_ds then
-    "R_PPC64_TOC16_DS"
-  else if rel_type = r_ppc64_toc16_lo_ds then
-    "R_PPC64_TOC16_LO_DS"
-  else if rel_type = r_ppc64_pltgot16_ds then
-    "R_PPC64_PLTGOT16_DS"
-  else if rel_type = r_ppc64_pltgot16_lo_ds then
-    "R_PPC64_PLTGOT16_LO_DS"
-  else if rel_type = r_ppc64_tls then
-    "R_PPC64_TLS"
-  else if rel_type = r_ppc64_dtpmod64 then
-    "R_PPC64_DTPMOD64"
-  else if rel_type = r_ppc64_tprel16 then
-    "R_PPC64_TPREL16"
-  else if rel_type = r_ppc64_tprel16_lo then
-    "R_PPC64_TPREL16_LO"
-  else if rel_type = r_ppc64_tprel16_hi then
-    "R_PPC64_TPREL16_HI"
-  else if rel_type = r_ppc64_tprel16_ha then
-    "R_PPC64_TPREL16_HA"
-  else if rel_type = r_ppc64_tprel64 then
-    "R_PPC64_TPREL64"
-  else if rel_type = r_ppc64_dtprel16 then
-    "R_PPC64_DTPREL16"
-  else if rel_type = r_ppc64_dtprel16_lo then
-    "R_PPC64_DTPREL16_LO"
-  else if rel_type = r_ppc64_dtprel16_hi then
-    "R_PPC64_DTPREL16_HI"
-  else if rel_type = r_ppc64_dtprel16_ha then
-    "R_PPC64_DTPREL16_HA"
-  else if rel_type = r_ppc64_dtprel64 then
-    "R_PPC64_DTPREL64"
-  else if rel_type = r_ppc64_got_tlsgd16 then
-    "R_PPC64_GOT_TLSGD16"
-  else if rel_type = r_ppc64_got_tlsgd16_lo then
-    "R_PPC64_GOT_TLSGD16_LO"
-  else if rel_type = r_ppc64_got_tlsgd16_hi then
-    "R_PPC64_GOT_TLSGD16_HI"
-  else if rel_type = r_ppc64_got_tlsgd16_ha then
-    "R_PPC64_GOT_TLSGD16_HA"
-  else if rel_type = r_ppc64_got_tlsld16 then
-    "R_PPC64_GOT_TLSLD16"
-  else if rel_type = r_ppc64_got_tlsld16_lo then
-    "R_PPC64_GOT_TLSLD16_LO"
-  else if rel_type = r_ppc64_got_tlsld16_hi then
-    "R_PPC64_GOT_TLSLD16_HI"
-  else if rel_type = r_ppc64_got_tlsld16_ha then
-    "R_PPC64_GOT_TLSLD16_HA"
-  else if rel_type = r_ppc64_got_tprel16_ds then
-    "R_PPC64_GOT_TPREL16_DS"
-  else if rel_type = r_ppc64_got_tprel16_lo_ds then
-    "R_PPC64_GOT_TPREL16_LO_DS"
-  else if rel_type = r_ppc64_got_tprel16_hi then
-    "R_PPC64_GOT_TPREL16_HI"
-  else if rel_type = r_ppc64_got_tprel16_ha then
-    "R_PPC64_GOT_TPREL16_HA"
-  else if rel_type = r_ppc64_got_dtprel16_ds then
-    "R_PPC64_GOT_DTPREL16_DS"
-  else if rel_type = r_ppc64_got_dtprel16_lo_ds then
-    "R_PPC64_GOT_DTPREL16_LO_DS"
-  else if rel_type = r_ppc64_got_dtprel16_hi then
-    "R_PPC64_GOT_DTPREL16_HI"
-  else if rel_type = r_ppc64_got_dtprel16_ha then
-    "R_PPC64_GOT_DTPREL16_HA"
-  else if rel_type = r_ppc64_tprel16_ds then
-    "R_PPC64_TPREL16_DS"
-  else if rel_type = r_ppc64_tprel16_lo_ds then
-    "R_PPC64_TPREL16_LO_DS"
-  else if rel_type = r_ppc64_tprel16_higher then
-    "R_PPC64_TPREL16_HIGHER"
-  else if rel_type = r_ppc64_tprel16_highera then
-    "R_PPC64_TPREL16_HIGHERA"
-  else if rel_type = r_ppc64_tprel16_highest then
-    "R_PPC64_TPREL16_HIGHEST"
-  else if rel_type = r_ppc64_tprel16_highesta then
-    "R_PPC64_TPREL16_HIGHESTA"
-  else if rel_type = r_ppc64_dtprel16_ds then
-    "R_PPC64_DTPREL16_DS"
-  else if rel_type = r_ppc64_dtprel16_lo_ds then
-    "R_PPC64_DTPREL16_LO_DS"
-  else if rel_type = r_ppc64_dtprel16_higher then
-    "R_PPC64_DTPREL16_HIGHER"
-  else if rel_type = r_ppc64_dtprel16_highera then
-    "R_PPC64_DTPREL16_HIGHERA"
-  else if rel_type = r_ppc64_dtprel16_highest then
-    "R_PPC64_DTPREL16_HIGHEST"
-  else if rel_type = r_ppc64_dtprel16_highesta then
-    "R_PPC64_DTPREL16_HIGHESTA"
-  else
-    string_of_unrecognized_relocation_type rel_type
+  match List.lookup rel_type ppc64_relocation_type_names with
+    | Just name -> name
+    | Nothing   -> string_of_unrecognized_relocation_type rel_type
+  end
 
 val abi_ppc64_apply_relocation : elf64_relocation_a -> integer -> integer ->
   integer -> integer -> integer -> integer -> integer -> integer -> integer ->

@@ -51,6 +51,7 @@ let string_of_reloc_type mach =
   else if is Elf_header.elf_ma_386 then Abi_x86_relocation.string_of_x86_relocation_type
   else if is Elf_header.elf_ma_aarch64 then Abi_aarch64_relocation.string_of_aarch64_relocation_type
   else if is Elf_header.elf_ma_x86_64 then Abi_amd64_relocation.string_of_amd64_relocation_type
+  else if is Elf_header.elf_ma_riscv then Abi_riscv_relocation.string_of_riscv_relocation_type
   else fun _ -> "Cannot deduce ABI"
 
 let interpret_data_relocation mach ef symtab_map sidx rel =
