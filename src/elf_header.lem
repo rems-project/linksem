@@ -564,22 +564,239 @@ let elf_ma_reserved159 : natural = 159
   * the numeric encoding [m] of the ELF machine architecture.
   * TODO: finish this .
   *)
+(** Claude: the machine names as readelf prints them (its get_machine_name,
+  * observed on generated headers for every e_machine value), and the
+  * "<unknown>: 0x..." form for the rest. *)
+val elf_machine_names : list (natural * string)
+let elf_machine_names = [
+    (0, "None");
+    (1, "WE32100");
+    (2, "Sparc");
+    (3, "Intel 80386");
+    (4, "MC68000");
+    (5, "MC88000");
+    (6, "Intel MCU");
+    (7, "Intel 80860");
+    (8, "MIPS R3000");
+    (9, "IBM System/370");
+    (10, "MIPS R4000 big-endian");
+    (11, "Sparc v9 (old)");
+    (15, "HPPA");
+    (17, "Fujitsu VPP500");
+    (18, "Sparc v8+");
+    (19, "Intel 80960");
+    (20, "PowerPC");
+    (21, "PowerPC64");
+    (22, "IBM S/390");
+    (23, "SPU");
+    (36, "Renesas V850 (using RH850 ABI)");
+    (37, "Fujitsu FR20");
+    (38, "TRW RH32");
+    (39, "MCORE");
+    (40, "ARM");
+    (41, "Digital Alpha (old)");
+    (42, "Renesas / SuperH SH");
+    (43, "Sparc v9");
+    (44, "Siemens Tricore");
+    (45, "ARC");
+    (46, "Renesas H8/300");
+    (47, "Renesas H8/300H");
+    (48, "Renesas H8S");
+    (49, "Renesas H8/500");
+    (50, "Intel IA-64");
+    (51, "Stanford MIPS-X");
+    (52, "Motorola Coldfire");
+    (53, "Motorola MC68HC12 Microcontroller");
+    (54, "Fujitsu Multimedia Accelerator");
+    (55, "Siemens PCP");
+    (56, "Sony nCPU embedded RISC processor");
+    (57, "Denso NDR1 microprocessor");
+    (58, "Motorola Star*Core processor");
+    (59, "Toyota ME16 processor");
+    (60, "STMicroelectronics ST100 processor");
+    (61, "Advanced Logic Corp. TinyJ embedded processor");
+    (62, "Advanced Micro Devices X86-64");
+    (63, "Sony DSP processor");
+    (64, "Digital Equipment Corp. PDP-10");
+    (65, "Digital Equipment Corp. PDP-11");
+    (66, "Siemens FX66 microcontroller");
+    (67, "STMicroelectronics ST9+ 8/16 bit microcontroller");
+    (68, "STMicroelectronics ST7 8-bit microcontroller");
+    (69, "Motorola MC68HC16 Microcontroller");
+    (70, "Motorola MC68HC11 Microcontroller");
+    (71, "Motorola MC68HC08 Microcontroller");
+    (72, "Motorola MC68HC05 Microcontroller");
+    (73, "Silicon Graphics SVx");
+    (74, "STMicroelectronics ST19 8-bit microcontroller");
+    (75, "Digital VAX");
+    (76, "Axis Communications 32-bit embedded processor");
+    (77, "Infineon Technologies 32-bit embedded cpu");
+    (78, "Element 14 64-bit DSP processor");
+    (79, "LSI Logic's 16-bit DSP processor");
+    (80, "Donald Knuth's educational 64-bit processor");
+    (81, "Harvard Universitys's machine-independent object format");
+    (82, "Vitesse Prism");
+    (83, "Atmel AVR 8-bit microcontroller");
+    (84, "Fujitsu FR30");
+    (85, "d10v");
+    (86, "d30v");
+    (87, "Renesas V850");
+    (88, "Renesas M32R (formerly Mitsubishi M32r)");
+    (89, "mn10300");
+    (90, "mn10200");
+    (91, "picoJava");
+    (92, "OpenRISC 1000");
+    (93, "ARCompact");
+    (94, "Tensilica Xtensa Processor");
+    (95, "Alphamosaic VideoCore processor");
+    (96, "Thompson Multimedia General Purpose Processor");
+    (97, "National Semiconductor 32000 series");
+    (98, "Tenor Network TPC processor");
+    (99, "Trebia SNP 1000 processor");
+    (100, "STMicroelectronics ST200 microcontroller");
+    (101, "Ubicom IP2xxx 8-bit microcontrollers");
+    (102, "MAX Processor");
+    (103, "National Semiconductor CompactRISC");
+    (104, "Fujitsu F2MC16");
+    (105, "Texas Instruments msp430 microcontroller");
+    (106, "Analog Devices Blackfin");
+    (107, "S1C33 Family of Seiko Epson processors");
+    (108, "Sharp embedded microprocessor");
+    (109, "Arca RISC microprocessor");
+    (110, "Unicore");
+    (111, "eXcess 16/32/64-bit configurable embedded CPU");
+    (112, "Icera Semiconductor Inc. Deep Execution Processor");
+    (113, "Altera Nios II");
+    (114, "National Semiconductor CRX microprocessor");
+    (115, "Motorola XGATE embedded processor");
+    (116, "Infineon Technologies xc16x");
+    (117, "Renesas M16C series microprocessors");
+    (118, "Microchip Technology dsPIC30F Digital Signal Controller");
+    (119, "Freescale Communication Engine RISC core");
+    (120, "Renesas M32c");
+    (131, "Altium TSK3000 core");
+    (132, "Freescale RS08 embedded processor");
+    (134, "Cyan Technology eCOG2 microprocessor");
+    (135, "SUNPLUS S+Core");
+    (136, "New Japan Radio (NJR) 24-bit DSP Processor");
+    (137, "Broadcom VideoCore III processor");
+    (138, "Lattice Mico32");
+    (139, "Seiko Epson C17 family");
+    (140, "Texas Instruments TMS320C6000 DSP family");
+    (141, "Texas Instruments TMS320C2000 DSP family");
+    (142, "Texas Instruments TMS320C55x DSP family");
+    (144, "TI PRU I/O processor");
+    (160, "STMicroelectronics 64bit VLIW Data Signal Processor");
+    (161, "Cypress M8C microprocessor");
+    (162, "Renesas R32C series microprocessors");
+    (163, "NXP Semiconductors TriMedia architecture family");
+    (164, "QUALCOMM DSP6 Processor");
+    (165, "Intel 8051 and variants");
+    (166, "STMicroelectronics STxP7x family");
+    (167, "Andes Technology compact code size embedded RISC processor family");
+    (168, "Cyan Technology eCOG1X family");
+    (169, "Dallas Semiconductor MAXQ30 Core microcontrollers");
+    (170, "New Japan Radio (NJR) 16-bit DSP Processor");
+    (171, "M2000 Reconfigurable RISC Microprocessor");
+    (172, "Cray Inc. NV2 vector architecture");
+    (173, "Renesas RX");
+    (174, "Imagination Technologies Meta processor architecture");
+    (175, "MCST Elbrus general purpose hardware architecture");
+    (176, "Cyan Technology eCOG16 family");
+    (177, "Xilinx MicroBlaze");
+    (178, "Freescale Extended Time Processing Unit");
+    (179, "Infineon Technologies SLE9X core");
+    (180, "Intel L1OM");
+    (181, "Intel K1OM");
+    (182, "Intel (reserved)");
+    (183, "AArch64");
+    (184, "ARM (reserved)");
+    (185, "Atmel Corporation 32-bit microprocessor");
+    (186, "STMicroeletronics STM8 8-bit microcontroller");
+    (187, "Tilera TILE64 multicore architecture family");
+    (188, "Tilera TILEPro multicore architecture family");
+    (189, "Xilinx MicroBlaze");
+    (190, "NVIDIA CUDA architecture");
+    (191, "Tilera TILE-Gx multicore architecture family");
+    (192, "CloudShield architecture family");
+    (193, "KIPO-KAIST Core-A 1st generation processor family");
+    (194, "KIPO-KAIST Core-A 2nd generation processor family");
+    (195, "ARCv2");
+    (196, "Open8 8-bit RISC soft processor core");
+    (197, "Renesas RL78");
+    (198, "Broadcom VideoCore V processor");
+    (199, "Renesas 78K0R");
+    (200, "Freescale 56800EX Digital Signal Controller (DSC)");
+    (201, "Beyond BA1 CPU architecture");
+    (202, "Beyond BA2 CPU architecture");
+    (203, "XMOS xCORE processor family");
+    (204, "Microchip 8-bit PIC(r) family");
+    (205, "Intel Graphics Technology");
+    (210, "KM211 KM32 32-bit processor");
+    (211, "KM211 KMX32 32-bit processor");
+    (212, "KM211 KMX16 16-bit processor");
+    (213, "KM211 KMX8 8-bit processor");
+    (214, "KM211 KVARC processor");
+    (215, "Paneve CDP architecture family");
+    (216, "Cognitive Smart Memory Processor");
+    (217, "Bluechip Systems CoolEngine");
+    (218, "Nanoradio Optimized RISC");
+    (219, "CSR Kalimba architecture family");
+    (220, "Zilog Z80");
+    (221, "CDS VISIUMcore processor");
+    (222, "FTDI Chip FT32");
+    (223, "Moxie");
+    (224, "AMD GPU");
+    (243, "RISC-V");
+    (244, "Lanai 32-bit processor");
+    (245, "CEVA Processor Architecture Family");
+    (246, "CEVA X2 Processor Family");
+    (247, "Linux BPF");
+    (248, "Graphcore Intelligent Processing Unit");
+    (249, "Imagination Technologies");
+    (250, "Netronome Flow Processor");
+    (251, "NEC Vector Engine");
+    (252, "C-SKY");
+    (253, "Synopsys ARCv3 64-bit processor");
+    (254, "MOS Technology MCS 6502 processor");
+    (255, "Synopsys ARCv3 32-bit processor");
+    (256, "Kalray VLIW core of the MPPA processor family");
+    (257, "WDC 65816/65C816");
+    (258, "LoongArch");
+    (259, "ChipON KungFu32");
+    (4183, "Atmel AVR 8-bit microcontroller");
+    (4643, "Adapteva EPIPHANY");
+    (9520, "Morpho Techologies MT processor");
+    (13104, "Fujitsu FR30");
+    (16727, "Web Assembly");
+    (18056, "Infineon Technologies xc16x");
+    (19951, "Freescale S12Z");
+    (21569, "Fujitsu FR-V");
+    (23205, "OpenDLX");
+    (30288, "d10v");
+    (30326, "d30v");
+    (33303, "Ubicom IP2xxx 8-bit microcontrollers");
+    (36902, "Alpha");
+    (36929, "Renesas M32R (formerly Mitsubishi M32r)");
+    (36992, "Renesas V850");
+    (41872, "IBM S/390");
+    (43975, "Tensilica Xtensa Processor");
+    (44357, "Sanyo XStormy16 CPU core");
+    (47787, "Xilinx MicroBlaze");
+    (48879, "mn10300");
+    (57005, "mn10200");
+    (61453, "Toshiba MeP Media Engine");
+    (65200, "Altera Nios");
+    (65210, "Vitesse IQ2000");
+    (65211, "Altera Nios")
+  ]
+
 val string_of_elf_machine_architecture : natural -> string
 let string_of_elf_machine_architecture m =
-	if m = elf_ma_386 then
-		"Intel 80386"
-  else if m = elf_ma_ppc then
-    "PowerPC"
-  else if m = elf_ma_ppc64 then
-    "PowerPC64"
-  else if m = elf_ma_arm then
-    "AArch"
-  else if m = elf_ma_x86_64 then
-    "Advanced Micro Devices X86-64"
-  else if m = elf_ma_aarch64 then
-    "AArch64"
-	else
-		"Other architecture"
+  match List.lookup m elf_machine_names with
+    | Just name -> name
+    | Nothing   -> "<unknown>: 0x" ^ hex_string_of_natural m
+  end
 
 (** ELF version numbers.  Denotes the ELF version number of an ELF file.  Current is
   * defined to have a value of 1 with the present specification.  Extensions
@@ -596,12 +813,10 @@ let elf_ev_current : natural = 1
   *)
 val string_of_elf_version_number : natural -> string
 let string_of_elf_version_number m =
-	if m = elf_ev_none then
-		"Invalid ELF version"
-	else if m = elf_ev_current then
-		"1 (current)"
-	else
-		"Extended ELF version"
+  (* Claude: as readelf prints EI_VERSION: "1 (current)", "0", or "N <unknown>" *)
+  if m = elf_ev_current then "1 (current)"
+  else if m = elf_ev_none then "0"
+  else show m ^ " <unknown>"
 
 (** Check that an extended version number is correct (i.e. greater than 1). *)
 let is_valid_extended_version_number (n : natural) = n > 1
@@ -752,48 +967,24 @@ let is_valid_architecture_defined_osabi_version (n : natural) =
 (** [string_of_elf_osabi_version m] produces a string representation of the
   * numeric encoding [m] of the ELF OSABI version.
   *)
+(** Claude: the OS/ABI names as readelf prints them (its get_osabi_name); the
+  * values from 64 up are architecture-specific and go to [arch], which should
+  * produce readelf's "<unknown: N>" for the ones it does not know. *)
+val elf_osabi_names : list (natural * string)
+let elf_osabi_names = [
+    (0, "UNIX - System V"); (1, "UNIX - HP-UX"); (2, "UNIX - NetBSD"); (3, "UNIX - GNU");
+    (6, "UNIX - Solaris"); (7, "UNIX - AIX"); (8, "UNIX - IRIX"); (9, "UNIX - FreeBSD");
+    (10, "UNIX - TRU64"); (11, "Novell - Modesto"); (12, "UNIX - OpenBSD"); (13, "VMS - OpenVMS");
+    (14, "HP - Non-Stop Kernel"); (15, "AROS"); (16, "FenixOS"); (17, "Nuxi CloudABI");
+    (18, "Stratus Technologies OpenVOS")
+  ]
+
 val string_of_elf_osabi_version : (natural -> string) -> natural -> string
 let string_of_elf_osabi_version arch m =
-	if m = elf_osabi_none then
-		"UNIX - System V"
-	else if m = elf_osabi_netbsd then
-		"Hewlett-Packard HP-UX"
-	else if m = elf_osabi_netbsd then
-		"NetBSD"
-	else if m = elf_osabi_gnu then
-		"UNIX - GNU"
-	else if m = elf_osabi_linux then
-		"Linux"
-	else if m = elf_osabi_solaris then
-		"Sun Solaris"
-	else if m = elf_osabi_aix then
-		"AIX"
-	else if m = elf_osabi_irix then
-		"IRIX"
-	else if m = elf_osabi_freebsd then
-		"FreeBSD"
-	else if m = elf_osabi_tru64 then
-		"Compaq Tru64 Unix"
-	else if m = elf_osabi_modesto then
-		"Novell Modesto"
-	else if m = elf_osabi_openbsd then
-		"OpenBSD"
-	else if m = elf_osabi_openvms then
-		"OpenVMS"
-	else if m = elf_osabi_nsk then
-		"Hewlett-Packard Non-stop Kernel"
-	else if m = elf_osabi_aros then
-		"Amiga Research OS"
-	else if m = elf_osabi_fenixos then
-		"FenixOS highly-scalable multi-core OS"
-  else if m = elf_osabi_cloudabi then
-    "Nuxi CloudABI"
-  else if m = elf_osabi_openvos then
-    "Stratus technologies OpenVOS"
-	else if is_valid_architecture_defined_osabi_version m then
-	  arch m
-	else
-		"Invalid OSABI version"
+  match List.lookup m elf_osabi_names with
+    | Just name -> name
+    | Nothing   -> if m >= 64 then arch m else "<unknown: " ^ hex_string_of_natural m ^ ">"
+  end
 
 (** ELF Header type *)
 

@@ -181,6 +181,22 @@ let harness_count_with_extension n escape ext =
     | Nothing   -> show n
   end
 
+(** Claude: the architecture-specific OS/ABI names (values 64 and up) as
+  * readelf prints them; observed on generated headers. *)
+val harness_osabi_arch : natural -> natural -> string
+let harness_osabi_arch mach o =
+  let names =
+    if mach = elf_ma_arm then [(65, "ARM FDPIC"); (97, "ARM")]
+    else if mach = 105 || mach = 4185 || mach = 221 then [(255, "Standalone App")]   (* MSP430, MSP430 (old), Visium *)
+    else if mach = 140 then [(64, "Bare-metal C6000"); (65, "Linux C6000")]        (* TI C6000 *)
+    else if mach = 224 then [(64, "AMD HSA"); (65, "AMD PAL"); (66, "AMD Mesa3D")]  (* AMDGPU *)
+    else []
+  in
+  match List.lookup o names with
+    | Just name -> name
+    | Nothing   -> "<unknown: " ^ hex_string_of_natural o ^ ">"
+  end
+
 val harness_string_of_elf32_file_header_full : bool -> maybe elf32_section_header_table_entry -> elf32_header -> string
 let {ocaml} harness_string_of_elf32_file_header_full pie sec0 hdr =
   unlines [
@@ -189,7 +205,7 @@ let {ocaml} harness_string_of_elf32_file_header_full pie sec0 hdr =
   ; "  Class:" ^ "                             " ^ string_of_elf_file_class (get_elf32_file_class hdr)
   ; "  Data:" ^ "                              " ^ string_of_elf_data_encoding (get_elf32_data_encoding hdr)
   ; "  Version:" ^ "                           " ^ string_of_elf_version_number (get_elf32_version_number hdr)
-  ; "  OS/ABI:" ^ "                            " ^ string_of_elf_osabi_version (const "Architecture defined") (get_elf32_osabi hdr)
+  ; "  OS/ABI:" ^ "                            " ^ string_of_elf_osabi_version (harness_osabi_arch (natural_of_elf32_half hdr.elf32_machine)) (get_elf32_osabi hdr)
   ; "  ABI Version:" ^ "                       " ^ show (get_elf32_abi_version hdr)
   ; "  Type:" ^ "                              " ^ harness_string_of_elf_file_type pie (natural_of_elf32_half hdr.elf32_type)
   ; "  Machine:" ^ "                           " ^ string_of_elf_machine_architecture (natural_of_elf32_half hdr.elf32_machine)
@@ -214,7 +230,7 @@ let {ocaml} harness_string_of_elf64_file_header_full pie sec0 hdr =
   ; "  Class:" ^ "                             " ^ string_of_elf_file_class (get_elf64_file_class hdr)
   ; "  Data:" ^ "                              " ^ string_of_elf_data_encoding (get_elf64_data_encoding hdr)
   ; "  Version:" ^ "                           " ^ string_of_elf_version_number (get_elf64_version_number hdr)
-  ; "  OS/ABI:" ^ "                            " ^ string_of_elf_osabi_version (const "Architecture defined") (get_elf64_osabi hdr)
+  ; "  OS/ABI:" ^ "                            " ^ string_of_elf_osabi_version (harness_osabi_arch (natural_of_elf64_half hdr.elf64_machine)) (get_elf64_osabi hdr)
   ; "  ABI Version:" ^ "                       " ^ show (get_elf64_abi_version hdr)
   ; "  Type:" ^ "                              " ^ harness_string_of_elf_file_type pie (natural_of_elf64_half hdr.elf64_type)
   ; "  Machine:" ^ "                           " ^ string_of_elf_machine_architecture (natural_of_elf64_half hdr.elf64_machine)
