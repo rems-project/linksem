@@ -111,6 +111,9 @@ Linksem is principally intended to be used in other code, but for testing purpos
 
 where `<flag>` is one of `--file-header`, `--program-headers`, `--section-headers`, `--relocs`, `--dynamic`, `--in-out`, `--debug-dump=info`.
 
+<!-- Claude: the following paragraph is written by Claude -->
+The same dumps are available from the `linksem` command-line tool in `src_ocaml/`, an OCaml (cmdliner) front end to the library: after `make -C src`, `make -C src_ocaml` builds it against the in-tree library, and `src_ocaml/linksem readelf <flags> <filename>` takes the readelf-style flags above (also as `-h -l -S -r -s -d`, and `--debug-dump=info<raw|resolved|objdump|analysis>`).  For the readelf-style flags the output is byte-identical to `readelf --wide`, so the two can be compared with `diff`; see `src_ocaml/linksem readelf --help`.
+
 
 
 ## Known issues

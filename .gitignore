@@ -35,3 +35,7 @@ src/byte_sequence_impl.lem
 _opam
 
 .vscode
+
+src_ocaml/linksem
+src_ocaml/version.ml
+src_ocaml/*.o
