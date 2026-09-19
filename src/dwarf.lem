@@ -4213,7 +4213,8 @@ let objdump_target_name_64 (mach:natural) (little:bool) : string =
   else if mach = elf_ma_riscv then (if little then "elf64-littleriscv" else "elf64-bigriscv")
   else if mach = elf_ma_ppc64 then (if little then "elf64-powerpcle" else "elf64-powerpc")
   else if mach = elf_ma_mips then (if little then "elf64-tradlittlemips" else "elf64-tradbigmips")
-  else "[...]"
+  (* Claude: objdump's generic target for a machine it has no back end for *)
+  else if little then "elf64-little" else "elf64-big"
 
 (* the bytes objdump would show for a (possibly partly symbolic) byte sequence:
    symbolic parts are rendered as the offset part of their value *)
