@@ -133,7 +133,7 @@ let read_elf64_relocation_a endian bs =
 val read_elf32_relocation_section' : endianness -> byte_sequence ->
   error (list elf32_relocation)
 let rec read_elf32_relocation_section' endian bs0 =
-  if Byte_sequence.length bs0 = 0 then
+  if Byte_sequence.length bs0 < 8 then   (* Claude: a trailing partial entry is ignored, as readelf does *)
     return []
   else
     read_elf32_relocation endian bs0 >>= fun (entry, bs1) ->
@@ -148,7 +148,7 @@ let rec read_elf32_relocation_section' endian bs0 =
 val read_elf64_relocation_section' : endianness -> byte_sequence ->
   error (list elf64_relocation)
 let rec read_elf64_relocation_section' endian bs0 =
-  if Byte_sequence.length bs0 = 0 then
+  if Byte_sequence.length bs0 < 16 then   (* Claude: a trailing partial entry is ignored, as readelf does *)
     return []
   else
     read_elf64_relocation endian bs0 >>= fun (entry, bs1) ->
@@ -163,7 +163,7 @@ let rec read_elf64_relocation_section' endian bs0 =
 val read_elf32_relocation_a_section' : endianness -> byte_sequence ->
   error (list elf32_relocation_a)
 let rec read_elf32_relocation_a_section' endian bs0 =
-  if Byte_sequence.length bs0 = 0 then
+  if Byte_sequence.length bs0 < 12 then   (* Claude: a trailing partial entry is ignored, as readelf does *)
     return []
   else
     read_elf32_relocation_a endian bs0 >>= fun (entry, bs1) ->
@@ -178,7 +178,7 @@ let rec read_elf32_relocation_a_section' endian bs0 =
 val read_elf64_relocation_a_section' : endianness -> byte_sequence ->
   error (list elf64_relocation_a)
 let rec read_elf64_relocation_a_section' endian bs0 =
-  if Byte_sequence.length bs0 = 0 then
+  if Byte_sequence.length bs0 < 24 then   (* Claude: a trailing partial entry is ignored, as readelf does *)
     return []
   else
     read_elf64_relocation_a endian bs0 >>= fun (entry, bs1) ->
