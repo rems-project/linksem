@@ -207,3 +207,9 @@ let parse_elf64_relocation_info w =
   let typ = natural_of_elf64_xword (elf64_xword_land w mask) in
   let sym = natural_of_elf64_xword (elf64_xword_rshift w 32) in
   (typ, sym)
+
+(** Claude: the ELF32 [r_info] field is [(symbol << 8) | type]. *)
+val parse_elf32_relocation_info : elf32_word -> (natural (* type *) * natural (* symbol *))
+let parse_elf32_relocation_info w =
+  let n = natural_of_elf32_word w in
+  (natural_land n 255, n div 256)

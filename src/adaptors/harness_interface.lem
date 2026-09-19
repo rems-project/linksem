@@ -754,7 +754,8 @@ val harness_string_of_elf32_reloc_entry : (natural -> string) -> Map.map natural
 let {ocaml} harness_string_of_elf32_reloc_entry os sht symtab stbl sechdr_stbl rel =
   let off  = natural_of_elf32_addr rel.elf32_r_offset in
   let inf  = natural_of_elf32_word rel.elf32_r_info in
-  let typ  = os 0 in (* FIXME *) (* Claude: readelf -W does not truncate the type name *)
+  let (typ, idx) = parse_elf32_relocation_info rel.elf32_r_info in
+  let typ  = os typ in (* Claude: readelf -W does not truncate the type name *)
   let typs =
     (* Claude: readelf pads a type name to 22 columns ("%-22s") but its
      * "unrecognized: %-7lx" form to 21 *)
@@ -762,7 +763,6 @@ let {ocaml} harness_string_of_elf32_reloc_entry os sht symtab stbl sechdr_stbl r
     let len = naturalFromNat (width - String.stringLength typ) in
       concatS (replicate len " ")
   in
-  let idx  = 0 in (* FIXME *)
     match Map.lookup idx symtab with
       | Nothing  -> "harness_string_of_elf32_reloc_entry: Nothing returned"
       | Just sym ->
@@ -826,6 +826,48 @@ let {ocaml} harness_string_of_elf32_reloc_entry os sht symtab stbl sechdr_stbl r
                 ; nm
                 ]
     end
+
+(** Claude: an ELF32 RELA entry in readelf's wide layout: as the REL entry,
+  * then the addend after the name (" + N" or " - N"), or, with no symbol, in a
+  * 12-column field after the type. *)
+val harness_string_of_elf32_reloc_a_entry : (natural -> string) -> Map.map natural elf32_section_header_table_entry ->
+  Map.map natural elf32_symbol_table_entry -> string_table -> string_table -> elf32_relocation_a -> string
+let {ocaml} harness_string_of_elf32_reloc_a_entry os sht symtab stbl sechdr_stbl rel =
+  let off  = natural_of_elf32_addr rel.elf32_ra_offset in
+  let inf  = natural_of_elf32_word rel.elf32_ra_info in
+  let add  = integer_of_elf32_sword rel.elf32_ra_addend in
+  let (typ, idx) = parse_elf32_relocation_info rel.elf32_ra_info in
+  let typ  = os typ in
+  let typs =
+    let width = if string_prefix 13 typ = Just "unrecognized:" then 21 else 22 in
+    let len = naturalFromNat (width - String.stringLength typ) in
+      concatS (replicate len " ")
+  in
+  let (nm, value, symtyp, secthdr) =
+    match Map.lookup idx symtab with
+      | Nothing  -> (stn_undef, 0, 0, 0)
+      | Just sym -> (natural_of_elf32_word sym.elf32_st_name,
+        natural_of_elf32_addr sym.elf32_st_value, get_elf32_symbol_type sym,
+          natural_of_elf32_half sym.elf32_st_shndx)
+    end
+  in
+  let prefix = concatS [ unsafe_hex_string_of_natural 8 off; "  "; unsafe_hex_string_of_natural 8 inf; " "; typ; typs ] in
+  if idx = 0 then
+    prefix ^ "            " ^ harness_hex_of_integer add
+  else
+    let name =
+      if symtyp = stt_section && nm = stn_undef then
+        match Map.lookup secthdr sht with
+          | Nothing   -> "XXX"
+          | Just shdr -> harness_section_name sechdr_stbl (natural_of_elf32_word shdr.elf32_sh_name)
+        end
+      else
+        match String_table.get_string_at nm stbl with
+          | Fail    f -> f
+          | Success n -> harness_printable_name n
+        end
+    in
+    prefix ^ " " ^ unsafe_hex_string_of_natural 8 value ^ "   " ^ name ^ harness_signed_addend add
 
 val harness_string_of_elf64_reloc_a_entry : (natural -> string) -> Map.map natural elf64_symbol_table_entry ->
   Map.map natural elf64_section_header_table_entry -> string_table -> string_table ->
@@ -951,24 +993,31 @@ let {ocaml} harness_string_of_elf32_relocs' endian os f1 sht_relocs sht shdr bs0
       let off = natural_of_elf32_off  ent.elf32_sh_offset in
       let siz = natural_of_elf32_word ent.elf32_sh_size in
       let lnk = natural_of_elf32_word ent.elf32_sh_link in
-        Byte_sequence.offset_and_cut off siz bs0 >>= fun rels ->
-        Elf_relocation.read_elf32_relocation_section' endian rels >>= fun sect ->
+        Byte_sequence.offset_and_cut off siz bs0 >>= fun bytes ->
         (match Map.lookup lnk symtabs with
           | Just symtab_strtab -> return symtab_strtab
           | Nothing            -> fail "harness_string_of_elf32_relocs': symbol table not found"
         end) >>= fun (symtab, strtab) ->
-        return (sect, ent, symtab, strtab)
+        (* Claude: a section is REL or RELA; each has its own reader, row
+         * printer and column title *)
+        (if natural_of_elf32_word ent.elf32_sh_type = sht_rela then
+          Elf_relocation.read_elf32_relocation_a_section' endian bytes >>= fun rs ->
+          return (List.length rs, List.map (harness_string_of_elf32_reloc_a_entry os sht symtab strtab shdr) rs,
+                  " Offset     Info    Type                Sym. Value  Symbol's Name + Addend\n")
+        else
+          Elf_relocation.read_elf32_relocation_section' endian bytes >>= fun rs ->
+          return (List.length rs, List.map (harness_string_of_elf32_reloc_entry os sht symtab strtab shdr) rs,
+                  " Offset     Info    Type                Sym. Value  Symbol's Name\n")) >>= fun (n, rows, ttl) ->
+        return (n, rows, ttl, ent)
     ) sht_relocs
   >>=
-    mapM (fun (rels, ent, symtab, strtab) ->
+    mapM (fun (n, rows, ttl, ent) ->
       let nm  = natural_of_elf32_word ent.elf32_sh_name in
       let off = unsafe_hex_string_of_natural 0 (natural_of_elf32_off ent.elf32_sh_offset) in
-      let len = show (List.length rels) ^ " " ^ entries_word (List.length rels) in
+      let len = show n ^ " " ^ entries_word n in
       String_table.get_string_at nm shdr >>= fun nm ->
       let hdr = "Relocation section '" ^ nm ^ "' at offset 0x" ^ off ^ " contains " ^ len ^ ":\n" in
-      let ttl = " Offset     Info    Type                Sym. Value  Symbol's Name\n" in
-      let body = (String.concat "\n" (List.map (harness_string_of_elf32_reloc_entry os sht symtab strtab shdr) rels)) in
-      return (hdr ^ ttl ^ body))
+      return (hdr ^ ttl ^ String.concat "\n" rows))
   in
     match rels with
       | Fail err -> err
@@ -1044,7 +1093,7 @@ let {ocaml} harness_string_of_elf32_relocs f1 os bs0 =
   let sht       = f1.elf32_file_section_header_table in
   let endian    = get_elf32_header_endianness hdr in
   let rel_secs  = List.filter (fun x ->
-    x.elf32_sh_type = elf32_word_of_natural sht_rel) sht in
+    x.elf32_sh_type = elf32_word_of_natural sht_rel || x.elf32_sh_type = elf32_word_of_natural sht_rela) sht in
   if List.length rel_secs = 0 then
     "\nThere are no relocations in this file."
   else
