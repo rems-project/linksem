@@ -25,6 +25,7 @@ type aarch64_relocation_target
   | CALL
   | CONDBR
   | B
+  | TSTBR  (* Claude: R_AARCH64_TSTBR14, the target of tbz/tbnz *)
 
 val abi_aarch64_apply_relocation_symbolic : relocation_spec aarch64_relocation_target
 let abi_aarch64_apply_relocation_symbolic rel_type =
@@ -153,6 +154,16 @@ let abi_aarch64_apply_relocation_symbolic rel_type =
         ; rel_desc_checks = [Overflow (~(2**20), 2**20); Alignment 2]
         ; rel_desc_mask = (20, 2)
         ; rel_desc_target = CONDBR
+        |>
+        )
+  (** Claude: TSTBR14: signed 14-bit word offset (bits 15:2 of S + A - P), for tbz/tbnz *)
+  else if rel_type = r_aarch64_tstbr14 then
+    let result = Minus(Plus(Lift S, Lift A), Lift P) in
+    return (Just
+      <| rel_desc_value = result
+        ; rel_desc_checks = [Overflow (~(2**15), 2**15); Alignment 2]
+        ; rel_desc_mask = (15, 2)
+        ; rel_desc_target = TSTBR
         |>
         )
   else if rel_type = r_aarch64_jump26 then
