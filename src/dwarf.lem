@@ -4029,21 +4029,26 @@ let parse_line_number_program c (cuh:compilation_unit_header) (comp_dir:maybe st
      )
 
 (*TODO: this should use find_natural_attribute_value_of_die *)  
-let line_number_offset_of_compilation_unit c cu =
+(* Claude: a unit's line information is optional: [Nothing] when it has no
+   DW_AT_stmt_list (hand-written or partial units, and the units of some
+   producers), which readelf and objdump simply accept. *)
+let line_number_offset_of_compilation_unit c cu : maybe sym_natural =
   match find_attribute_value "DW_AT_stmt_list" cu.cu_die with
-  | Just (AV_sec_offset n) -> n
-  | Just (AV_block n bs) -> sym_natural_of_bytes c.endianness bs
+  | Just (AV_sec_offset n) -> Just n
+  | Just (AV_block n bs) -> Just (sym_natural_of_bytes c.endianness bs)
         (* a 32-bit MIPS example used a 4-byte AV_block not AV_sec_offset *)
-  | Just _ -> (Assert_extra.failwith ("compilation unit DW_AT_stmt_list attribute was not an AV_sec_offset"  ^ pp_compilation_unit_header cu.cu_header))
-  | _ -> Assert_extra.failwith ("compilation unit did not have a DW_AT_stmt_list attribute\n" ^ pp_compilation_unit_header cu.cu_header ^ "\n")
+  | _ -> Nothing
   end
 
 let line_number_program_of_compilation_unit d cu =
   let c = p_context_of_d d in
-  let offset = line_number_offset_of_compilation_unit c cu in
-  match List.find (fun lnp -> sym_eq lnp.lnp_header.lnh_offset offset) d.d_line_info with
-  | Nothing -> Assert_extra.failwith "compilation unit line number offset not found"
-  | Just lnp ->lnp
+  match line_number_offset_of_compilation_unit c cu with
+  | Nothing -> Assert_extra.failwith ("compilation unit did not have a DW_AT_stmt_list attribute\n" ^ pp_compilation_unit_header cu.cu_header ^ "\n")
+  | Just offset ->
+    match List.find (fun lnp -> sym_eq lnp.lnp_header.lnh_offset offset) d.d_line_info with
+    | Nothing -> Assert_extra.failwith "compilation unit line number offset not found"
+    | Just lnp ->lnp
+    end
   end
 
 let filename d cu n =
@@ -4094,7 +4099,7 @@ let pp_ufe_brief (((mcomp_dir,mdir,file) as ufe) : unpacked_file_entry) : string
   ^ " comp_dir=" ^ match mcomp_dir with | Just s->s|Nothing->"<none>" end
    *)
    
-let parse_line_number_info c str (d_line: sym_byte_sequence) (cu: compilation_unit) : line_number_program =
+let parse_line_number_info c str (d_line: sym_byte_sequence) (cu: compilation_unit) : maybe line_number_program =
   let comp_dir = find_string_attribute_value_of_die "DW_AT_comp_dir" str cu.cu_die in
   let f n =
     let d_line' = match sym_dropbytes n d_line with Success xs -> xs | Fail _ -> Assert_extra.failwith "parse_line_number_info drop" end in
@@ -4105,11 +4110,14 @@ let parse_line_number_info c str (d_line: sym_byte_sequence) (cu: compilation_un
         lnp
     | PR_fail s pc' -> Assert_extra.failwith ("parse_line_number_header failed: " ^ s)
     end in
-  f (sym_natural_expect_const (line_number_offset_of_compilation_unit c cu) (*"parse_line_number_info"*))
+  match line_number_offset_of_compilation_unit c cu with
+  | Nothing -> Nothing   (* Claude: a unit without line information *)
+  | Just offset -> Just (f (sym_natural_expect_const offset (*"parse_line_number_info"*)))
+  end
 
 let parse_line_number_infos c str debug_line_section_body compilation_units
     =
-  List.map (parse_line_number_info c str debug_line_section_body) compilation_units
+  List.mapMaybe (parse_line_number_info c str debug_line_section_body) compilation_units
 
 let pp_line_info li
     =
@@ -6429,10 +6437,13 @@ let evaluate_line_number_program
 
 let evaluated_line_info_of_compilation_unit d cu evaluated_line_info =
   let c = p_context_of_d d in
-  let offset = line_number_offset_of_compilation_unit c cu in
-  match List.find (fun (lnh,lnrs) -> sym_eq lnh.lnh_offset offset) evaluated_line_info with
-  | Nothing -> Assert_extra.failwith "compilation unit line number offset not found"
-  | Just (lnh,lnrs) ->lnrs
+  match line_number_offset_of_compilation_unit c cu with
+  | Nothing -> Assert_extra.failwith "compilation unit did not have a DW_AT_stmt_list attribute"
+  | Just offset ->
+    match List.find (fun (lnh,lnrs) -> sym_eq lnh.lnh_offset offset) evaluated_line_info with
+    | Nothing -> Assert_extra.failwith "compilation unit line number offset not found"
+    | Just (lnh,lnrs) ->lnrs
+    end
   end
 
 
