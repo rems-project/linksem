@@ -2573,7 +2573,7 @@ let {ocaml} harness_string_of_elf64_stapsdt_note endian desc =
 val harness_string_of_elf64_note_lines : natural -> endianness -> bool -> natural -> byte_sequence -> list string
 let {ocaml} harness_string_of_elf64_note_lines mach endian is_core align body =
   match read_all_elf64_notes_aligned align endian body with
-    | Fail err -> [err]
+    | Fail _ -> []   (* Claude: readelf warns on stderr and prints no notes *)
     | Success notes ->
       List.map (fun note ->
         let namesz = natural_of_elf64_word note.elf64_note_namesz in

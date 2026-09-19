@@ -245,7 +245,7 @@ let read_elf64_note_aligned align endian bs0 =
 (** Claude: all the notes of a section or segment body, with the given alignment. *)
 val read_all_elf64_notes_aligned : natural -> endianness -> byte_sequence -> error (list elf64_note)
 let rec read_all_elf64_notes_aligned align endian bs =
-  if Byte_sequence.length bs = 0 then
+  if Byte_sequence.length bs < 12 then   (* Claude: fewer bytes than a note header: stop, as readelf does *)
     return []
   else
     read_elf64_note_aligned align endian bs >>= fun (note, next_bs) ->
