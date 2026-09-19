@@ -4073,10 +4073,19 @@ let parse_line_number_program c (cuh:compilation_unit_header) (comp_dir:maybe st
    DW_AT_stmt_list (hand-written or partial units, and the units of some
    producers), which readelf and objdump simply accept. *)
 let line_number_offset_of_compilation_unit c cu : maybe sym_natural =
+  (* Claude: the offset is normalised to its offset part: in a relocatable file
+     it is a relocation against .debug_line, whose addend is the offset. *)
+  let offset_of v = Just (sym_natural_const (sym_natural_offset_part v)) in
   match find_attribute_value "DW_AT_stmt_list" cu.cu_die with
-  | Just (AV_sec_offset n) -> Just n
-  | Just (AV_block n bs) -> Just (sym_natural_of_bytes c.endianness bs)
-        (* a 32-bit MIPS example used a 4-byte AV_block not AV_sec_offset *)
+  | Just (AV_sec_offset n) -> offset_of n
+  | Just (AV_block n bs) ->
+        (* a 32-bit MIPS example used a 4-byte AV_block not AV_sec_offset; LLVM's
+           DWARF 2 and 3 output uses DW_FORM_data4 too, relocated in an object
+           file, so the bytes are read as the parsers read them (Claude) *)
+        match (if n = 8 then parse_uint64 c else parse_uint32 c) <| pc_bytes = bs; pc_offset = 0 |> with
+        | PR_success v _ -> offset_of v
+        | PR_fail _ _ -> Nothing
+        end
   | _ -> Nothing
   end
 
