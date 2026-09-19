@@ -2791,12 +2791,13 @@ let {ocaml} harness_gnu_build_attribute_line endian name_chars typ desc region =
     else if type_char = #'+' then "true"
     else if type_char = #'*' then
       if attr = 7 then (if numeric = 0 then "static" else if numeric = 1 then "pic" else if numeric = 2 then "PIC"
-                        else if numeric = 3 then "pie" else if numeric = 4 then "PIE" else harness_hex_hash numeric)
+                        else if numeric = 3 then "pie" else if numeric = 4 then "PIE" else "0x" ^ harness_hex numeric)
       else if attr = 2 then (if numeric = 0 then "off" else if numeric = 1 then "on" else if numeric = 2 then "strong"
-                             else if numeric = 3 then "all" else harness_hex_hash numeric)
-      else harness_hex_hash numeric
+                             else if numeric = 3 then "all" else "0x" ^ harness_hex numeric)
+      else "0x" ^ harness_hex numeric
     else "" in
-  let name = "GA" ^ toString [type_char] ^ attr_name ^ value in
+  (* Claude: a named (not well-known) attribute is separated from its value by a colon *)
+  let name = "GA" ^ toString [type_char] ^ attr_name ^ (if attr < 32 then "" else ":") ^ value in
   let descsz = Byte_sequence.length desc in
   let addr_at (n : natural) (width : natural) : natural =
     match Byte_sequence.dropbytes n desc >>= fun bs ->
@@ -2808,7 +2809,7 @@ let {ocaml} harness_gnu_build_attribute_line endian name_chars typ desc region =
   let region' =
     if descsz = 0 then region
     else if descsz = 4 then (addr_at 0 4, 0)
-    else if descsz = 8 then (addr_at 0 8, 0)
+    else if descsz = 8 then (addr_at 0 4, addr_at 4 4)   (* two 4-byte addresses, as readelf reads them *)
     else if descsz = 16 then (addr_at 0 8, addr_at 8 8)
     else (0, 0) in
   let (start, finish) = region' in
