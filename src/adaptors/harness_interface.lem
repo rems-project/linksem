@@ -764,7 +764,8 @@ let {ocaml} harness_string_of_elf32_reloc_entry os sht symtab stbl sechdr_stbl r
       concatS (replicate len " ")
   in
     match Map.lookup idx symtab with
-      | Nothing  -> "harness_string_of_elf32_reloc_entry: Nothing returned"
+      | Nothing  ->   (* Claude: a symbol index outside the table: readelf prints nothing after the type *)
+        concatS [ unsafe_hex_string_of_natural 8 off; "  "; unsafe_hex_string_of_natural 8 inf; " "; typ; typs ]
       | Just sym ->
         let (nm, value, symtyp, secthdr)  =
           match Map.lookup idx symtab with
@@ -854,6 +855,8 @@ let {ocaml} harness_string_of_elf32_reloc_a_entry os sht symtab stbl sechdr_stbl
   let prefix = concatS [ unsafe_hex_string_of_natural 8 off; "  "; unsafe_hex_string_of_natural 8 inf; " "; typ; typs ] in
   if idx = 0 then
     prefix ^ "            " ^ harness_hex_of_integer add
+  else if Map.lookup idx symtab = Nothing then
+    prefix   (* Claude: a symbol index outside the table: readelf prints nothing after the type *)
   else
     let name =
       if symtyp = stt_section && nm = stn_undef then
