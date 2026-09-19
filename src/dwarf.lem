@@ -3173,7 +3173,21 @@ let _ = my_debug4 (pp_compilation_unit_header cuh) in
             cu_die = die;
             cu_index = add_die_to_index Map.empty [] die
           |> in
-          PR_success (Just cu) pc''
+          (* Claude: the next unit starts where this unit's header says this one
+             ends, not where its DIE tree ended: some producers pad after the
+             last DIE, and some emit several level-0 DIEs (which readelf and
+             objdump print; here they are skipped).  A unit length that runs
+             past the section is ignored and the DIE tree's end used instead. *)
+          let header_size = match cuh.cuh_dwarf_format with Dwarf32 -> 4 | Dwarf64 -> 12 end in
+          let cu_end = sym_natural_expect_const cuh.cuh_offset + header_size + sym_natural_expect_const cuh.cuh_unit_length in
+          let pc_next =
+            if cu_end >= pc''.pc_offset then
+              match sym_dropbytes (cu_end - pc''.pc_offset) pc''.pc_bytes with
+              | Success bs -> <| pc_bytes = bs; pc_offset = cu_end |>
+              | Fail _ -> pc''
+              end
+            else pc'' in
+          PR_success (Just cu) pc_next
       end
 
 let parse_compilation_units c (debug_str_section_body: sym_byte_sequence) (debug_abbrev_section_body: sym_byte_sequence): parser (list compilation_unit)
