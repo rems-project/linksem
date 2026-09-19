@@ -2389,7 +2389,10 @@ let rec null_terminated_bs (bs: sym_byte_sequence) : sym_byte_sequence =
   end
 
 let pp_debug_str_entry (str: sym_byte_sequence) (n: sym_natural) : string =
-  match sym_dropbytes (sym_natural_expect_const n (*"pp_debug_str_entry"*)) str with
+  (* Claude: in a relocatable file a DW_FORM_strp value may be a relocation
+     against an undefined symbol (a string-table label defined elsewhere);
+     readelf and objdump use the addend, as the offset part here *)
+  match sym_dropbytes (sym_natural_offset_part n) str with
   | Fail _ -> "strp beyond .debug_str extent"
   | Success bs -> string_of_sym_byte_sequence (null_terminated_bs bs)
   end
