@@ -291,7 +291,7 @@ let {ocaml} harness_string_of_elf64_program_headers os proc hdr pht sht stbl bs0
       ; "Elf file type is " ^ string_of_elf_file_type default_os_specific_print default_proc_specific_print (natural_of_elf64_half hdr.elf64_type)
       ; "Entry point " ^ "0x" ^ unsafe_hex_string_of_natural 1 (natural_of_elf64_addr hdr.elf64_entry)
       ; "There are " ^ show (List.length pht) ^ " program headers, starting at offset " ^ show hdr.elf64_phoff
-      ] ^ harness_string_of_elf64_program_headers_body os proc hdr pht sht stbl bs0
+      ] ^ "\n" ^ harness_string_of_elf64_program_headers_body os proc hdr pht sht stbl bs0
 
 (** Claude: the section-header output of this harness reproduces that of GNU
   * readelf in wide mode ([readelf -W -S]).  readelf's output changes between
