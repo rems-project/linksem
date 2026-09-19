@@ -187,13 +187,13 @@ let parse_elf_segment_permissions m =
     failwith "Invalid permisssion flag"
 
 (** [string_of_elf_segment_permissions m] produces a string-based representation
-  * of an ELF segment's permission field.
-  * TODO: expand this as is needed by the validation tests.
+  * of an ELF segment's permission field, in the three-letter form of readelf's
+  * program header dump: "R", "W" and "E" (not "X") for the execute permission.
   *)
 val string_of_elf_segment_permissions : natural -> string
 let string_of_elf_segment_permissions m =
   let (r, w, x) = parse_elf_segment_permissions m in
-  (if r then "R" else " ") ^ (if w then "W" else " ") ^ (if x then "X" else " ")
+  (if r then "R" else " ") ^ (if w then "W" else " ") ^ (if x then "E" else " ")
 
 (** Program header table entry type *)
 
