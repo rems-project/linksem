@@ -91,7 +91,7 @@ let dump_elf32 bs0 dump =
       some (Harness_interface.harness_string_of_elf32_file_header_gen (pie_if_readable ()) hdr)
   | Program_headers ->
       read >>= fun f1 ->
-      get_elf32_file_section_header_string_table f1 >>= fun stbl ->
+      let stbl = Harness_interface.harness_elf32_shstrtab f1 in
       some (Harness_interface.harness_string_of_elf32_program_headers_gen (pie f1)
         Gnu_ext_program_header_table.string_of_gnu_ext_segment_type
         Nat_big_num.to_string
@@ -99,7 +99,7 @@ let dump_elf32 bs0 dump =
         stbl bs0)
   | Section_headers ->
       read >>= fun f1 ->
-      get_elf32_file_section_header_string_table f1 >>= fun stbl ->
+      let stbl = Harness_interface.harness_elf32_shstrtab f1 in
       some (Harness_interface.harness_string_of_elf32_section_headers
         Gnu_ext_section_header_table.string_of_gnu_ext_section_type
         (Harness_interface.harness_string_of_proc_section_type
@@ -146,7 +146,7 @@ let dump_elf64 ~with_header file bs0 dump =
       some (Harness_interface.harness_string_of_elf64_file_header_gen (pie_if_readable ()) hdr)
   | Program_headers ->
       read >>= fun f1 ->
-      get_elf64_file_section_header_string_table f1 >>= fun stbl ->
+      let stbl = Harness_interface.harness_elf64_shstrtab f1 in
       let printer =
         if with_header then Harness_interface.harness_string_of_elf64_program_headers_body
         else Harness_interface.harness_string_of_elf64_program_headers_gen (pie f1) in
@@ -157,7 +157,7 @@ let dump_elf64 ~with_header file bs0 dump =
         stbl bs0)
   | Section_headers ->
       read >>= fun f1 ->
-      get_elf64_file_section_header_string_table f1 >>= fun stbl ->
+      let stbl = Harness_interface.harness_elf64_shstrtab f1 in
       let (os, proc, usr) = section_type_namers f1 in
       let printer =
         if with_header then Harness_interface.harness_string_of_elf64_section_headers_body
@@ -165,7 +165,7 @@ let dump_elf64 ~with_header file bs0 dump =
       some (printer os proc usr f1.elf64_file_header f1.elf64_file_section_header_table stbl)
   | Section_details ->
       read >>= fun f1 ->
-      get_elf64_file_section_header_string_table f1 >>= fun stbl ->
+      let stbl = Harness_interface.harness_elf64_shstrtab f1 in
       let (os, proc, usr) = section_type_namers f1 in
       let printer =
         if with_header then Harness_interface.harness_string_of_elf64_section_details_body
@@ -173,7 +173,7 @@ let dump_elf64 ~with_header file bs0 dump =
       some (printer os proc usr f1.elf64_file_header f1.elf64_file_section_header_table stbl bs0)
   | Section_groups ->
       read >>= fun f1 ->
-      get_elf64_file_section_header_string_table f1 >>= fun stbl ->
+      let stbl = Harness_interface.harness_elf64_shstrtab f1 in
       some (Harness_interface.harness_string_of_elf64_section_groups f1 stbl bs0)
   | Relocs ->
       read >>= fun f1 ->
@@ -192,11 +192,11 @@ let dump_elf64 ~with_header file bs0 dump =
       Error.return (text (Harness_interface.harness_string_of_elf64_histogram f1 bs0 os_ranges os_tag proc_tag64))
   | Version_info ->
       read >>= fun f1 ->
-      get_elf64_file_section_header_string_table f1 >>= fun stbl ->
+      let stbl = Harness_interface.harness_elf64_shstrtab f1 in
       some (Harness_interface.harness_string_of_elf64_version_sections f1 stbl bs0)
   | Notes ->
       read >>= fun f1 ->
-      get_elf64_file_section_header_string_table f1 >>= fun stbl ->
+      let stbl = Harness_interface.harness_elf64_shstrtab f1 in
       Error.return (text (Harness_interface.harness_string_of_elf64_notes f1 stbl bs0))
   | Arch_specific ->
       read >>= fun f1 ->
@@ -240,7 +240,7 @@ let dump_elf64 ~with_header file bs0 dump =
 let section_dumps_elf64 bs0 hex_specs string_specs =
   let open Elf_file in
   Elf_file.read_elf64_file bs0 >>= fun f1 ->
-  get_elf64_file_section_header_string_table f1 >>= fun stbl ->
+  let stbl = Harness_interface.harness_elf64_shstrtab f1 in
   Error.return (Harness_interface.harness_string_of_elf64_section_dumps f1 stbl bs0 hex_specs string_specs)
 
 let warn msg = prerr_endline ("linksem: Warning: " ^ msg)

@@ -132,6 +132,32 @@ let harness_effective_entsize is64 typ entsize =
   in
   match fixed with Just n -> n | Nothing -> entsize end
 
+(** Claude: the section header string table of a file, or an empty table when
+  * the file has none (e_shstrndx = 0, as in a core file) or the index is bad;
+  * [harness_section_name] then renders names as readelf does: "<no-strings>"
+  * without a table, "<corrupt>" for an offset outside it. *)
+val harness_elf32_shstrtab : elf32_file -> string_table
+let harness_elf32_shstrtab f1 =
+  match get_elf32_string_table_by_index f1 (natural_of_elf32_half f1.elf32_file_header.elf32_shstrndx) with
+    | Success t -> t
+    | Fail _    -> String_table.empty
+  end
+
+val harness_elf64_shstrtab : elf64_file -> string_table
+let harness_elf64_shstrtab f1 =
+  match get_elf64_string_table_by_index f1 (natural_of_elf64_half f1.elf64_file_header.elf64_shstrndx) with
+    | Success t -> t
+    | Fail _    -> String_table.empty
+  end
+
+val harness_section_name : string_table -> natural -> string
+let harness_section_name stbl off =
+  if String_table.size stbl = 0 then "<no-strings>"
+  else match String_table.get_string_at off stbl with
+    | Success n -> n
+    | Fail _    -> "<corrupt>"
+  end
+
 val harness_string_of_elf32_file_header_gen : bool -> elf32_header -> string
 let {ocaml} harness_string_of_elf32_file_header_gen pie hdr =
   unlines [
@@ -465,17 +491,11 @@ let {ocaml} harness_string_of_elf32_sht mach osabi os proc usr sht stbl =
     in
     let str = "  [" ^ is ^ "]" in
     let ((gap : string), name) =
-      match String_table.get_string_at (natural_of_elf32_word sec.elf32_sh_name) stbl with
-        | Fail err   -> ("", "ERR " ^ err)
-        | Success nm ->
-          if natural_of_elf32_word sec.elf32_sh_type = sht_null then
-            let gap = List.foldr (^) " " (Missing_pervasives.replicate 17 " ") in
-            (gap, "")
-          else
-            let glen = naturalFromNat (17 - String.stringLength nm) in
-            let gap = List.foldr (^) " " (Missing_pervasives.replicate glen " ") in
-              (gap, nm)
-      end
+      (* Claude: the null section's name is offset 0 of the table, "" *)
+      let nm = harness_section_name stbl (natural_of_elf32_word sec.elf32_sh_name) in
+      let glen = naturalFromNat (17 - String.stringLength nm) in
+      let gap = List.foldr (^) " " (Missing_pervasives.replicate glen " ") in
+        (gap, nm)
     in
     let str = str ^ " " ^ name ^ gap in
     let typ = harness_string_of_section_type os proc usr (natural_of_elf32_word sec.elf32_sh_type) in
@@ -530,17 +550,11 @@ let {ocaml} harness_string_of_elf64_sht mach osabi os proc usr sht stbl =
     in
     let str = "  [" ^ is ^ "]" in
     let ((gap : string), name) =
-      match String_table.get_string_at (natural_of_elf64_word sec.elf64_sh_name) stbl with
-        | Fail err   -> ("", "ERR " ^ err)
-        | Success nm ->
-          if natural_of_elf64_word sec.elf64_sh_type = sht_null then
-            let gap = List.foldr (^) " " (Missing_pervasives.replicate 17 " ") in
-            (gap, "")
-          else
-            let glen = naturalFromNat (17 - String.stringLength nm) in
-            let gap = List.foldr (^) " " (Missing_pervasives.replicate glen " ") in
-              (gap, nm)
-      end
+      (* Claude: the null section's name is offset 0 of the table, "" *)
+      let nm = harness_section_name stbl (natural_of_elf64_word sec.elf64_sh_name) in
+      let glen = naturalFromNat (17 - String.stringLength nm) in
+      let gap = List.foldr (^) " " (Missing_pervasives.replicate glen " ") in
+        (gap, nm)
     in
     let str = str ^ " " ^ name ^ gap in
     let typ = harness_string_of_section_type os proc usr (natural_of_elf64_word sec.elf64_sh_type) in
@@ -591,12 +605,14 @@ let harness_string_of_elf64_program_headers os proc hdr pht sht stbl bs0 = harne
 
 val harness_string_of_elf32_section_headers : (natural -> string) -> (natural -> string) -> (natural -> string) -> elf32_header -> elf32_section_header_table -> string_table -> string
 let {ocaml} harness_string_of_elf32_section_headers os proc usr hdr sht stbl =
+  match sht with | [] -> "\nThere are no sections in this file." | _ ->   (* Claude: as readelf *)
   unlines [
     there_are (List.length sht) "section header" ^ ", starting at offset 0x" ^ unsafe_hex_string_of_natural 0 (natural_of_elf32_off hdr.elf32_shoff) ^ ":"
   ; ""
   ; section_headers_title (List.length sht)
   ; harness_string_of_elf32_sht (natural_of_elf32_half hdr.elf32_machine) (get_elf32_osabi hdr) os proc usr sht stbl
   ] ^ harness_sht_flag_legend (natural_of_elf32_half hdr.elf32_machine) (get_elf32_osabi hdr)
+  end
 
 (** Claude: the section-header dump without its "There are N section headers"
   * line, which readelf omits when the file header is also displayed ([-h -S]). *)
@@ -610,8 +626,12 @@ let {ocaml} harness_string_of_elf64_section_headers_body os proc usr hdr sht stb
 
 val harness_string_of_elf64_section_headers : (natural -> string) -> (natural -> string) -> (natural -> string) -> elf64_header -> elf64_section_header_table -> string_table -> string
 let {ocaml} harness_string_of_elf64_section_headers os proc usr hdr sht stbl =
-  there_are (List.length sht) "section header" ^ ", starting at offset 0x" ^ unsafe_hex_string_of_natural 0 (natural_of_elf64_off hdr.elf64_shoff) ^ ":\n"
-  ^ harness_string_of_elf64_section_headers_body os proc usr hdr sht stbl
+  match sht with
+    | [] -> "\nThere are no sections in this file."   (* Claude: as readelf, e.g. for a core file *)
+    | _  ->
+      there_are (List.length sht) "section header" ^ ", starting at offset 0x" ^ unsafe_hex_string_of_natural 0 (natural_of_elf64_off hdr.elf64_shoff) ^ ":\n"
+      ^ harness_string_of_elf64_section_headers_body os proc usr hdr sht stbl
+  end
 
 (** Claude: the GNU symbol version information needed to annotate .dynsym
   * entries: the .gnu.version entries indexed by symbol number, the version
@@ -989,10 +1009,8 @@ let {ocaml} harness_string_of_elf32_relocs f1 os bs0 =
   if List.length rel_secs = 0 then
     "\nThere are no relocations in this file."
   else
-    match get_elf32_string_table_by_index f1 (natural_of_elf32_half hdr.elf32_shstrndx) with
-      | Fail err     -> err
-      | Success shdr -> "\n" ^ harness_string_of_elf32_relocs' endian os f1 rel_secs sht shdr bs0
-    end
+    let shdr = harness_elf32_shstrtab f1 in
+    "\n" ^ harness_string_of_elf32_relocs' endian os f1 rel_secs sht shdr bs0
 
 (** Claude: symbol table dump in the layout of [readelf -W -s] (binutils 2.42,
   * [print_symbol] in binutils/readelf.c).  Field widths are readelf's:
@@ -1158,10 +1176,8 @@ let {ocaml} harness_string_of_elf64_relocs_gen versions dynamic_relocs f1 os bs0
     else
       "\nThere are no relocations in this file.")
   else
-    match get_elf64_string_table_by_index f1 (natural_of_elf64_half hdr.elf64_shstrndx) with
-      | Fail err     -> err
-      | Success shdr -> "\n" ^ harness_string_of_elf64_relocs' endian os f1 versions rel_secs sht shdr bs0
-    end
+    let shdr = harness_elf64_shstrtab f1 in
+    "\n" ^ harness_string_of_elf64_relocs' endian os f1 versions rel_secs sht shdr bs0
 
 val harness_string_of_elf64_relocs : elf64_file -> (natural -> string) -> byte_sequence -> string
 let harness_string_of_elf64_relocs f1 os bs0 = harness_string_of_elf64_relocs_gen Nothing false f1 os bs0
@@ -1317,10 +1333,8 @@ let {ocaml} harness_string_of_elf32_syms f1 bs0 =
   if List.length sym_secs = 0 then
     no_symbols_message (List.length sht)
   else
-    match get_elf32_string_table_by_index f1 (natural_of_elf32_half hdr.elf32_shstrndx) with
-      | Fail err     -> err
-      | Success shdr -> "\n" ^ harness_string_of_elf32_syms' endian f1 sym_secs sht shdr bs0
-    end
+    let shdr = harness_elf32_shstrtab f1 in
+    "\n" ^ harness_string_of_elf32_syms' endian f1 sym_secs sht shdr bs0
 
 val harness_string_of_elf64_syms' : endianness -> elf64_file -> elf64_section_header_table -> elf64_section_header_table -> string_table -> harness_symbol_versions -> byte_sequence -> string
 let {ocaml} harness_string_of_elf64_syms' endian f1 filtered_sht sht shdr versions bs0 =
@@ -1381,10 +1395,8 @@ let {ocaml} harness_string_of_elf64_syms_selected keep none_msg f1 bs0 os_additi
       else
         Nothing
     in
-    match get_elf64_string_table_by_index f1 (natural_of_elf64_half hdr.elf64_shstrndx) with
-      | Fail err     -> err
-      | Success shdr -> "\n" ^ harness_string_of_elf64_syms' endian f1 sym_secs sht shdr versions bs0
-    end
+    let shdr = harness_elf64_shstrtab f1 in
+    "\n" ^ harness_string_of_elf64_syms' endian f1 sym_secs sht shdr versions bs0
 
 val harness_string_of_elf64_syms : elf64_file -> byte_sequence -> (natural -> bool) ->
   (natural -> error tag_correspondence) -> (natural -> error tag_correspondence) ->

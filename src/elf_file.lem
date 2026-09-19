@@ -152,10 +152,19 @@ let bytes_of_elf64_file ef =
       List.length ef.elf64_file_interpreted_sections then
       let segs_zip  = List.zip ef.elf64_file_program_header_table ef.elf64_file_interpreted_segments in
       let sects_zip = List.zip ef.elf64_file_section_header_table ef.elf64_file_interpreted_sections in
-      let segs_layout = [] (*
-        List.map (fun (seg, interp_seg) ->
-          (natural_of_elf64_off seg.elf64_p_offset, interp_seg.elf64_segment_body)
-        ) (List.filter (fun (x, _) -> x.elf64_p_filesz <> elf64_xword_of_natural 0) segs_zip) *)
+      (* Claude: a file without section headers (a core file, or one stripped
+       * of them) is described by its program headers alone, so its segment
+       * bodies are laid out; with section headers every byte of a segment is
+       * in a section, a header table or the bits and bobs, and the bodies are
+       * left out as before (the ELF32 version above lays them out always). *)
+      let segs_layout =
+        match ef.elf64_file_section_header_table with
+          | [] ->
+            List.map (fun (seg, interp_seg) ->
+              (natural_of_elf64_off seg.elf64_p_offset, interp_seg.elf64_segment_body)
+            ) (List.filter (fun (x, _) -> x.elf64_p_filesz <> elf64_xword_of_natural 0) segs_zip)
+          | _ -> []
+        end
       in
       let sects_layout =
         List.map (fun (sect, interp_sect) ->
