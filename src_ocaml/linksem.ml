@@ -92,10 +92,14 @@ let dump_elf32 bs0 dump =
      when the file cannot be read as a whole, so that -h still prints *)
   let pie f1 = Harness_interface.harness_elf32_is_pie f1 bs0 os_ranges os_tag os_tag in
   let pie_if_readable () = match read with Error.Success f1 -> pie f1 | Error.Fail _ -> false in
+  (* Claude: section header 0, for the counts that overflow into it *)
+  let sec0_if_readable () = match read with
+    | Error.Success f1 -> (match f1.elf32_file_section_header_table with s0 :: _ -> Some s0 | [] -> None)
+    | Error.Fail _ -> None in
   match dump with
   | File_header ->
       Elf_header.read_elf32_header bs0 >>= fun (hdr, _) ->
-      some (Harness_interface.harness_string_of_elf32_file_header_gen (pie_if_readable ()) hdr)
+      some (Harness_interface.harness_string_of_elf32_file_header_full (pie_if_readable ()) (sec0_if_readable ()) hdr)
   | Program_headers ->
       read >>= fun f1 ->
       let stbl = Harness_interface.harness_elf32_shstrtab f1 in
@@ -147,10 +151,14 @@ let dump_elf64 ~with_header file bs0 dump =
       Harness_interface.harness_string_of_user_section_type ) in
   let pie f1 = Harness_interface.harness_elf64_is_pie f1 bs0 os_ranges os_tag (proc_tag64 (machine f1)) in
   let pie_if_readable () = match read with Error.Success f1 -> pie f1 | Error.Fail _ -> false in
+  (* Claude: section header 0, for the counts that overflow into it *)
+  let sec0_if_readable () = match read with
+    | Error.Success f1 -> (match f1.elf64_file_section_header_table with s0 :: _ -> Some s0 | [] -> None)
+    | Error.Fail _ -> None in
   match dump with
   | File_header ->
       Elf_header.read_elf64_header bs0 >>= fun (hdr, _) ->
-      some (Harness_interface.harness_string_of_elf64_file_header_gen (pie_if_readable ()) hdr)
+      some (Harness_interface.harness_string_of_elf64_file_header_full (pie_if_readable ()) (sec0_if_readable ()) hdr)
   | Program_headers ->
       read >>= fun f1 ->
       let stbl = Harness_interface.harness_elf64_shstrtab f1 in

@@ -170,8 +170,19 @@ let {ocaml} harness_printable_name s =
     else if n = 127 then [#'^'; #'?']
     else [c]) (toCharList s))
 
-val harness_string_of_elf32_file_header_gen : bool -> elf32_header -> string
-let {ocaml} harness_string_of_elf32_file_header_gen pie hdr =
+(** Claude: the three header counts that can overflow into section header 0
+  * (readelf prints the real value in parentheses): e_phnum = PN_XNUM (0xffff)
+  * with the count in sh_info, e_shnum = 0 with the count in sh_size, and
+  * e_shstrndx = SHN_XINDEX (0xffff) with the index in sh_link. *)
+val harness_count_with_extension : natural -> natural -> maybe natural -> string
+let harness_count_with_extension n escape ext =
+  match ext with
+    | Just real -> if n = escape then show n ^ " (" ^ show real ^ ")" else show n
+    | Nothing   -> show n
+  end
+
+val harness_string_of_elf32_file_header_full : bool -> maybe elf32_section_header_table_entry -> elf32_header -> string
+let {ocaml} harness_string_of_elf32_file_header_full pie sec0 hdr =
   unlines [
     "ELF Header:"
   ; "  Magic:" ^ "   "                           ^ unsafe_hex_string_of_uc_list (hdr.elf32_ident)
@@ -189,14 +200,14 @@ let {ocaml} harness_string_of_elf32_file_header_gen pie hdr =
   ; "  Flags:" ^ "                             " ^ "0x" ^ unsafe_hex_string_of_natural 1 (natural_of_elf32_word hdr.elf32_flags)
   ; "  Size of this header:" ^ "               " ^ show hdr.elf32_ehsize ^ " (bytes)"
   ; "  Size of program headers:" ^ "           " ^ show hdr.elf32_phentsize ^ " (bytes)"
-  ; "  Number of program headers:" ^ "         " ^ show hdr.elf32_phnum
+  ; "  Number of program headers:" ^ "         " ^ harness_count_with_extension (natural_of_elf32_half hdr.elf32_phnum) 65535 (Maybe.map (fun s -> natural_of_elf32_word s.elf32_sh_info) sec0)
   ; "  Size of section headers:" ^ "           " ^ show hdr.elf32_shentsize ^ " (bytes)"
-  ; "  Number of section headers:" ^ "         " ^ show hdr.elf32_shnum
-  ; "  Section header string table index:" ^ " " ^ show hdr.elf32_shstrndx
+  ; "  Number of section headers:" ^ "         " ^ harness_count_with_extension (natural_of_elf32_half hdr.elf32_shnum) 0 (Maybe.map (fun s -> natural_of_elf32_word s.elf32_sh_size) sec0)
+  ; "  Section header string table index:" ^ " " ^ harness_count_with_extension (natural_of_elf32_half hdr.elf32_shstrndx) 65535 (Maybe.map (fun s -> natural_of_elf32_word s.elf32_sh_link) sec0)
   ]
 
-val harness_string_of_elf64_file_header_gen : bool -> elf64_header -> string
-let {ocaml} harness_string_of_elf64_file_header_gen pie hdr =
+val harness_string_of_elf64_file_header_full : bool -> maybe elf64_section_header_table_entry -> elf64_header -> string
+let {ocaml} harness_string_of_elf64_file_header_full pie sec0 hdr =
   unlines [
     "ELF Header:"
   ; "  Magic:" ^ "   "                           ^ unsafe_hex_string_of_uc_list (hdr.elf64_ident)
@@ -214,10 +225,10 @@ let {ocaml} harness_string_of_elf64_file_header_gen pie hdr =
   ; "  Flags:" ^ "                             " ^ "0x" ^ unsafe_hex_string_of_natural 1 (natural_of_elf64_word hdr.elf64_flags)
   ; "  Size of this header:" ^ "               " ^ show hdr.elf64_ehsize ^ " (bytes)"
   ; "  Size of program headers:" ^ "           " ^ show hdr.elf64_phentsize ^ " (bytes)"
-  ; "  Number of program headers:" ^ "         " ^ show hdr.elf64_phnum
+  ; "  Number of program headers:" ^ "         " ^ harness_count_with_extension (natural_of_elf64_half hdr.elf64_phnum) 65535 (Maybe.map (fun s -> natural_of_elf64_word s.elf64_sh_info) sec0)
   ; "  Size of section headers:" ^ "           " ^ show hdr.elf64_shentsize ^ " (bytes)"
-  ; "  Number of section headers:" ^ "         " ^ show hdr.elf64_shnum
-  ; "  Section header string table index:" ^ " " ^ show hdr.elf64_shstrndx
+  ; "  Number of section headers:" ^ "         " ^ harness_count_with_extension (natural_of_elf64_half hdr.elf64_shnum) 0 (Maybe.map (fun s -> natural_of_elf64_xword s.elf64_sh_size) sec0)
+  ; "  Section header string table index:" ^ " " ^ harness_count_with_extension (natural_of_elf64_half hdr.elf64_shstrndx) 65535 (Maybe.map (fun s -> natural_of_elf64_word s.elf64_sh_link) sec0)
   ]
 
 (** Claude: readelf's "%#lx": "0x" and the hex digits, but a bare "0" for zero. *)
@@ -359,6 +370,12 @@ let {ocaml} harness_string_of_elf64_segment_section_mappings hdr pht sht stbl =
 (** Claude: the file header printers without a PIE flag, for callers that do
   * not read the dynamic section (the file is then described as readelf does
   * when it cannot read it). *)
+val harness_string_of_elf32_file_header_gen : bool -> elf32_header -> string
+let harness_string_of_elf32_file_header_gen pie hdr = harness_string_of_elf32_file_header_full pie Nothing hdr
+
+val harness_string_of_elf64_file_header_gen : bool -> elf64_header -> string
+let harness_string_of_elf64_file_header_gen pie hdr = harness_string_of_elf64_file_header_full pie Nothing hdr
+
 val harness_string_of_elf32_file_header : elf32_header -> string
 let harness_string_of_elf32_file_header hdr = harness_string_of_elf32_file_header_gen false hdr
 
