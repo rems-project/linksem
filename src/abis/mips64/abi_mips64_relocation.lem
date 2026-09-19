@@ -196,7 +196,7 @@ let string_of_mips64_relocation_subtype rel_type =
   else if rel_type = r_mips_jump_slot then
     "R_MIPS_JUMP_SLOT"
   else
-    "[Invalid MIPS relocation 0x" ^ (hex_string_of_natural rel_type) ^ "]"
+    string_of_unrecognized_relocation_type rel_type
 
 val string_of_mips64_relocation_type : natural -> string
 let string_of_mips64_relocation_type rel_type =

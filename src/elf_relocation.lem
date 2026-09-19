@@ -125,6 +125,15 @@ let read_elf64_relocation_a endian bs =
   return (<| elf64_ra_offset = r_offset; elf64_ra_info = r_info;
     elf64_ra_addend = r_addend |>, bs)
 
+(** Claude: readelf's rendering of a relocation type it has no name for:
+  * "unrecognized: " followed by the type in lower-case hexadecimal, left-justified
+  * in seven columns (its "unrecognized: %-7lx"). *)
+val string_of_unrecognized_relocation_type : natural -> string
+let string_of_unrecognized_relocation_type n =
+  let h = hex_string_of_natural n in
+  let pad = if String.stringLength h < 7 then 7 - String.stringLength h else 0 in
+  "unrecognized: " ^ h ^ String.concat "" (replicate (naturalFromNat pad) " ")
+
 (** [read_elf32_relocation_section' ed bs0] parses a list of [elf32_relocation]
   * records from byte sequence [bs0], which is assumed to have the exact size
   * required, assuming endianness [ed].

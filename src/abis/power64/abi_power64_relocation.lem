@@ -340,7 +340,7 @@ let string_of_ppc64_relocation_type rel_type =
   else if rel_type = r_ppc64_dtprel16_highesta then
     "R_PPC64_DTPREL16_HIGHESTA"
   else
-    "Invalid Power64 relocation type"
+    string_of_unrecognized_relocation_type rel_type
 
 val abi_ppc64_apply_relocation : elf64_relocation_a -> integer -> integer ->
   integer -> integer -> integer -> integer -> integer -> integer -> integer ->

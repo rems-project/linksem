@@ -130,7 +130,7 @@ let string_of_amd64_relocation_type rel_type =
   else if rel_type = r_x86_64_irelative then
     "R_X86_64_IRELATIVE"
   else
-    "Invalid X86_64 relocation"
+    string_of_unrecognized_relocation_type rel_type
 
 (* How do we find the GOT? *)
 (* We really want to find the GOT without knowing how it's labelled, because
