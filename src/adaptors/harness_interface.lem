@@ -700,7 +700,7 @@ let {ocaml} harness_string_of_elf32_reloc_entry os sht symtab stbl sechdr_stbl r
                   natural_of_elf32_half sym.elf32_st_shndx)
           end
         in
-          if symtyp = stt_section then
+          if symtyp = stt_section && nm = stn_undef then   (* Claude: readelf names the section only for an unnamed section symbol *)
             let vlu = " " ^ unsafe_hex_string_of_natural 8 value in
             let nm =
               match Map.lookup secthdr sht with
@@ -780,7 +780,7 @@ let {ocaml} harness_string_of_elf64_reloc_a_entry os symtab sht stbl sechdr_stbl
           natural_of_elf64_half sym.elf64_st_shndx)
     end
   in
-    if symtyp = stt_section then
+    if symtyp = stt_section && nm = stn_undef then   (* Claude: readelf names the section only for an unnamed section symbol *)
       let vlu = " " ^ unsafe_hex_string_of_natural 16 value in
       let nm =
         match Map.lookup secthdr sht with
