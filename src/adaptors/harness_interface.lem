@@ -872,6 +872,43 @@ let {ocaml} harness_string_of_elf32_reloc_a_entry os sht symtab stbl sechdr_stbl
     in
     prefix ^ " " ^ unsafe_hex_string_of_natural 8 value ^ "   " ^ name ^ harness_signed_addend add
 
+(** Claude: an ELF64 REL entry in readelf's wide layout: as the RELA entry
+  * without the addend. *)
+val harness_string_of_elf64_reloc_entry : (natural -> string) -> Map.map natural elf64_symbol_table_entry ->
+  Map.map natural elf64_section_header_table_entry -> string_table -> string_table -> elf64_relocation -> string
+let {ocaml} harness_string_of_elf64_reloc_entry os symtab sht stbl sechdr_stbl rel =
+  let off    = natural_of_elf64_addr  rel.elf64_r_offset in
+  let inf    = natural_of_elf64_xword rel.elf64_r_info in
+  let (typ, idx) = parse_elf64_relocation_info rel.elf64_r_info in
+  let typ    = os typ in
+  let typs   =
+    let width = if string_prefix 13 typ = Just "unrecognized:" then 21 else 22 in
+    let len = naturalFromNat (width - String.stringLength typ) in
+      concatS (replicate len " ")
+  in
+  let prefix = concatS [ unsafe_hex_string_of_natural 16 off; "  "; unsafe_hex_string_of_natural 16 inf; " "; typ; typs ] in
+  match Map.lookup idx symtab with
+    | Nothing  -> prefix
+    | Just sym ->
+      if idx = 0 then prefix
+      else
+        let nm     = natural_of_elf64_word sym.elf64_st_name in
+        let symtyp = get_elf64_symbol_type sym in
+        let name =
+          if symtyp = stt_section && nm = stn_undef then
+            match Map.lookup (natural_of_elf64_half sym.elf64_st_shndx) sht with
+              | Nothing   -> "XXX"
+              | Just shdr -> harness_section_name sechdr_stbl (natural_of_elf64_word shdr.elf64_sh_name)
+            end
+          else
+            match String_table.get_string_at nm stbl with
+              | Fail    f -> f
+              | Success n -> harness_printable_name n
+            end
+        in
+        prefix ^ " " ^ unsafe_hex_string_of_natural 16 (natural_of_elf64_addr sym.elf64_st_value) ^ "   " ^ name
+  end
+
 val harness_string_of_elf64_reloc_a_entry : (natural -> string) -> Map.map natural elf64_symbol_table_entry ->
   Map.map natural elf64_section_header_table_entry -> string_table -> string_table ->
   harness_symbol_versions -> bool -> elf64_relocation_a -> string
@@ -1066,24 +1103,31 @@ let {ocaml} harness_string_of_elf64_relocs' endian os f1 versions reloc_sht sht 
       let off = natural_of_elf64_off  ent.elf64_sh_offset in
       let siz = natural_of_elf64_xword ent.elf64_sh_size in
       let lnk = natural_of_elf64_word ent.elf64_sh_link in
-        Byte_sequence.offset_and_cut off siz bs0 >>= fun rels ->
-        Elf_relocation.read_elf64_relocation_a_section' endian rels >>= fun sect ->
+        Byte_sequence.offset_and_cut off siz bs0 >>= fun bytes ->
         (match Map.lookup lnk symtabs with
           | Just symtab_strtab -> return symtab_strtab
           | Nothing            -> fail "harness_string_of_elf64_relocs': symbol table not found"
         end) >>= fun (symtab, strtab, dynamic) ->
-        return (sect, ent, symtab, strtab, dynamic)
+        (* Claude: a section is RELA or (rarely, in ELF64) REL; each has its
+         * own reader, row printer and column title *)
+        (if natural_of_elf64_word ent.elf64_sh_type = sht_rel then
+          Elf_relocation.read_elf64_relocation_section' endian bytes >>= fun rs ->
+          return (List.length rs, List.map (harness_string_of_elf64_reloc_entry os symtab sht strtab shdr) rs,
+                  "    Offset             Info             Type               Symbol's Value  Symbol's Name\n")
+        else
+          Elf_relocation.read_elf64_relocation_a_section' endian bytes >>= fun rs ->
+          return (List.length rs, List.map (harness_string_of_elf64_reloc_a_entry os symtab sht strtab shdr versions dynamic) rs,
+                  "    Offset             Info             Type               Symbol's Value  Symbol's Name + Addend\n")) >>= fun (n, rows, ttl) ->
+        return (n, rows, ttl, ent)
     ) reloc_sht
   >>=
-    mapM (fun (rels, ent, symtab, strtab, dynamic) ->
+    mapM (fun (n, rows, ttl, ent) ->
       let nm  = natural_of_elf64_word ent.elf64_sh_name in
       let off = unsafe_hex_string_of_natural 0 (natural_of_elf64_off ent.elf64_sh_offset) in
-      let len = show (List.length rels) ^ " " ^ entries_word (List.length rels) in
+      let len = show n ^ " " ^ entries_word n in
       String_table.get_string_at nm shdr >>= fun nm ->
       let hdr = "Relocation section '" ^ nm ^ "' at offset 0x" ^ off ^ " contains " ^ len ^ ":\n" in
-      let ttl = "    Offset             Info             Type               Symbol's Value  Symbol's Name + Addend\n" in
-      let body = (String.concat "\n" (List.map (harness_string_of_elf64_reloc_a_entry os symtab sht strtab shdr versions dynamic) rels)) in
-      return (hdr ^ ttl ^ body))
+      return (hdr ^ ttl ^ String.concat "\n" rows))
   in
     match rels with
       | Fail err -> err
@@ -1258,7 +1302,7 @@ let {ocaml} harness_string_of_elf64_relocs_gen versions dynamic_relocs f1 os bs0
   let sht       = f1.elf64_file_section_header_table in
   let endian    = get_elf64_header_endianness hdr in
   let rel_secs  = List.filter (fun x ->
-    x.elf64_sh_type = elf64_word_of_natural sht_rela) sht in
+    x.elf64_sh_type = elf64_word_of_natural sht_rela || x.elf64_sh_type = elf64_word_of_natural sht_rel) sht in
   if List.length rel_secs = 0 then
     (* Claude: readelf distinguishes a file whose relocations are only reachable
      * through the dynamic section (DT_REL, DT_RELA or DT_JMPREL). *)
