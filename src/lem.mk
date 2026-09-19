@@ -78,6 +78,7 @@ LEM_ABI_SRC := \
 	abis/aarch64/abi_aarch64_relocation.lem \
 	abis/aarch64/abi_aarch64_symbolic_relocation.lem \
 	abis/aarch64/abi_aarch64_le.lem \
+	abis/aarch64/abi_aarch64_dynamic.lem \
 	abstract_linker_script.lem \
 	abis/amd64/abi_amd64_elf_header.lem \
 	abis/amd64/abi_amd64_serialisation.lem \

@@ -69,9 +69,16 @@ let elf_class bs0 =
    tag conventions, passed to the printers that read the dynamic section *)
 let os_ranges = Gnu_ext_dynamic.gnu_ext_os_additional_ranges
 let os_tag = Gnu_ext_dynamic.gnu_ext_tag_correspondence_of_tag
-let proc_tag64 = Abi_power64_dynamic.abi_power64_tag_correspondence_of_tag
 let os_dyn64 = Gnu_ext_dynamic.gnu_ext_elf64_value_of_elf64_dyn
-let proc_dyn64 = Abi_power64_dynamic.abi_power64_elf64_value_of_elf64_dyn
+(* Claude: the processor-specific dynamic tags by machine: AArch64 has its own;
+   everything else gets the PowerPC64 ones, as main_elf always did *)
+let is_aarch64 mach = Nat_big_num.equal mach Elf_header.elf_ma_aarch64
+let proc_tag64 mach = if is_aarch64 mach then Abi_aarch64_dynamic.abi_aarch64_tag_correspondence_of_tag
+                      else Abi_power64_dynamic.abi_power64_tag_correspondence_of_tag
+let proc_dyn64 mach = if is_aarch64 mach then Abi_aarch64_dynamic.abi_aarch64_elf64_value_of_elf64_dyn
+                      else Abi_power64_dynamic.abi_power64_elf64_value_of_elf64_dyn
+let proc_tag_name64 mach = if is_aarch64 mach then Abi_aarch64_dynamic.string_of_abi_aarch64_dynamic_tag
+                           else Abi_power64_dynamic.string_of_abi_power64_dynamic_tag
 
 (* Some text to print, or None for a dump that prints nothing (as readelf does
    for -I on a file without hash tables, or -n without notes) *)
@@ -138,7 +145,7 @@ let dump_elf64 ~with_header file bs0 dump =
     ( Gnu_ext_section_header_table.string_of_gnu_ext_section_type,
       Harness_interface.harness_string_of_proc_section_type (machine f1),
       Harness_interface.harness_string_of_user_section_type ) in
-  let pie f1 = Harness_interface.harness_elf64_is_pie f1 bs0 os_ranges os_tag proc_tag64 in
+  let pie f1 = Harness_interface.harness_elf64_is_pie f1 bs0 os_ranges os_tag (proc_tag64 (machine f1)) in
   let pie_if_readable () = match read with Error.Success f1 -> pie f1 | Error.Fail _ -> false in
   match dump with
   | File_header ->
@@ -177,19 +184,19 @@ let dump_elf64 ~with_header file bs0 dump =
       some (Harness_interface.harness_string_of_elf64_section_groups f1 stbl bs0)
   | Relocs ->
       read >>= fun f1 ->
-      some (Harness_interface.harness_string_of_elf64_relocs_versioned f1 (string_of_reloc_type (machine f1)) bs0 os_ranges os_tag proc_tag64 os_dyn64 proc_dyn64)
+      some (Harness_interface.harness_string_of_elf64_relocs_versioned f1 (string_of_reloc_type (machine f1)) bs0 os_ranges os_tag (proc_tag64 (machine f1)) os_dyn64 (proc_dyn64 (machine f1)))
   | Unwind ->
       read >>= fun f1 ->
       some (Harness_interface.harness_string_of_elf64_unwind f1.elf64_file_header)
   | Symbols ->
       read >>= fun f1 ->
-      some (Harness_interface.harness_string_of_elf64_syms f1 bs0 os_ranges os_tag proc_tag64 os_dyn64 proc_dyn64)
+      some (Harness_interface.harness_string_of_elf64_syms f1 bs0 os_ranges os_tag (proc_tag64 (machine f1)) os_dyn64 (proc_dyn64 (machine f1)))
   | Dyn_syms ->
       read >>= fun f1 ->
-      Error.return (text (Harness_interface.harness_string_of_elf64_dyn_syms f1 bs0 os_ranges os_tag proc_tag64 os_dyn64 proc_dyn64))
+      Error.return (text (Harness_interface.harness_string_of_elf64_dyn_syms f1 bs0 os_ranges os_tag (proc_tag64 (machine f1)) os_dyn64 (proc_dyn64 (machine f1))))
   | Histogram ->
       read >>= fun f1 ->
-      Error.return (text (Harness_interface.harness_string_of_elf64_histogram f1 bs0 os_ranges os_tag proc_tag64))
+      Error.return (text (Harness_interface.harness_string_of_elf64_histogram f1 bs0 os_ranges os_tag (proc_tag64 (machine f1))))
   | Version_info ->
       read >>= fun f1 ->
       let stbl = Harness_interface.harness_elf64_shstrtab f1 in
@@ -208,11 +215,11 @@ let dump_elf64 ~with_header file bs0 dump =
       read >>= fun f1 ->
       let so = Elf_header.is_elf64_shared_object_file f1.elf64_file_header in
       some (Harness_interface.harness_string_of_elf64_dynamic_section
-        f1 bs0 os_ranges os_tag proc_tag64
+        f1 bs0 os_ranges os_tag (proc_tag64 (machine f1))
         (fun x -> Elf_dynamic.string_of_dynamic_tag so x os_ranges
                     Gnu_ext_dynamic.string_of_gnu_ext_dynamic_tag
-                    Abi_power64_dynamic.string_of_abi_power64_dynamic_tag)
-        os_dyn64 proc_dyn64)
+                    (proc_tag_name64 (machine f1)))
+        os_dyn64 (proc_dyn64 (machine f1)))
   | In_out ->
       read >>= fun f1 ->
       (match Elf_file.bytes_of_elf64_file f1 with

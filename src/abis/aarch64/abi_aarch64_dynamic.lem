@@ -1,0 +1,50 @@
+(* Claude: this file is written by Claude (19 September 2026), after
+ * abi_power64_dynamic.lem.  The AArch64 processor-specific dynamic tags
+ * (ELF for the Arm 64-bit Architecture, section 5.1.1): DT_AARCH64_BTI_PLT,
+ * DT_AARCH64_PAC_PLT and DT_AARCH64_VARIANT_PCS, all of which carry no
+ * meaningful value (readelf prints nothing after the tag name). *)
+
+open import Basic_classes
+open import List
+open import Maybe
+open import Num
+open import String
+
+open import Error
+open import Show
+open import String_table
+
+open import Elf_dynamic
+open import Elf_types_native_uint
+
+let abi_aarch64_dt_bti_plt     : natural = (939524096 * 2) + 1 (* 0x70000001 *)
+let abi_aarch64_dt_pac_plt     : natural = (939524096 * 2) + 3 (* 0x70000003 *)
+let abi_aarch64_dt_variant_pcs : natural = (939524096 * 2) + 5 (* 0x70000005 *)
+
+val abi_aarch64_dynamic_tag_names : list (natural * string)
+let abi_aarch64_dynamic_tag_names =
+  [ (abi_aarch64_dt_bti_plt,     "AARCH64_BTI_PLT")
+  ; (abi_aarch64_dt_pac_plt,     "AARCH64_PAC_PLT")
+  ; (abi_aarch64_dt_variant_pcs, "AARCH64_VARIANT_PCS") ]
+
+val string_of_abi_aarch64_dynamic_tag : natural -> string
+let string_of_abi_aarch64_dynamic_tag m =
+  match List.lookup m abi_aarch64_dynamic_tag_names with
+    | Just name -> name
+    | Nothing   -> "Invalid AArch64 dynamic tag"
+  end
+
+val abi_aarch64_tag_correspondence_of_tag : natural -> error tag_correspondence
+let abi_aarch64_tag_correspondence_of_tag m =
+  match List.lookup m abi_aarch64_dynamic_tag_names with
+    | Just _  -> return C_Val
+    | Nothing -> fail ("abi_aarch64_tag_correspondence_of_tag: invalid AArch64 dynamic tag")
+  end
+
+val abi_aarch64_elf64_value_of_elf64_dyn : elf64_dyn -> string_table -> error elf64_dyn_value
+let abi_aarch64_elf64_value_of_elf64_dyn dyn stbl =
+  let tag = naturalFromInteger (integer_of_elf64_sxword dyn.elf64_dyn_tag) in
+    match List.lookup tag abi_aarch64_dynamic_tag_names with
+      | Just _  -> return Ignored
+      | Nothing -> fail ("abi_aarch64_elf64_value_of_elf64_dyn: invalid AArch64 dynamic tag")
+    end
