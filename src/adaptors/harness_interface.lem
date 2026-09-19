@@ -545,6 +545,72 @@ let {ocaml} harness_string_of_elf64_section_headers os proc usr hdr sht stbl =
   there_are (List.length sht) "section header" ^ ", starting at offset 0x" ^ unsafe_hex_string_of_natural 0 (natural_of_elf64_off hdr.elf64_shoff) ^ ":\n"
   ^ harness_string_of_elf64_section_headers_body os proc usr hdr sht stbl
 
+(** Claude: the GNU symbol version information needed to annotate .dynsym
+  * entries: the .gnu.version entries indexed by symbol number, the version
+  * definitions, the version requirements, and the largest definition index.
+  *)
+type harness_symbol_versions =
+  maybe (Map.map natural gnu_ext_interpreted_versym_entry * list gnu_ext_interpreted_verdef * list gnu_ext_interpreted_vernaux * natural)
+
+(** Claude: [harness_symbol_version_suffix versions symidx shndx name] is the
+  * ["@VER"], ["@@VER"] or ["@VER (n)"] suffix readelf appends to a dynamic
+  * symbol's name, following [get_symbol_version_string]: a hidden version is
+  * written with one "@", a public definition with "@@", and a required
+  * (undefined) version with the requirement's index in parentheses.
+  *)
+val harness_symbol_version_suffix_gen : bool -> harness_symbol_versions -> natural -> natural -> string -> string
+let {ocaml} harness_symbol_version_suffix_gen with_index versions symidx shndx name =
+  match versions with
+    | Nothing -> ""
+    | Just (entries, verdefs, vernauxs, max_vd_ndx) ->
+      match Map.lookup symidx entries with
+        | Nothing -> ""
+        | Just entry ->
+          let value  = entry.gnu_ext_interpreted_versym_entry_value in
+          let hidden = entry.gnu_ext_interpreted_versym_entry_hidden in
+          let raw    = if hidden then value + 32768 else value in
+          if (not hidden) && value = 0 then ""
+          else
+            let from_verdef =
+              if shndx <> shn_undef && raw <> 32769 && verdefs <> [] then
+                match List.find (fun vd -> vd.gnu_ext_interpreted_verdef_ndx = value) verdefs with
+                  | Just vd ->
+                    if vd.gnu_ext_interpreted_verdef_ndx = 1 && vd.gnu_ext_interpreted_verdef_flags = 1 then
+                      Just ""   (* the base version: readelf prints nothing *)
+                    else if vd.gnu_ext_interpreted_verdef_name <> name then
+                      Just ((if hidden then "@" else "@@") ^ vd.gnu_ext_interpreted_verdef_name)
+                    else
+                      Nothing
+                  | Nothing -> Nothing
+                end
+              else
+                Nothing
+            in
+            match from_verdef with
+              | Just suffix -> suffix
+              | Nothing ->
+                match List.find (fun va -> va.gnu_ext_interpreted_vernaux_other = raw) vernauxs with
+                  | Just va ->
+                    "@" ^ va.gnu_ext_interpreted_vernaux_name ^ (if with_index then " (" ^ show va.gnu_ext_interpreted_vernaux_other ^ ")" else "")
+                  | Nothing ->
+                    if vernauxs <> [] && (max_vd_ndx <> 0 || value <> 1) && value > max_vd_ndx then
+                      (if hidden then "@" else "@@") ^ "<corrupt>"
+                    else
+                      ""
+                end
+            end
+      end
+  end
+
+(** Claude: the suffix as the symbol table dump prints it, with the version
+  * requirement's index for undefined symbols ("@GLIBC_2.2.5 (2)"), and as the
+  * relocation dump prints it, without the index. *)
+val harness_symbol_version_suffix : harness_symbol_versions -> natural -> natural -> string -> string
+let harness_symbol_version_suffix = harness_symbol_version_suffix_gen true
+
+val harness_reloc_symbol_version_suffix : harness_symbol_versions -> natural -> natural -> string -> string
+let harness_reloc_symbol_version_suffix = harness_symbol_version_suffix_gen false
+
 (** Claude: readelf prints a RELA addend in hexadecimal with its sign in front
   * of the magnitude, "-28" rather than the two's complement, and after a
   * symbol name as " + 10" or " - 4". *)
@@ -632,8 +698,9 @@ let {ocaml} harness_string_of_elf32_reloc_entry os sht symtab stbl sechdr_stbl r
     end
 
 val harness_string_of_elf64_reloc_a_entry : (natural -> string) -> Map.map natural elf64_symbol_table_entry ->
-  Map.map natural elf64_section_header_table_entry -> string_table -> string_table -> elf64_relocation_a -> string
-let {ocaml} harness_string_of_elf64_reloc_a_entry os symtab sht stbl sechdr_stbl rel =
+  Map.map natural elf64_section_header_table_entry -> string_table -> string_table ->
+  harness_symbol_versions -> bool -> elf64_relocation_a -> string
+let {ocaml} harness_string_of_elf64_reloc_a_entry os symtab sht stbl sechdr_stbl versions dynamic rel =
   let off    = natural_of_elf64_addr  rel.elf64_ra_offset in
   let inf    = natural_of_elf64_xword rel.elf64_ra_info in
   let add    = integer_of_elf64_sxword rel.elf64_ra_addend in
@@ -697,6 +764,9 @@ let {ocaml} harness_string_of_elf64_reloc_a_entry os symtab sht stbl sechdr_stbl
           | Success n -> n
         end
       in
+      (* Claude: a dynamic symbol's name carries its version, as in the symbol
+       * table dump but without the requirement index. *)
+      let nm = if dynamic then nm ^ harness_reloc_symbol_version_suffix versions idx secthdr nm else nm in
         concatS [
           unsafe_hex_string_of_natural 16 off
         ; "  "
@@ -772,10 +842,10 @@ let {ocaml} harness_string_of_elf32_relocs' endian os f1 sht_relocs sht shdr bs0
       | Success s -> (String.concat "\n\n" s)
     end
 
-val harness_string_of_elf64_relocs' : endianness -> (natural -> string) -> elf64_file ->
+val harness_string_of_elf64_relocs' : endianness -> (natural -> string) -> elf64_file -> harness_symbol_versions ->
   elf64_section_header_table -> elf64_section_header_table ->
   string_table -> byte_sequence -> string
-let {ocaml} harness_string_of_elf64_relocs' endian os f1 reloc_sht sht shdr bs0 =
+let {ocaml} harness_string_of_elf64_relocs' endian os f1 versions reloc_sht sht shdr bs0 =
   (* Claude: index the section header table once, and parse each symbol table
    * that any relocation section links to exactly once (as an indexed map), so
    * that the work is linear in the number of sections and relocations.  The
@@ -796,14 +866,14 @@ let {ocaml} harness_string_of_elf64_relocs' endian os f1 reloc_sht sht shdr bs0 
              * .shstrtab precedes .strtab, as in objects produced by ld -r, every
              * name was read from the wrong offset.) *)
             (match Map.lookup lnk sht with
-              | Just sh -> return (natural_of_elf64_word sh.elf64_sh_link)
+              | Just sh -> return (natural_of_elf64_word sh.elf64_sh_link, natural_of_elf64_word sh.elf64_sh_type = sht_dynsym)
               | Nothing -> fail "harness_string_of_elf64_relocs': symbol table section not found"
-            end) >>= fun strlnk ->
+            end) >>= fun (strlnk, dynamic) ->
             Elf_file.get_elf64_string_table_by_index f1 strlnk >>= fun strtab ->
             Elf_file.get_elf64_symbol_table_by_index f1 lnk >>= fun symtab ->
-            return (Map.insert lnk (index_map symtab, strtab) symtabs)
+            return (Map.insert lnk (index_map symtab, strtab, dynamic) symtabs)
         end)
-      (return (Map.empty : Map.map natural (Map.map natural elf64_symbol_table_entry * string_table))) reloc_sht
+      (return (Map.empty : Map.map natural (Map.map natural elf64_symbol_table_entry * string_table * bool))) reloc_sht
   in
   let rels =
     symtabs >>= fun symtabs ->
@@ -816,18 +886,18 @@ let {ocaml} harness_string_of_elf64_relocs' endian os f1 reloc_sht sht shdr bs0 
         (match Map.lookup lnk symtabs with
           | Just symtab_strtab -> return symtab_strtab
           | Nothing            -> fail "harness_string_of_elf64_relocs': symbol table not found"
-        end) >>= fun (symtab, strtab) ->
-        return (sect, ent, symtab, strtab)
+        end) >>= fun (symtab, strtab, dynamic) ->
+        return (sect, ent, symtab, strtab, dynamic)
     ) reloc_sht
   >>=
-    mapM (fun (rels, ent, symtab, strtab) ->
+    mapM (fun (rels, ent, symtab, strtab, dynamic) ->
       let nm  = natural_of_elf64_word ent.elf64_sh_name in
       let off = unsafe_hex_string_of_natural 0 (natural_of_elf64_off ent.elf64_sh_offset) in
       let len = show (List.length rels) ^ " " ^ entries_word (List.length rels) in
       String_table.get_string_at nm shdr >>= fun nm ->
       let hdr = "Relocation section '" ^ nm ^ "' at offset 0x" ^ off ^ " contains " ^ len ^ ":\n" in
       let ttl = "    Offset             Info             Type               Symbol's Value  Symbol's Name + Addend\n" in
-      let body = (String.concat "\n" (List.map (harness_string_of_elf64_reloc_a_entry os symtab sht strtab shdr) rels)) in
+      let body = (String.concat "\n" (List.map (harness_string_of_elf64_reloc_a_entry os symtab sht strtab shdr versions dynamic) rels)) in
       return (hdr ^ ttl ^ body))
   in
     match rels with
@@ -848,21 +918,6 @@ let {ocaml} harness_string_of_elf32_relocs f1 os bs0 =
     match get_elf32_string_table_by_index f1 (natural_of_elf32_half hdr.elf32_shstrndx) with
       | Fail err     -> err
       | Success shdr -> "\n" ^ harness_string_of_elf32_relocs' endian os f1 rel_secs sht shdr bs0
-    end
-
-val harness_string_of_elf64_relocs : elf64_file -> (natural -> string) -> byte_sequence -> string
-let {ocaml} harness_string_of_elf64_relocs f1 os bs0 =
-  let hdr       = f1.elf64_file_header in
-  let sht       = f1.elf64_file_section_header_table in
-  let endian    = get_elf64_header_endianness hdr in
-  let rel_secs  = List.filter (fun x ->
-    x.elf64_sh_type = elf64_word_of_natural sht_rela) sht in
-  if List.length rel_secs = 0 then
-    "\nThere are no relocations in this file."
-  else
-    match get_elf64_string_table_by_index f1 (natural_of_elf64_half hdr.elf64_shstrndx) with
-      | Fail err     -> err
-      | Success shdr -> "\n" ^ harness_string_of_elf64_relocs' endian os f1 rel_secs sht shdr bs0
     end
 
 (** Claude: symbol table dump in the layout of [readelf -W -s] (binutils 2.42,
@@ -977,63 +1032,6 @@ let {ocaml} harness_string_of_symbol_ndx mach nsections ndx =
   else if nsections <> 0 then ("BAD[0x" ^ unsafe_hex_string_of_natural 0 ndx ^ "]", true)
   else ("<section 0x" ^ unsafe_hex_string_of_natural 0 ndx ^ ">", true)
 
-(** Claude: the GNU symbol version information needed to annotate .dynsym
-  * entries: the .gnu.version entries indexed by symbol number, the version
-  * definitions, the version requirements, and the largest definition index.
-  *)
-type harness_symbol_versions =
-  maybe (Map.map natural gnu_ext_interpreted_versym_entry * list gnu_ext_interpreted_verdef * list gnu_ext_interpreted_vernaux * natural)
-
-(** Claude: [harness_symbol_version_suffix versions symidx shndx name] is the
-  * ["@VER"], ["@@VER"] or ["@VER (n)"] suffix readelf appends to a dynamic
-  * symbol's name, following [get_symbol_version_string]: a hidden version is
-  * written with one "@", a public definition with "@@", and a required
-  * (undefined) version with the requirement's index in parentheses.
-  *)
-val harness_symbol_version_suffix : harness_symbol_versions -> natural -> natural -> string -> string
-let {ocaml} harness_symbol_version_suffix versions symidx shndx name =
-  match versions with
-    | Nothing -> ""
-    | Just (entries, verdefs, vernauxs, max_vd_ndx) ->
-      match Map.lookup symidx entries with
-        | Nothing -> ""
-        | Just entry ->
-          let value  = entry.gnu_ext_interpreted_versym_entry_value in
-          let hidden = entry.gnu_ext_interpreted_versym_entry_hidden in
-          let raw    = if hidden then value + 32768 else value in
-          if (not hidden) && value = 0 then ""
-          else
-            let from_verdef =
-              if shndx <> shn_undef && raw <> 32769 && verdefs <> [] then
-                match List.find (fun vd -> vd.gnu_ext_interpreted_verdef_ndx = value) verdefs with
-                  | Just vd ->
-                    if vd.gnu_ext_interpreted_verdef_ndx = 1 && vd.gnu_ext_interpreted_verdef_flags = 1 then
-                      Just ""   (* the base version: readelf prints nothing *)
-                    else if vd.gnu_ext_interpreted_verdef_name <> name then
-                      Just ((if hidden then "@" else "@@") ^ vd.gnu_ext_interpreted_verdef_name)
-                    else
-                      Nothing
-                  | Nothing -> Nothing
-                end
-              else
-                Nothing
-            in
-            match from_verdef with
-              | Just suffix -> suffix
-              | Nothing ->
-                match List.find (fun va -> va.gnu_ext_interpreted_vernaux_other = raw) vernauxs with
-                  | Just va ->
-                    "@" ^ va.gnu_ext_interpreted_vernaux_name ^ " (" ^ show va.gnu_ext_interpreted_vernaux_other ^ ")"
-                  | Nothing ->
-                    if vernauxs <> [] && (max_vd_ndx <> 0 || value <> 1) && value > max_vd_ndx then
-                      (if hidden then "@" else "@@") ^ "<corrupt>"
-                    else
-                      ""
-                end
-            end
-      end
-  end
-
 (** Claude: [harness_symbol_versions_of_elf64_file f1 bs0 ...] reads the GNU
   * version tables of a dynamically linked file, using the same dynamic-section
   * interpreters as the --dynamic dump.  Any failure (no .dynamic section, no
@@ -1065,6 +1063,36 @@ let {ocaml} harness_symbol_versions_of_elf64_file f1 bs0 os_additional_ranges os
           Just (entries, verdefs, tbl.gnu_ext_interpreted_versym_table_verneed, max_vd_ndx)
       | _ -> Nothing
     end
+
+(** Claude: [harness_string_of_elf64_relocs_versioned] is the relocation dump
+  * with the symbol versions of dynamic symbols appended to their names, as
+  * readelf prints them; [harness_string_of_elf64_relocs] is the same without
+  * version information, for callers that have no dynamic-section interpreters
+  * to hand. *)
+val harness_string_of_elf64_relocs_gen : harness_symbol_versions -> elf64_file -> (natural -> string) -> byte_sequence -> string
+let {ocaml} harness_string_of_elf64_relocs_gen versions f1 os bs0 =
+  let hdr       = f1.elf64_file_header in
+  let sht       = f1.elf64_file_section_header_table in
+  let endian    = get_elf64_header_endianness hdr in
+  let rel_secs  = List.filter (fun x ->
+    x.elf64_sh_type = elf64_word_of_natural sht_rela) sht in
+  if List.length rel_secs = 0 then
+    "\nThere are no relocations in this file."
+  else
+    match get_elf64_string_table_by_index f1 (natural_of_elf64_half hdr.elf64_shstrndx) with
+      | Fail err     -> err
+      | Success shdr -> "\n" ^ harness_string_of_elf64_relocs' endian os f1 versions rel_secs sht shdr bs0
+    end
+
+val harness_string_of_elf64_relocs : elf64_file -> (natural -> string) -> byte_sequence -> string
+let harness_string_of_elf64_relocs f1 os bs0 = harness_string_of_elf64_relocs_gen Nothing f1 os bs0
+
+val harness_string_of_elf64_relocs_versioned : elf64_file -> (natural -> string) -> byte_sequence -> (natural -> bool) ->
+  (natural -> error tag_correspondence) -> (natural -> error tag_correspondence) ->
+  (elf64_dyn -> string_table -> error elf64_dyn_value) ->
+  (elf64_dyn -> string_table -> error elf64_dyn_value) -> string
+let {ocaml} harness_string_of_elf64_relocs_versioned f1 os bs0 os_additional_ranges os_tag proc_tag os_dyn proc_dyn =
+  harness_string_of_elf64_relocs_gen (harness_symbol_versions_of_elf64_file f1 bs0 os_additional_ranges os_tag proc_tag os_dyn proc_dyn) f1 os bs0
 
 (** Claude: the name of a symbol: for an unnamed section symbol readelf prints
   * the name of the section it refers to.

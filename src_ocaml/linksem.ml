@@ -171,7 +171,7 @@ let dump_elf64 ~with_header file bs0 dump =
       some (Harness_interface.harness_string_of_elf64_section_groups f1 stbl bs0)
   | Relocs ->
       read >>= fun f1 ->
-      some (Harness_interface.harness_string_of_elf64_relocs f1 (string_of_reloc_type (machine f1)) bs0)
+      some (Harness_interface.harness_string_of_elf64_relocs_versioned f1 (string_of_reloc_type (machine f1)) bs0 os_ranges os_tag proc_tag64 os_dyn64 proc_dyn64)
   | Unwind ->
       read >>= fun f1 ->
       some (Harness_interface.harness_string_of_elf64_unwind f1.elf64_file_header)
