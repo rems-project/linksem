@@ -527,6 +527,17 @@ let compute_differences start max ranges =
       return (gaps_between start max (merge_inclusive_ranges sorted))
 declare isabelle target_rep function compute_differences = `Elf_Types_Local.compute_differences`
 
+(** Claude: [closed_range start len] is the closed interval of the [len] bytes
+  * from [start], as [merge_inclusive_ranges] and [gaps_between] expect it, or
+  * [Nothing] for an empty range.  The layouts below used to pass half-open
+  * ranges [(start, start + len)], so the byte after every header table,
+  * segment and section was taken as covered and lost from the bits and bobs:
+  * a file ending in a byte outside every section came back one byte short,
+  * and a non-zero byte after a section came back as zero. *)
+val closed_range : natural -> natural -> maybe (natural * natural)
+let closed_range start len =
+  if len = 0 then Nothing else Just (start, start + len - 1)
+
 (** [obtain_elf32_bits_and_bobs hdr pht segs sht sects bs0] identifies and records
   * the "dead" spots of an ELF file not covered by any meaningful structure of the
   * ELF file format.
@@ -534,30 +545,30 @@ declare isabelle target_rep function compute_differences = `Elf_Types_Local.comp
 val obtain_elf32_bits_and_bobs : elf32_header -> elf32_program_header_table -> elf32_interpreted_segments
   -> elf32_section_header_table -> elf32_interpreted_sections -> byte_sequence -> error (list (natural * byte_sequence))
 let obtain_elf32_bits_and_bobs hdr segs interp_segs sects interp_sects bs0 =
-  let hdr_off_len  = (0, natural_of_elf32_half hdr.elf32_ehsize) in
+  let hdr_off_len  = closed_range 0 (natural_of_elf32_half hdr.elf32_ehsize) in
   let pht_off      = natural_of_elf32_off hdr.elf32_phoff in
   let pht_len      = natural_of_elf32_half hdr.elf32_phentsize * natural_of_elf32_half hdr.elf32_phnum in
-  let pht_off_len  = (pht_off, pht_off + pht_len) in
+  let pht_off_len  = closed_range pht_off pht_len in
   let sht_off      = natural_of_elf32_off hdr.elf32_shoff in
   let sht_len      = natural_of_elf32_half hdr.elf32_shentsize * natural_of_elf32_half hdr.elf32_shnum in
-  let sht_off_len  = (sht_off, sht_off + sht_len) in
+  let sht_off_len  = closed_range sht_off sht_len in
     if List.length interp_segs = List.length segs then
       let seg_zip = List.zip segs interp_segs in
       if List.length interp_sects = List.length sects then
         let sect_zip = List.zip sects interp_sects in
         let seg_off_len  =
-          List.map (fun (seg, interp_seg) ->
+          List.mapMaybe (fun (seg, interp_seg) ->
             let start = natural_of_elf32_off seg.elf32_p_offset in
             let len   = interp_seg.elf32_segment_size in
-            (start, start + len)) seg_zip
+            closed_range start len) seg_zip
         in
         let sect_off_len =
-          List.map (fun (sect, interp_sect) ->
+          List.mapMaybe (fun (sect, interp_sect) ->
             let start = natural_of_elf32_off sect.elf32_sh_offset in
-            let len   = interp_sect.elf32_section_size in
-            (start, start + len)) sect_zip
+            let len   = if interp_sect.elf32_section_type = sht_nobits then 0 else interp_sect.elf32_section_size in
+            closed_range start len) sect_zip
         in
-        let pre_layout   = hdr_off_len :: pht_off_len :: sht_off_len :: seg_off_len ++ sect_off_len in
+        let pre_layout   = List.mapMaybe (fun r -> r) [hdr_off_len; pht_off_len; sht_off_len] ++ seg_off_len ++ sect_off_len in
         let layout       =
           sort_by (fun (off_x, _) (off_y, _) ->
             natural_ordering off_x off_y
@@ -580,31 +591,31 @@ let obtain_elf32_bits_and_bobs hdr segs interp_segs sects interp_sects bs0 =
 val obtain_elf64_bits_and_bobs : elf64_header -> elf64_program_header_table -> elf64_interpreted_segments
   -> elf64_section_header_table -> elf64_interpreted_sections -> byte_sequence -> error (list (natural * byte_sequence))
 let obtain_elf64_bits_and_bobs hdr segs interp_segs sects interp_sects bs0 =
-  let hdr_off_len  = (0, natural_of_elf64_half hdr.elf64_ehsize) in
+  let hdr_off_len  = closed_range 0 (natural_of_elf64_half hdr.elf64_ehsize) in
 
   let pht_off      = natural_of_elf64_off hdr.elf64_phoff in
   let pht_len      = natural_of_elf64_half hdr.elf64_phentsize * natural_of_elf64_half hdr.elf64_phnum in
-  let pht_off_len  = (pht_off, pht_off + pht_len) in
+  let pht_off_len  = closed_range pht_off pht_len in
   let sht_off      = natural_of_elf64_off hdr.elf64_shoff in
   let sht_len      = natural_of_elf64_half hdr.elf64_shentsize * natural_of_elf64_half hdr.elf64_shnum in
-  let sht_off_len  = (sht_off, sht_off + sht_len) in
+  let sht_off_len  = closed_range sht_off sht_len in
     if List.length interp_segs = List.length segs then
       let seg_zip = List.zip segs interp_segs in
       if List.length interp_sects = List.length sects then
         let sect_zip = List.zip sects interp_sects in
         let seg_off_len  =
-          List.map (fun (seg, interp_seg) ->
+          List.mapMaybe (fun (seg, interp_seg) ->
             let start = natural_of_elf64_off seg.elf64_p_offset in
             let len   = interp_seg.elf64_segment_size in
-            (start, start + len)) seg_zip
+            closed_range start len) seg_zip
         in
         let sect_off_len =
-          List.map (fun (sect, interp_sect) ->
+          List.mapMaybe (fun (sect, interp_sect) ->
             let start = natural_of_elf64_off sect.elf64_sh_offset in
-            let len   = interp_sect.elf64_section_size in
-            (start, start + len)) sect_zip
+            let len   = if interp_sect.elf64_section_type = sht_nobits then 0 else interp_sect.elf64_section_size in
+            closed_range start len) sect_zip
         in
-        let pre_layout   = hdr_off_len :: pht_off_len :: sht_off_len :: seg_off_len ++ sect_off_len in
+        let pre_layout   = List.mapMaybe (fun r -> r) [hdr_off_len; pht_off_len; sht_off_len] ++ seg_off_len ++ sect_off_len in
         let layout       =
           sort_by (fun (off_x, _) (off_y, _) ->
             natural_ordering off_x off_y
