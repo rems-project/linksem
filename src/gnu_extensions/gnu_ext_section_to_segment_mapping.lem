@@ -156,14 +156,14 @@ let elf32_sect_size hdr sec_hdr segment =
   if is_elf32_tbss_special sec_hdr segment then
     0
   else
-    natural_of_elf32_half (hdr.elf32_shentsize)
+    natural_of_elf32_word sec_hdr.elf32_sh_size   (* Claude: was the header entry size *)
   
 val elf64_sect_size : elf64_header -> elf64_section_header_table_entry -> elf64_program_header_table_entry -> natural
 let elf64_sect_size hdr sec_hdr segment =
   if is_elf64_tbss_special sec_hdr segment then
     0
   else
-    natural_of_elf64_half (hdr.elf64_shentsize)
+    natural_of_elf64_xword sec_hdr.elf64_sh_size   (* Claude: was the header entry size *)
     
 val elf32_section_in_segment3 : elf32_header -> elf32_section_header_table_entry -> elf32_program_header_table_entry -> bool
 let elf32_section_in_segment3 hdr sec_hdr segment =
@@ -174,7 +174,7 @@ let elf32_section_in_segment3 hdr sec_hdr segment =
     elf32_section_of_type sec_hdr sht_nobits ||
     (sec_off >= seg_off &&
     ((sec_off - seg_off) <= (seg_fsz - 1)) &&
-    (sec_off - (seg_off + sec_siz) <= seg_fsz))
+    (sec_off - seg_off + sec_siz <= seg_fsz))   (* Claude: was sec_off - (seg_off + sec_siz) *)
   
 val elf64_section_in_segment3 : elf64_header -> elf64_section_header_table_entry -> elf64_program_header_table_entry -> bool
 let elf64_section_in_segment3 hdr sec_hdr segment =
@@ -185,7 +185,7 @@ let elf64_section_in_segment3 hdr sec_hdr segment =
     elf64_section_of_type sec_hdr sht_nobits ||
     (sec_off >= seg_off &&
     ((sec_off - seg_off) <= (seg_fsz - 1)) &&
-    (sec_off - (seg_off + sec_siz) <= seg_fsz))
+    (sec_off - seg_off + sec_siz <= seg_fsz))   (* Claude: was sec_off - (seg_off + sec_siz) *)
       
 (** SHF_ALLOC sections must have VMAs within the segment
   *)
@@ -196,10 +196,12 @@ let elf32_section_in_segment4 hdr sec_hdr segment =
   let seg_vadr = integerFromNatural (natural_of_elf32_addr segment.elf32_p_vaddr) in
   let seg_mmsz = integerFromNatural (natural_of_elf32_word segment.elf32_p_memsz) in
   let sec_size = integerFromNatural (elf32_sect_size hdr sec_hdr segment) in
-    (not (elf32_section_flags sec_hdr shf_alloc) ||
-     sec_addr >= seg_vadr) &&
+    (* Claude: the extent conditions apply to SHF_ALLOC sections only, and the
+     * last one is the section's end against the segment's end *)
+    not (elf32_section_flags sec_hdr shf_alloc) ||
+    (sec_addr >= seg_vadr &&
      sec_addr - seg_vadr <= seg_mmsz - 1 &&
-     sec_addr - (seg_vadr + sec_size) <= seg_mmsz
+     sec_addr - seg_vadr + sec_size <= seg_mmsz)
   
 val elf64_section_in_segment4 : elf64_header -> elf64_section_header_table_entry -> elf64_program_header_table_entry -> bool
 let elf64_section_in_segment4 hdr sec_hdr segment =
@@ -207,10 +209,10 @@ let elf64_section_in_segment4 hdr sec_hdr segment =
   let seg_vadr = integerFromNatural (natural_of_elf64_addr  segment.elf64_p_vaddr) in
   let seg_mmsz = integerFromNatural (natural_of_elf64_xword segment.elf64_p_memsz) in
   let sec_size = integerFromNatural (elf64_sect_size hdr sec_hdr segment) in
-     (not (elf64_section_flags sec_hdr shf_alloc) ||
-     sec_addr >= seg_vadr) &&
+    not (elf64_section_flags sec_hdr shf_alloc) ||   (* Claude: as in the ELF32 case above *)
+    (sec_addr >= seg_vadr &&
      sec_addr - seg_vadr <= seg_mmsz - 1 &&
-     sec_addr - (seg_vadr + sec_size) <= seg_mmsz
+     sec_addr - seg_vadr + sec_size <= seg_mmsz)
     
 (** No zero size sections at start or end of PT_DYNAMIC *)
 
