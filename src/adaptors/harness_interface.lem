@@ -5,6 +5,7 @@ open import Maybe
 open import List
 open import Num
 open import String
+open import String_extra
 
 open import Byte_sequence
 open import Error
@@ -157,6 +158,17 @@ let harness_section_name stbl off =
     | Success n -> n
     | Fail _    -> "<corrupt>"
   end
+
+(** Claude: a symbol name as readelf prints it (print_symbol_name): a control
+  * character as "^" and the corresponding letter, DEL as "^?"; gas puts a
+  * control character in some local label names. *)
+val harness_printable_name : string -> string
+let {ocaml} harness_printable_name s =
+  toString (List.concatMap (fun c ->
+    let n = String_extra.ord c in
+    if n < 32 then [#'^'; String_extra.chr (n + 64)]
+    else if n = 127 then [#'^'; #'?']
+    else [c]) (toCharList s))
 
 val harness_string_of_elf32_file_header_gen : bool -> elf32_header -> string
 let {ocaml} harness_string_of_elf32_file_header_gen pie hdr =
@@ -782,7 +794,7 @@ let {ocaml} harness_string_of_elf32_reloc_entry os sht symtab stbl sechdr_stbl r
               let nm =
                 match String_table.get_string_at nm stbl with
                   | Fail    f -> f
-                  | Success n -> n
+                  | Success n -> harness_printable_name n
                 end
               in
                 concatS [
@@ -865,7 +877,7 @@ let {ocaml} harness_string_of_elf64_reloc_a_entry os symtab sht stbl sechdr_stbl
       let nm =
         match String_table.get_string_at nm stbl with
           | Fail    f -> f
-          | Success n -> n
+          | Success n -> harness_printable_name n
         end
       in
       (* Claude: a dynamic symbol's name carries its version, as in the symbol
@@ -1238,7 +1250,7 @@ let {ocaml} harness_string_of_elf32_symbol_table_entry mach osabi nsections sect
   let vis    = natural_land other 3 in
   let shndx  = natural_of_elf32_half ent.elf32_st_shndx in
   let (ndx, is_special) = harness_string_of_symbol_ndx mach nsections shndx in
-  let nm = harness_symbol_name section_name stbl (natural_of_elf32_word ent.elf32_st_name) symtyp is_special shndx in
+  let nm = harness_printable_name (harness_symbol_name section_name stbl (natural_of_elf32_word ent.elf32_st_name) symtyp is_special shndx) in
     concatS [
       rjust 6 (show num) ^ ": "
     ; unsafe_hex_string_of_natural 8 (natural_of_elf32_addr ent.elf32_st_value)
@@ -1259,7 +1271,7 @@ let {ocaml} harness_string_of_elf64_symbol_table_entry mach osabi nsections sect
   let vis    = natural_land other 3 in
   let shndx  = natural_of_elf64_half ent.elf64_st_shndx in
   let (ndx, is_special) = harness_string_of_symbol_ndx mach nsections shndx in
-  let nm = harness_symbol_name section_name stbl (natural_of_elf64_word ent.elf64_st_name) symtyp is_special shndx in
+  let nm = harness_printable_name (harness_symbol_name section_name stbl (natural_of_elf64_word ent.elf64_st_name) symtyp is_special shndx) in
     concatS [
       rjust 6 (show num) ^ ": "
     ; unsafe_hex_string_of_natural 16 (natural_of_elf64_addr ent.elf64_st_value)
