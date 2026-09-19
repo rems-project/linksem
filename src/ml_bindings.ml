@@ -19,48 +19,32 @@ let hex_string_of_nat_pad2 i : string =
   Printf.sprintf "%02i" i
 ;;
 
-let hex_string_of_big_int_pad6 i : string =
-  let i0 = Nat_big_num.to_int64 i in
-    Printf.sprintf "%06Lx" i0
-;;
+(* Claude: hexadecimal rendering of a big integer by repeated division, so that
+   unsigned 64-bit values of 2^63 and above work; the previous versions went
+   through Int64 and failed on them (e.g. section addresses of
+   0xffffffff00000000).  Negative values get a leading "-". *)
+let hex_of_big_int (i : Nat_big_num.num) : string =
+  let sixteen = Nat_big_num.of_int 16 in
+  let digit d = "0123456789abcdef".[d] in
+  let rec go n acc =
+    if Nat_big_num.equal n Nat_big_num.zero then acc
+    else go (Nat_big_num.div n sixteen) (digit (Nat_big_num.to_int (Nat_big_num.modulus n sixteen)) :: acc)
+  in
+  let magnitude n = match go n [] with [] -> "0" | ds -> String.init (List.length ds) (List.nth ds) in
+  if Nat_big_num.less i Nat_big_num.zero then "-" ^ magnitude (Nat_big_num.negate i) else magnitude i
 
-let hex_string_of_big_int_pad7 i : string =
-  let i0 = Nat_big_num.to_int64 i in
-    Printf.sprintf "%07Lx" i0
-;;
+let hex_string_of_big_int_pad width i : string =
+  let s = hex_of_big_int i in
+  if String.length s >= width then s else String.make (width - String.length s) '0' ^ s
 
-let hex_string_of_big_int_pad2 i : string =
-  let i0 = Nat_big_num.to_int64 i in
-    Printf.sprintf "%02Lx" i0
-;;
-
-let hex_string_of_big_int_pad4 i : string =
-  let i0 = Nat_big_num.to_int64 i in
-    Printf.sprintf "%04Lx" i0
-;;
-
-let hex_string_of_big_int_pad5 i : string =
-  let i0 = Nat_big_num.to_int64 i in
-    Printf.sprintf "%05Lx" i0
-;;
-
-let hex_string_of_big_int_pad8 i : string =
-  let i0 = Nat_big_num.to_int64 i in
-    Printf.sprintf "%08Lx" i0
-;;
-
-let hex_string_of_big_int_pad16 i : string =
-  let i0 = Nat_big_num.to_int64 i in
-    Printf.sprintf "%016Lx" i0
-;;
-
-let hex_string_of_big_int_no_padding i : string =
-  let i0 = Nat_big_num.to_int64 i in
-    if Int64.compare i0 Int64.zero < 0 then
-      let i0 = Int64.neg i0 in
-        Printf.sprintf "-%Lx" i0
-    else
-      Printf.sprintf "%Lx" i0
+let hex_string_of_big_int_pad6 i = hex_string_of_big_int_pad 6 i
+let hex_string_of_big_int_pad7 i = hex_string_of_big_int_pad 7 i
+let hex_string_of_big_int_pad2 i = hex_string_of_big_int_pad 2 i
+let hex_string_of_big_int_pad4 i = hex_string_of_big_int_pad 4 i
+let hex_string_of_big_int_pad5 i = hex_string_of_big_int_pad 5 i
+let hex_string_of_big_int_pad8 i = hex_string_of_big_int_pad 8 i
+let hex_string_of_big_int_pad16 i = hex_string_of_big_int_pad 16 i
+let hex_string_of_big_int_no_padding i = hex_of_big_int i
 ;;
 
 let bytes_of_int32 (i : Int32.t) = assert false
