@@ -2764,12 +2764,63 @@ let {ocaml} harness_string_of_elf64_stapsdt_note endian desc =
   end
 
 (** the note lines of one note section or segment *)
-val harness_string_of_elf64_note_lines : natural -> endianness -> bool -> natural -> byte_sequence -> list string
-let {ocaml} harness_string_of_elf64_note_lines mach endian is_core align body =
-  match read_all_elf64_notes_aligned align endian body with
-    | Fail _ -> []   (* Claude: readelf warns on stderr and prints no notes *)
-    | Success notes ->
-      List.map (fun note ->
+(** Claude: one GNU build attribute note, rendered as readelf's
+  * print_gnu_build_attribute_name and print_gnu_build_attribute_description:
+  * the name is "GA", a type character ('*' numeric, '$' string, '!' false,
+  * '+' true), an attribute (a well-known one below 32, or a name) and the
+  * value; the description is the address range the attribute applies to, or,
+  * when empty, the range of the previous note.  The symbol readelf names for
+  * a range in a relocatable object is not looked up here. *)
+val harness_gnu_build_attribute_line : endianness -> list char -> natural -> byte_sequence -> (natural * natural) -> (string * (natural * natural))
+let {ocaml} harness_gnu_build_attribute_line endian name_chars typ desc region =
+  let ord (c : char) : natural = naturalFromNat (String_extra.ord c) in
+  let type_char = match List.index name_chars 2 with Just c -> c | Nothing -> #' ' end in
+  let attr = match List.index name_chars 3 with Just c -> ord c | Nothing -> 0 end in
+  let rest = List.drop 4 name_chars in
+  let attr_name =
+    if attr = 1 then "<version>" else if attr = 2 then "<stack prot>" else if attr = 3 then "<relro>"
+    else if attr = 4 then "<stack size>" else if attr = 5 then "<tool>" else if attr = 6 then "<ABI>"
+    else if attr = 7 then "<PIC>" else if attr = 8 then "<short enum>"
+    else if attr < 32 then "<unknown>"
+    else toString (List.takeWhile (fun c -> ord c <> 0) (List.drop 3 name_chars)) in
+  let value_chars = if attr < 32 then rest else List.drop 1 (List.dropWhile (fun c -> ord c <> 0) (List.drop 3 name_chars)) in
+  let numeric = List.foldr (fun c acc -> acc * 256 + ord c) 0 (List.takeWhile (fun c -> ord c <> 0 || true) value_chars) in
+  let value =
+    if type_char = #'$' then toString (List.takeWhile (fun c -> ord c <> 0) value_chars)
+    else if type_char = #'!' then "false"
+    else if type_char = #'+' then "true"
+    else if type_char = #'*' then
+      if attr = 7 then (if numeric = 0 then "static" else if numeric = 1 then "pic" else if numeric = 2 then "PIC"
+                        else if numeric = 3 then "pie" else if numeric = 4 then "PIE" else harness_hex_hash numeric)
+      else if attr = 2 then (if numeric = 0 then "off" else if numeric = 1 then "on" else if numeric = 2 then "strong"
+                             else if numeric = 3 then "all" else harness_hex_hash numeric)
+      else harness_hex_hash numeric
+    else "" in
+  let name = "GA" ^ toString [type_char] ^ attr_name ^ value in
+  let descsz = Byte_sequence.length desc in
+  let addr_at (n : natural) (width : natural) : natural =
+    match Byte_sequence.dropbytes n desc >>= fun bs ->
+          (if width = 8 then read_elf64_xword endian bs >>= fun (w, r) -> return (natural_of_elf64_xword w)
+           else read_elf64_word endian bs >>= fun (w, r) -> return (natural_of_elf64_word w)) with
+      | Success a -> a
+      | Fail _ -> 0
+    end in
+  let region' =
+    if descsz = 0 then region
+    else if descsz = 4 then (addr_at 0 4, 0)
+    else if descsz = 8 then (addr_at 0 8, 0)
+    else if descsz = 16 then (addr_at 0 8, addr_at 8 8)
+    else (0, 0) in
+  let (start, finish) = region' in
+  let description =
+    "    Applies to region from " ^ harness_hex_hash start
+    ^ (if finish <> 0 then " to " ^ harness_hex_hash finish else "") in
+  ("  " ^ ljust 28 name ^ " 0x" ^ unsafe_hex_string_of_natural 8 descsz
+   ^ "\t" ^ (if typ = 256 then "OPEN" else "func") ^ "\t" ^ description, region')
+
+(** Claude: an ordinary (non build-attribute) note line, as before *)
+val harness_ordinary_note_line : natural -> endianness -> bool -> elf64_note -> string
+let {ocaml} harness_ordinary_note_line mach endian is_core note =
         let namesz = natural_of_elf64_word note.elf64_note_namesz in
         let owner = if namesz = 0 then "(NONE)" else harness_c_string_of_byte_sequence note.elf64_note_name in
         let is_gnu = namesz <> 0 && string_prefix 3 owner = Just "GNU" in
@@ -2787,7 +2838,28 @@ let {ocaml} harness_string_of_elf64_note_lines mach endian is_core align body =
            (* Claude: readelf prints no data for CORE-owned notes (its
             * print_core_note); the decoding of NT_FILE is left for later *)
            else if owner = "CORE" then ""
-           else harness_string_of_elf64_note_description mach endian is_gnu typ note.elf64_note_desc)) notes
+           else harness_string_of_elf64_note_description mach endian is_gnu typ note.elf64_note_desc)
+
+val harness_string_of_elf64_note_lines : natural -> endianness -> bool -> natural -> byte_sequence -> list string
+let {ocaml} harness_string_of_elf64_note_lines mach endian is_core align body =
+  match read_all_elf64_notes_aligned align endian body with
+    | Fail _ -> []   (* Claude: readelf warns on stderr and prints no notes *)
+    | Success notes ->
+      (* Claude: GNU build attribute notes (owner "GA" and a type character)
+       * carry their region in the description, which a following note of
+       * description size 0 inherits; hence a fold rather than a map. *)
+      let (lines, _) =
+        List.foldl (fun (acc, region) note ->
+          let namesz = natural_of_elf64_word note.elf64_note_namesz in
+          let typ = natural_of_elf64_word note.elf64_note_type in
+          let name_chars = List.take (natFromNatural namesz) (char_list_of_byte_sequence note.elf64_note_name) in
+          if namesz > 2 && List.take 2 name_chars = [#'G'; #'A'] && (typ = 256 || typ = 257) then
+            let (line, region') = harness_gnu_build_attribute_line endian name_chars typ note.elf64_note_desc region in
+            (line :: acc, region')
+          else
+            (harness_ordinary_note_line mach endian is_core note :: acc, region)
+        ) ([], (0, 0)) notes
+      in List.reverse lines
   end
 
 val harness_string_of_elf64_notes : elf64_file -> string_table -> byte_sequence -> string
