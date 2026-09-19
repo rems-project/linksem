@@ -1412,6 +1412,21 @@ let operation_encodings = [
 ("DW_OP_bit_piece",           sym_natural_of_hex "0x9d", [OAT_ULEB128; OAT_ULEB128] , OpSem_bit_piece); (*2*) (* ULEB128 size followed by ULEB128 offset *)
 ("DW_OP_implicit_value",      sym_natural_of_hex "0x9e", [OAT_block]                , OpSem_implicit_value); (*2*) (* ULEB128 size followed by block of that size *)
 ("DW_OP_stack_value",         sym_natural_of_hex "0x9f", []                         , OpSem_stack_value); (*0*)
+(* Claude: GNU extensions in the user range (GCC and LLVM emit them for DWARF 2 to 4);
+   none is evaluated here.  DW_OP_GNU_encoded_addr (0xf1) and DW_OP_GNU_const_type
+   (0xf4) have operand encodings not expressible in this table and are left out. *)
+("DW_OP_GNU_push_tls_address", sym_natural_of_hex "0xe0", []                        , OpSem_not_supported); (*0*)
+("DW_OP_GNU_uninit",           sym_natural_of_hex "0xf0", []                        , OpSem_not_supported); (*0*)
+("DW_OP_GNU_implicit_pointer", sym_natural_of_hex "0xf2", [OAT_dwarf_format_t; OAT_SLEB128], OpSem_not_supported); (*2*)
+("DW_OP_GNU_entry_value",      sym_natural_of_hex "0xf3", [OAT_block]               , OpSem_not_supported); (*1*)
+("DW_OP_GNU_regval_type",      sym_natural_of_hex "0xf5", [OAT_ULEB128; OAT_ULEB128], OpSem_not_supported); (*2*)
+("DW_OP_GNU_deref_type",       sym_natural_of_hex "0xf6", [OAT_uint8; OAT_ULEB128]  , OpSem_not_supported); (*2*)
+("DW_OP_GNU_convert",          sym_natural_of_hex "0xf7", [OAT_ULEB128]             , OpSem_not_supported); (*1*)
+("DW_OP_GNU_reinterpret",      sym_natural_of_hex "0xf9", [OAT_ULEB128]             , OpSem_not_supported); (*1*)
+("DW_OP_GNU_parameter_ref",    sym_natural_of_hex "0xfa", [OAT_uint32]              , OpSem_not_supported); (*1*)
+("DW_OP_GNU_addr_index",       sym_natural_of_hex "0xfb", [OAT_ULEB128]             , OpSem_not_supported); (*1*)
+("DW_OP_GNU_const_index",      sym_natural_of_hex "0xfc", [OAT_ULEB128]             , OpSem_not_supported); (*1*)
+("DW_OP_GNU_variable_value",   sym_natural_of_hex "0xfd", [OAT_dwarf_format_t]      , OpSem_not_supported); (*1*)
 (* these aren't real operations
 ("DW_OP_lo_user",             sym_natural_of_hex "0xe0", []                         , );
 ("DW_OP_hi_user",             sym_natural_of_hex "0xff", []                         , );
