@@ -2847,7 +2847,7 @@ let parse_unit_length c : parser (dwarf_format * sym_natural) =
         else if x <> sym_natural_of_hex "0xffffffff" then PR_fail "bad unit_length" pc
         else
           pr_bind (parse_uint64 c pc') (fun x' pc'' ->
-            PR_success (Dwarf64, x') pc'))
+            PR_success (Dwarf64, x') pc''))   (* Claude: was pc', re-reading the 8-byte length as the following fields *)
 
 
 let parse_compilation_unit_header c : parser compilation_unit_header =
