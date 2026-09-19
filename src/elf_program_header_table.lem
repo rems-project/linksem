@@ -18,6 +18,7 @@ open import List
 open import Maybe
 open import Num
 open import String
+open import String_extra
 import Set
 
 open import Elf_types_native_uint
@@ -583,7 +584,11 @@ let get_elf32_requested_interpreter pent bs0 =
     let off = natural_of_elf32_off  pent.elf32_p_offset in
     let siz = natural_of_elf32_word pent.elf32_p_filesz in
       Byte_sequence.offset_and_cut off (siz - 1) bs0 >>= fun cut ->
-      return (Byte_sequence.string_of_byte_sequence cut)
+      (* Claude: as readelf reads it (fscanf "%s"): up to the first NUL or white
+       * space, so that a PT_INTERP whose bytes are not a string (a .debug file
+       * whose .interp is SHT_NOBITS) prints as empty rather than as garbage. *)
+      return (String.toString (List.takeWhile (fun ch -> let n = String_extra.ord ch in n <> 0 && n <> 32 && n <> 9 && n <> 10)
+                                 (Byte_sequence.char_list_of_byte_sequence cut)))
   else
     fail "get_elf32_requested_interpreter: not an INTERP segment header"
 
@@ -600,6 +605,10 @@ let get_elf64_requested_interpreter pent bs0 =
     let off = natural_of_elf64_off   pent.elf64_p_offset in
     let siz = natural_of_elf64_xword pent.elf64_p_filesz in
       Byte_sequence.offset_and_cut off (siz - 1) bs0 >>= fun cut ->
-      return (Byte_sequence.string_of_byte_sequence cut)
+      (* Claude: as readelf reads it (fscanf "%s"): up to the first NUL or white
+       * space, so that a PT_INTERP whose bytes are not a string (a .debug file
+       * whose .interp is SHT_NOBITS) prints as empty rather than as garbage. *)
+      return (String.toString (List.takeWhile (fun ch -> let n = String_extra.ord ch in n <> 0 && n <> 32 && n <> 9 && n <> 10)
+                                 (Byte_sequence.char_list_of_byte_sequence cut)))
   else
     fail "get_elf64_requested_interpreter: not an INTERP segment header"
