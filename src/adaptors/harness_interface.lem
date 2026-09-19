@@ -208,6 +208,10 @@ let {ocaml} harness_string_of_elf64_file_header_gen pie hdr =
   ; "  Section header string table index:" ^ " " ^ show hdr.elf64_shstrndx
   ]
 
+(** Claude: readelf's "%#lx": "0x" and the hex digits, but a bare "0" for zero. *)
+val harness_hex_or_zero : natural -> string
+let harness_hex_or_zero n = if n = 0 then "0" else "0x" ^ unsafe_hex_string_of_natural 1 n
+
 val harness_string_of_elf32_program_header_table_entry : (natural -> string) -> (natural -> string) -> byte_sequence -> elf32_program_header_table_entry -> string
 let {ocaml} harness_string_of_elf32_program_header_table_entry os proc bs0 pent =
   let typ = string_of_segment_type os proc (natural_of_elf32_word pent.elf32_p_type) in
@@ -233,7 +237,7 @@ let {ocaml} harness_string_of_elf32_program_header_table_entry os proc bs0 pent 
   ; " "
   ; string_of_elf_segment_permissions (natural_of_elf32_word pent.elf32_p_flags)
   ; " "
-  ; "0x" ^ unsafe_hex_string_of_natural 1 (natural_of_elf32_word pent.elf32_p_align)
+  ; harness_hex_or_zero (natural_of_elf32_word pent.elf32_p_align)
   ] ^
     if natural_of_elf32_word pent.elf32_p_type = elf_pt_interp then
       match Elf_program_header_table.get_elf32_requested_interpreter pent bs0 with
@@ -268,7 +272,7 @@ let {ocaml} harness_string_of_elf64_program_header_table_entry os proc bs0 pent 
   ; " "
   ; string_of_elf_segment_permissions (natural_of_elf64_word pent.elf64_p_flags)
   ; " "
-  ; "0x" ^ unsafe_hex_string_of_natural 1 (natural_of_elf64_xword pent.elf64_p_align)
+  ; harness_hex_or_zero (natural_of_elf64_xword pent.elf64_p_align)
   ] ^
     if natural_of_elf64_word pent.elf64_p_type = elf_pt_interp then
       match Elf_program_header_table.get_elf64_requested_interpreter pent bs0 with
@@ -363,14 +367,22 @@ let {ocaml} harness_string_of_elf32_program_headers_gen pie os proc hdr pht sht 
       ; ""
       ; "Program Headers:"
       ; harness_string_of_elf32_pht os proc pht bs0
-      ; ""
-      ; " Section to Segment mapping:"
-      ; "  Segment Sections..."
-      ; harness_string_of_elf32_segment_section_mappings hdr pht sht stbl
-      ]
+      ] ^ (match sht with   (* Claude: readelf prints the mapping only when there are section headers *)
+             | [] -> ""
+             | _  -> unlines [ ""; " Section to Segment mapping:"; "  Segment Sections..."; harness_string_of_elf32_segment_section_mappings hdr pht sht stbl ]
+           end)
 
 (** Claude: the program-header dump without its three-line preamble, which
   * readelf omits when the file header is also being displayed ([-h -l]). *)
+(** Claude: the section-to-segment mapping, which readelf prints only when the
+  * file has section headers. *)
+val harness_elf64_mapping_block : elf64_header -> elf64_program_header_table -> elf64_section_header_table -> string_table -> string
+let {ocaml} harness_elf64_mapping_block hdr pht sht stbl =
+  match sht with
+    | [] -> ""
+    | _  -> unlines [ ""; " Section to Segment mapping:"; "  Segment Sections..."; harness_string_of_elf64_segment_section_mappings hdr pht sht stbl ]
+  end
+
 val harness_string_of_elf64_program_headers_body : (natural -> string) -> (natural -> string) -> elf64_header -> elf64_program_header_table -> elf64_section_header_table -> string_table -> byte_sequence -> string
 let {ocaml} harness_string_of_elf64_program_headers_body os proc hdr pht sht stbl bs0 =
   let pht_len = List.length pht in
@@ -381,11 +393,7 @@ let {ocaml} harness_string_of_elf64_program_headers_body os proc hdr pht sht stb
         ""
       ; "Program Headers:"
       ; harness_string_of_elf64_pht os proc pht bs0
-      ; ""
-      ; " Section to Segment mapping:"
-      ; "  Segment Sections..."
-      ; harness_string_of_elf64_segment_section_mappings hdr pht sht stbl
-      ]
+      ] ^ harness_elf64_mapping_block hdr pht sht stbl
 
 val harness_string_of_elf64_program_headers_gen : bool -> (natural -> string) -> (natural -> string) -> elf64_header -> elf64_program_header_table -> elf64_section_header_table -> string_table -> byte_sequence -> string
 let {ocaml} harness_string_of_elf64_program_headers_gen pie os proc hdr pht sht stbl bs0 =
@@ -618,11 +626,13 @@ let {ocaml} harness_string_of_elf32_section_headers os proc usr hdr sht stbl =
   * line, which readelf omits when the file header is also displayed ([-h -S]). *)
 val harness_string_of_elf64_section_headers_body : (natural -> string) -> (natural -> string) -> (natural -> string) -> elf64_header -> elf64_section_header_table -> string_table -> string
 let {ocaml} harness_string_of_elf64_section_headers_body os proc usr hdr sht stbl =
+  match sht with | [] -> "\nThere are no sections in this file." | _ ->   (* Claude: as readelf *)
   unlines [
     ""
   ; section_headers_title (List.length sht)
   ; harness_string_of_elf64_sht (natural_of_elf64_half hdr.elf64_machine) (get_elf64_osabi hdr) os proc usr sht stbl
   ] ^ harness_sht_flag_legend (natural_of_elf64_half hdr.elf64_machine) (get_elf64_osabi hdr)
+  end
 
 val harness_string_of_elf64_section_headers : (natural -> string) -> (natural -> string) -> (natural -> string) -> elf64_header -> elf64_section_header_table -> string_table -> string
 let {ocaml} harness_string_of_elf64_section_headers os proc usr hdr sht stbl =
@@ -2633,6 +2643,9 @@ let {ocaml} harness_string_of_elf64_note_lines mach endian is_core align body =
         "  " ^ ljust 20 owner ^ " 0x" ^ unsafe_hex_string_of_natural 8 (natural_of_elf64_word note.elf64_note_descsz)
         ^ "\t" ^ type_name ^ "\t"
         ^ (if is_stapsdt then harness_string_of_elf64_stapsdt_note endian note.elf64_note_desc
+           (* Claude: readelf prints no data for CORE-owned notes (its
+            * print_core_note); the decoding of NT_FILE is left for later *)
+           else if owner = "CORE" then ""
            else harness_string_of_elf64_note_description mach endian is_gnu typ note.elf64_note_desc)) notes
   end
 
