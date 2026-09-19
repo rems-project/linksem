@@ -1069,15 +1069,20 @@ let {ocaml} harness_symbol_versions_of_elf64_file f1 bs0 os_additional_ranges os
   * readelf prints them; [harness_string_of_elf64_relocs] is the same without
   * version information, for callers that have no dynamic-section interpreters
   * to hand. *)
-val harness_string_of_elf64_relocs_gen : harness_symbol_versions -> elf64_file -> (natural -> string) -> byte_sequence -> string
-let {ocaml} harness_string_of_elf64_relocs_gen versions f1 os bs0 =
+val harness_string_of_elf64_relocs_gen : harness_symbol_versions -> bool -> elf64_file -> (natural -> string) -> byte_sequence -> string
+let {ocaml} harness_string_of_elf64_relocs_gen versions dynamic_relocs f1 os bs0 =
   let hdr       = f1.elf64_file_header in
   let sht       = f1.elf64_file_section_header_table in
   let endian    = get_elf64_header_endianness hdr in
   let rel_secs  = List.filter (fun x ->
     x.elf64_sh_type = elf64_word_of_natural sht_rela) sht in
   if List.length rel_secs = 0 then
-    "\nThere are no relocations in this file."
+    (* Claude: readelf distinguishes a file whose relocations are only reachable
+     * through the dynamic section (DT_REL, DT_RELA or DT_JMPREL). *)
+    (if dynamic_relocs then
+      "\nThere are no static relocations in this file.\nTo see the dynamic relocations add --use-dynamic to the command line."
+    else
+      "\nThere are no relocations in this file.")
   else
     match get_elf64_string_table_by_index f1 (natural_of_elf64_half hdr.elf64_shstrndx) with
       | Fail err     -> err
@@ -1085,14 +1090,29 @@ let {ocaml} harness_string_of_elf64_relocs_gen versions f1 os bs0 =
     end
 
 val harness_string_of_elf64_relocs : elf64_file -> (natural -> string) -> byte_sequence -> string
-let harness_string_of_elf64_relocs f1 os bs0 = harness_string_of_elf64_relocs_gen Nothing f1 os bs0
+let harness_string_of_elf64_relocs f1 os bs0 = harness_string_of_elf64_relocs_gen Nothing false f1 os bs0
+
+(** Claude: whether the dynamic section announces relocations (DT_REL, DT_RELA
+  * or DT_JMPREL); [false] when there is no readable dynamic section. *)
+val harness_elf64_has_dynamic_relocs : elf64_file -> byte_sequence -> (natural -> bool) ->
+  (natural -> error tag_correspondence) -> (natural -> error tag_correspondence) -> bool
+let {ocaml} harness_elf64_has_dynamic_relocs f1 bs0 os_additional_ranges os_tag proc_tag =
+  match obtain_elf64_dynamic_section_contents f1 os_additional_ranges os_tag proc_tag bs0 with
+    | Success dyns ->
+      List.any (fun d ->
+        let tag = naturalFromInteger (integer_of_elf64_sxword d.elf64_dyn_tag) in
+        tag = dt_rel || tag = dt_rela || tag = dt_jmprel) dyns
+    | Fail _ -> false
+  end
 
 val harness_string_of_elf64_relocs_versioned : elf64_file -> (natural -> string) -> byte_sequence -> (natural -> bool) ->
   (natural -> error tag_correspondence) -> (natural -> error tag_correspondence) ->
   (elf64_dyn -> string_table -> error elf64_dyn_value) ->
   (elf64_dyn -> string_table -> error elf64_dyn_value) -> string
 let {ocaml} harness_string_of_elf64_relocs_versioned f1 os bs0 os_additional_ranges os_tag proc_tag os_dyn proc_dyn =
-  harness_string_of_elf64_relocs_gen (harness_symbol_versions_of_elf64_file f1 bs0 os_additional_ranges os_tag proc_tag os_dyn proc_dyn) f1 os bs0
+  harness_string_of_elf64_relocs_gen
+    (harness_symbol_versions_of_elf64_file f1 bs0 os_additional_ranges os_tag proc_tag os_dyn proc_dyn)
+    (harness_elf64_has_dynamic_relocs f1 bs0 os_additional_ranges os_tag proc_tag) f1 os bs0
 
 (** Claude: the name of a symbol: for an unnamed section symbol readelf prints
   * the name of the section it refers to.
