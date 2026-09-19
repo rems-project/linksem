@@ -705,6 +705,7 @@ type dwarf =
     d_ranges: range_list_list;
     d_frame_info: frame_info;
     d_line_info: list line_number_program;
+    d_diagnostics: list string;   (** Claude: what could not be parsed, as readelf would warn *)
   |>
 
 (* analysed location data *)
@@ -2038,6 +2039,20 @@ let parse_list p1 =
     (parse_list' p1 [])
     (List.reverse)
 
+(** Claude: [parse_list_tolerant p pc] is [parse_list p pc] that stops at a
+  * parse failure instead of propagating it: the elements parsed before the
+  * failure, and the failure's description if there was one.  readelf and
+  * objdump print what they can of a corrupt section and warn about the rest;
+  * this is the hook for the same policy. *)
+val parse_list_tolerant : forall 'a. (parser (maybe 'a)) -> parse_context -> (list 'a * maybe string)
+let rec parse_list_tolerant' p1 acc pc =
+  match p1 pc with
+  | PR_fail s pc' -> (List.reverse acc, Just (pp_parse_fail s pc'))
+  | PR_success Nothing pc' -> (List.reverse acc, Nothing)
+  | PR_success (Just x) pc' -> parse_list_tolerant' p1 (x :: acc) pc'
+  end
+let parse_list_tolerant p1 pc = parse_list_tolerant' p1 [] pc
+
 val parse_parser_list : forall 'a. (list (parser 'a)) -> (parser (list 'a))
 let rec parse_parser_list ps =
   match ps with
@@ -3134,25 +3149,30 @@ let parse_compilation_unit c (debug_str_section_body: sym_byte_sequence) (debug_
 
       if sym_bs_length pc.pc_bytes = 0 then PR_success Nothing pc else
 
-      let (cuh, pc') =
+      (* Claude: every failure below is a [PR_fail] rather than an exception, so
+         that [parse_list_tolerant] keeps the units parsed before it, as
+         readelf and objdump keep printing past a corrupt unit. *)
+      match parse_compilation_unit_header c pc with
+      | PR_fail s pc' -> PR_fail ("parse_cuh_header fail: " ^ s) pc'
+      | PR_success cuh pc' ->
 
-        match parse_compilation_unit_header c pc with
-        | PR_fail s pc' -> Assert_extra.failwith ("parse_cuh_header fail: " ^ pp_parse_fail s pc')
-        | PR_success cuh pc' -> (cuh,pc')
-        end in
-
-let _ = my_debug4 (pp_compilation_unit_header cuh) in
+      let _ = my_debug4 (pp_compilation_unit_header cuh) in
 
       if cuh.cuh_unit_length = 0 then PR_success Nothing pc' else
-      
-      let pc_abbrev = <|pc_bytes = match sym_dropbytes (sym_natural_expect_const cuh.cuh_debug_abbrev_offset (*"mydrop of pc_abbrev"*)) debug_abbrev_section_body with Success bs -> bs | Fail _ -> Assert_extra.failwith "mydrop of debug_abbrev" end; pc_offset = sym_natural_expect_const cuh.cuh_debug_abbrev_offset (*"mydrop of pc_abbrev"*)|> in
+
+      let abbrev_offset = sym_natural_expect_const cuh.cuh_debug_abbrev_offset in
+      match sym_dropbytes abbrev_offset debug_abbrev_section_body with
+      | Fail _ -> PR_fail ("debug_abbrev offset " ^ show abbrev_offset ^ " beyond the section") pc'
+      | Success abbrev_bytes ->
+
+      let pc_abbrev = <| pc_bytes = abbrev_bytes; pc_offset = abbrev_offset |> in
 
       (* todo: this is reparsing the abbreviations table for each cu *)
-      let abbreviations_table =
-        match parse_abbreviations_table c pc_abbrev with
-        | PR_fail s pc_abbrev' -> Assert_extra.failwith ("parse_abbrevations_table fail: " ^ pp_parse_fail s pc_abbrev')
-        | PR_success at pc_abbrev' -> <| at_offset=sym_natural_const pc_abbrev.pc_offset; at_table= at|>
-        end in
+      match parse_abbreviations_table c pc_abbrev with
+      | PR_fail s pc_abbrev' -> PR_fail ("parse_abbrevations_table fail: " ^ s) pc'
+      | PR_success at pc_abbrev' ->
+
+      let abbreviations_table = <| at_offset=sym_natural_const pc_abbrev.pc_offset; at_table= at|> in
 
       let _ = my_debug4 (pp_abbreviations_table abbreviations_table) in
 
@@ -3163,8 +3183,8 @@ let _ = my_debug4 (pp_compilation_unit_header cuh) in
       let _ = my_debug3 (pp_abbreviations_table abbreviations_table) in
 
       match parse_die c debug_str_section_body cuh find_abbreviation_declaration pc' with
-      | PR_fail s pc'' -> Assert_extra.failwith ("parse_die fail: " ^ pp_parse_fail s pc'')
-      | PR_success (Nothing) pc'' -> Assert_extra.failwith ("parse_die returned Nothing: " ^ pp_parse_context pc'')
+      | PR_fail s pc'' -> PR_fail ("parse_die fail: " ^ s) pc''
+      | PR_success (Nothing) pc'' -> PR_fail "parse_die returned Nothing (an end-of-siblings marker as the unit's first DIE)" pc''
       | PR_success (Just die) pc'' ->
           let cu =
             <|
@@ -3188,6 +3208,9 @@ let _ = my_debug4 (pp_compilation_unit_header cuh) in
               end
             else pc'' in
           PR_success (Just cu) pc_next
+      end
+      end
+      end
       end
 
 let parse_compilation_units c (debug_str_section_body: sym_byte_sequence) (debug_abbrev_section_body: sym_byte_sequence): parser (list compilation_unit)
@@ -4116,17 +4139,20 @@ let pp_ufe_brief (((mcomp_dir,mdir,file) as ufe) : unpacked_file_entry) : string
 let parse_line_number_info c str (d_line: sym_byte_sequence) (cu: compilation_unit) : maybe line_number_program =
   let comp_dir = find_string_attribute_value_of_die "DW_AT_comp_dir" str cu.cu_die in
   let f n =
-    let d_line' = match sym_dropbytes n d_line with Success xs -> xs | Fail _ -> Assert_extra.failwith "parse_line_number_info drop" end in
-    let pc = <| pc_bytes = d_line'; pc_offset = n|> in
-    match parse_line_number_program c cu.cu_header comp_dir pc with
-    | PR_success lnp pc' ->
-        (*let _ = print_endline (pp_line_number_program lnp) in*)
-        lnp
-    | PR_fail s pc' -> Assert_extra.failwith ("parse_line_number_header failed: " ^ s)
+    (* Claude: an offset beyond .debug_line, or a program that does not parse,
+       leaves the unit without line information rather than failing *)
+    match sym_dropbytes n d_line with
+    | Fail _ -> Nothing
+    | Success d_line' ->
+      let pc = <| pc_bytes = d_line'; pc_offset = n|> in
+      match parse_line_number_program c cu.cu_header comp_dir pc with
+      | PR_success lnp pc' -> Just lnp
+      | PR_fail s pc' -> Nothing
+      end
     end in
   match line_number_offset_of_compilation_unit c cu with
   | Nothing -> Nothing   (* Claude: a unit without line information *)
-  | Just offset -> Just (f (sym_natural_expect_const offset (*"parse_line_number_info"*)))
+  | Just offset -> f (sym_natural_expect_const offset (*"parse_line_number_info"*))
   end
 
 let parse_line_number_infos c str debug_line_section_body compilation_units
@@ -4609,43 +4635,39 @@ let parse_dwarf c
 
   let pc_info = <|pc_bytes = debug_info_section_body; pc_offset = 0  |> in
 
-  let compilation_units =
-    match parse_compilation_units c debug_str_section_body debug_abbrev_section_body pc_info with
-    | PR_fail s pc_info' ->  Assert_extra.failwith ("parse_compilation_units: " ^ pp_parse_fail s pc_info')
-    | PR_success cus pc_info' -> cus
-    end in
+  (* Claude: each section is parsed as far as it goes; a failure ends that
+     section's list and is recorded in [d_diagnostics] instead of aborting
+     the whole extraction, as readelf and objdump warn and carry on.  With no
+     compilation unit at all there is no address size to parse the location,
+     range and frame sections with, so they are left empty. *)
+  let diag prefix m = match m with Nothing -> [] | Just msg -> [prefix ^ msg] end in
+  let (compilation_units, cu_diag) =
+    parse_list_tolerant (parse_compilation_unit c debug_str_section_body debug_abbrev_section_body) pc_info in
 
   let _ = my_debug5 (pp_compilation_units c false debug_str_section_body compilation_units) in
 
-
+  let (loc, ranges, fi, li, diags) =
+    match compilation_units with
+    | [] -> ([], [], [], [], diag "parse_compilation_units: " cu_diag)
+    | cu :: _ ->
 (* the DWARF4 spec doesn't seem to specify the address size used in the .debug_loc section, so we (hackishly) take it from the first compilation unit *)
-  let (cuh_default : compilation_unit_header) = let cu = myhead compilation_units in cu.cu_header in
-
-  let pc_loc = <|pc_bytes = debug_loc_section_body; pc_offset = 0  |> in
-
-  let loc =
-    match parse_location_list_list c cuh_default pc_loc with
-    | PR_fail s pc_info' ->  Assert_extra.failwith ("parse_location_list: " ^ pp_parse_fail s pc_info')
-    | PR_success loc pc_loc' -> loc
+      let (cuh_default : compilation_unit_header) = cu.cu_header in
+      let pc_loc = <|pc_bytes = debug_loc_section_body; pc_offset = 0  |> in
+      let (loc, loc_diag) = parse_list_tolerant (parse_location_list c cuh_default) pc_loc in
+      let pc_ranges = <|pc_bytes = debug_ranges_section_body; pc_offset = 0  |> in
+      let (range_lists, ranges_diag) = parse_list_tolerant (parse_range_list c cuh_default) pc_ranges in
+      let ranges = List.concat range_lists in
+      let pc_frame = <|pc_bytes = debug_frame_section_body; pc_offset = 0  |> in
+      let (fi, frame_diag) =
+        match parse_frame_info c cuh_default pc_frame with
+        | PR_fail s pc' -> ([], Just (pp_parse_fail s pc'))
+        | PR_success fi pc' -> (fi, Nothing)
+        end in
+      let li = parse_line_number_infos c debug_str_section_body debug_line_section_body compilation_units in
+      (loc, ranges, fi, li,
+       diag "parse_compilation_units: " cu_diag ++ diag "parse_location_list: " loc_diag
+       ++ diag "parse_range_list: " ranges_diag ++ diag "parse_frame_info: " frame_diag)
     end in
-
-  let pc_ranges = <|pc_bytes = debug_ranges_section_body; pc_offset = 0  |> in
-
-  let ranges =
-    match parse_range_list_list c cuh_default pc_ranges with
-    | PR_fail s pc_info' ->  Assert_extra.failwith ("parse_range_list: " ^ pp_parse_fail s pc_info')
-    | PR_success r pc_loc' -> r
-    end in
-
-  let pc_frame = <|pc_bytes = debug_frame_section_body; pc_offset = 0  |> in
-
-  let fi =
-    match parse_frame_info c cuh_default pc_frame with
-    | PR_fail s pc_info' ->  Assert_extra.failwith ("parse_frame_info: " ^ pp_parse_fail s pc_info')
-    | PR_success fi pc_loc' -> fi
-    end in
-
-  let li = parse_line_number_infos c debug_str_section_body debug_line_section_body compilation_units in
 
    <|
    d_endianness = c.endianness;
@@ -4656,6 +4678,7 @@ let parse_dwarf c
    d_ranges = ranges;
    d_frame_info = fi;
    d_line_info = li;
+   d_diagnostics = diags;
   |>
 
 val extract_section_body : elf_file -> relocation_interpreter reloc_target_data -> string -> bool -> p_context * sym_natural * sym_byte_sequence
