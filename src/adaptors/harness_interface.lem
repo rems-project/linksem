@@ -381,7 +381,7 @@ let {ocaml} harness_string_of_elf32_program_headers_gen pie os proc hdr pht sht 
       ; harness_string_of_elf32_pht os proc pht bs0
       ] ^ (match sht with   (* Claude: readelf prints the mapping only when there are section headers *)
              | [] -> ""
-             | _  -> unlines [ ""; " Section to Segment mapping:"; "  Segment Sections..."; harness_string_of_elf32_segment_section_mappings hdr pht sht stbl ]
+             | _  -> "\n" ^ unlines [ ""; " Section to Segment mapping:"; "  Segment Sections..."; harness_string_of_elf32_segment_section_mappings hdr pht sht stbl ]
            end)
 
 (** Claude: the program-header dump without its three-line preamble, which
@@ -392,7 +392,7 @@ val harness_elf64_mapping_block : elf64_header -> elf64_program_header_table -> 
 let {ocaml} harness_elf64_mapping_block hdr pht sht stbl =
   match sht with
     | [] -> ""
-    | _  -> unlines [ ""; " Section to Segment mapping:"; "  Segment Sections..."; harness_string_of_elf64_segment_section_mappings hdr pht sht stbl ]
+    | _  -> "\n" ^ unlines [ ""; " Section to Segment mapping:"; "  Segment Sections..."; harness_string_of_elf64_segment_section_mappings hdr pht sht stbl ]
   end
 
 val harness_string_of_elf64_program_headers_body : (natural -> string) -> (natural -> string) -> elf64_header -> elf64_program_header_table -> elf64_section_header_table -> string_table -> byte_sequence -> string
