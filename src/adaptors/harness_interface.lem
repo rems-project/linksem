@@ -1729,6 +1729,16 @@ let {ocaml} harness_words_of_byte_sequence endian bs =
   group_elf64_words endian (byte_list_of_byte_sequence bs) >>= fun ws ->
   return (List.map natural_of_elf64_word ws)
 
+(** Claude: the 8-byte words of a byte sequence, in the file's endianness;
+  * a trailing partial word is ignored. *)
+val harness_xwords_of_byte_sequence : endianness -> byte_sequence -> error (list natural)
+let rec {ocaml} harness_xwords_of_byte_sequence endian bs =
+  if Byte_sequence.length bs < 8 then return []
+  else
+    read_elf64_xword endian bs >>= fun (w, rest) ->
+    harness_xwords_of_byte_sequence endian rest >>= fun ws ->
+    return (natural_of_elf64_xword w :: ws)
+
 (** the string up to the first NUL of a byte sequence *)
 val harness_c_string_of_byte_sequence : byte_sequence -> string
 let {ocaml} harness_c_string_of_byte_sequence bs =
@@ -2711,20 +2721,25 @@ let {ocaml} harness_string_of_elf64_histogram f1 bs0 os_additional_ranges os_tag
            | D_Ignored _ -> Nothing
          end)
     end in
-  let words_of_section_at addr =
+  (* Claude: the SysV hash table of a 64-bit Alpha or s390 file has 8-byte
+   * entries (readelf's get_num_dynamic_syms); everything else uses 4-byte
+   * entries. *)
+  let mach = natural_of_elf64_half f1.elf64_file_header.elf64_machine in
+  let sysv_wide = mach = elf_ma_alpha || mach = elf_ma_s390 in
+  let words_of_section_at wide addr =
     match List.find (fun s -> s.elf64_section_addr = addr) f1.elf64_file_interpreted_sections with
       | Nothing -> Nothing
       | Just s ->
-        (match harness_words_of_byte_sequence endian s.elf64_section_body with
+        (match (if wide then harness_xwords_of_byte_sequence else harness_words_of_byte_sequence) endian s.elf64_section_body with
            | Success ws -> Just ws
            | Fail _ -> Nothing
          end)
     end in
-  let table_of tag = match tag_value tag with Just addr -> words_of_section_at addr | Nothing -> Nothing end in
+  let table_of wide tag = match tag_value tag with Just addr -> words_of_section_at wide addr | Nothing -> Nothing end in
   let map_of ws = Map.fromList (List.mapi (fun i w -> (naturalFromNat i, w)) ws) in
   let buckets_word n = if n = 1 then "bucket" else "buckets" in
   let sysv =
-    match table_of dt_hash with
+    match table_of sysv_wide dt_hash with
       | Just (nbucket :: nchain :: rest) ->
         let buckets = harness_list_take nbucket rest in
         let chains = map_of (harness_list_take nchain (harness_list_drop nbucket rest)) in
@@ -2735,7 +2750,7 @@ let {ocaml} harness_string_of_elf64_histogram f1 bs0 os_additional_ranges os_tag
       | _ -> []
     end in
   let gnu =
-    match table_of elf_dt_gnu_hash with
+    match table_of false elf_dt_gnu_hash with
       | Just (nbuckets :: symidx :: maskwords :: _shift2 :: rest) ->
         let rest = harness_list_drop (2 * maskwords) rest in   (* the bloom filter, 64-bit words *)
         let buckets = harness_list_take nbuckets rest in
