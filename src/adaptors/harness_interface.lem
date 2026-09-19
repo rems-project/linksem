@@ -60,6 +60,17 @@ val entries_word : nat -> string
 let entries_word n =
   if n = 1 then "entry" else "entries"
 
+(** Claude: [there_are n noun] is readelf's "There is 1 <noun>" or "There are
+  * N <noun>s" for the preambles of the program and section header dumps. *)
+val there_are : nat -> string -> string
+let there_are n noun =
+  if n = 1 then "There is 1 " ^ noun else "There are " ^ show n ^ " " ^ noun ^ "s"
+
+(** Claude: the "Section Headers:" title, singular for one section header. *)
+val section_headers_title : nat -> string
+let section_headers_title n =
+  if n = 1 then "Section Header:" else "Section Headers:"
+
 val harness_string_of_elf32_file_header : elf32_header -> string
 let {ocaml} harness_string_of_elf32_file_header hdr =
   unlines [
@@ -252,7 +263,7 @@ let {ocaml} harness_string_of_elf32_program_headers os proc hdr pht sht stbl bs0
         ""
       ; "Elf file type is " ^ string_of_elf_file_type default_os_specific_print default_proc_specific_print (natural_of_elf32_half hdr.elf32_type)
       ; "Entry point " ^ "0x" ^ unsafe_hex_string_of_natural 1 (natural_of_elf32_addr hdr.elf32_entry)
-      ; "There are " ^ show (List.length pht) ^ " program headers, starting at offset " ^ show hdr.elf32_phoff
+      ; there_are (List.length pht) "program header" ^ ", starting at offset " ^ show hdr.elf32_phoff
       ; ""
       ; "Program Headers:"
       ; harness_string_of_elf32_pht os proc pht bs0
@@ -290,7 +301,7 @@ let {ocaml} harness_string_of_elf64_program_headers os proc hdr pht sht stbl bs0
         ""
       ; "Elf file type is " ^ string_of_elf_file_type default_os_specific_print default_proc_specific_print (natural_of_elf64_half hdr.elf64_type)
       ; "Entry point " ^ "0x" ^ unsafe_hex_string_of_natural 1 (natural_of_elf64_addr hdr.elf64_entry)
-      ; "There are " ^ show (List.length pht) ^ " program headers, starting at offset " ^ show hdr.elf64_phoff
+      ; there_are (List.length pht) "program header" ^ ", starting at offset " ^ show hdr.elf64_phoff
       ] ^ "\n" ^ harness_string_of_elf64_program_headers_body os proc hdr pht sht stbl bs0
 
 (** Claude: the section-header output of this harness reproduces that of GNU
@@ -505,9 +516,9 @@ let {ocaml} harness_string_of_elf64_sht mach osabi os proc usr sht stbl =
 val harness_string_of_elf32_section_headers : (natural -> string) -> (natural -> string) -> (natural -> string) -> elf32_header -> elf32_section_header_table -> string_table -> string
 let {ocaml} harness_string_of_elf32_section_headers os proc usr hdr sht stbl =
   unlines [
-    "There are " ^ show (List.length sht) ^ " section headers, starting at offset 0x" ^ unsafe_hex_string_of_natural 0 (natural_of_elf32_off hdr.elf32_shoff) ^ ":"
+    there_are (List.length sht) "section header" ^ ", starting at offset 0x" ^ unsafe_hex_string_of_natural 0 (natural_of_elf32_off hdr.elf32_shoff) ^ ":"
   ; ""
-  ; "Section Headers:"
+  ; section_headers_title (List.length sht)
   ; harness_string_of_elf32_sht (natural_of_elf32_half hdr.elf32_machine) (get_elf32_osabi hdr) os proc usr sht stbl
   ] ^ harness_sht_flag_legend (natural_of_elf32_half hdr.elf32_machine) (get_elf32_osabi hdr)
 
@@ -517,13 +528,13 @@ val harness_string_of_elf64_section_headers_body : (natural -> string) -> (natur
 let {ocaml} harness_string_of_elf64_section_headers_body os proc usr hdr sht stbl =
   unlines [
     ""
-  ; "Section Headers:"
+  ; section_headers_title (List.length sht)
   ; harness_string_of_elf64_sht (natural_of_elf64_half hdr.elf64_machine) (get_elf64_osabi hdr) os proc usr sht stbl
   ] ^ harness_sht_flag_legend (natural_of_elf64_half hdr.elf64_machine) (get_elf64_osabi hdr)
 
 val harness_string_of_elf64_section_headers : (natural -> string) -> (natural -> string) -> (natural -> string) -> elf64_header -> elf64_section_header_table -> string_table -> string
 let {ocaml} harness_string_of_elf64_section_headers os proc usr hdr sht stbl =
-  "There are " ^ show (List.length sht) ^ " section headers, starting at offset 0x" ^ unsafe_hex_string_of_natural 0 (natural_of_elf64_off hdr.elf64_shoff) ^ ":\n"
+  there_are (List.length sht) "section header" ^ ", starting at offset 0x" ^ unsafe_hex_string_of_natural 0 (natural_of_elf64_off hdr.elf64_shoff) ^ ":\n"
   ^ harness_string_of_elf64_section_headers_body os proc usr hdr sht stbl
 
 val harness_string_of_elf32_reloc_entry : (natural -> string) -> Map.map natural elf32_section_header_table_entry ->
@@ -1705,7 +1716,7 @@ let {ocaml} harness_string_of_elf64_section_details_body os proc usr hdr sht stb
     ] ++ compression
   in
   unlines ([ ""
-           ; "Section Headers:"
+           ; section_headers_title (List.length sht)
            ; "  [Nr] Name"
            ; "       Type            Address          Off    Size   ES   Lk Inf Al"
            ; "       Flags" ]
@@ -1716,7 +1727,7 @@ let {ocaml} harness_string_of_elf64_section_details os proc usr hdr sht stbl bs0
   match sht with
     | [] -> "\nThere are no sections in this file."
     | _ ->
-      "There are " ^ show (List.length sht) ^ " section headers, starting at offset 0x" ^ harness_hex (natural_of_elf64_off hdr.elf64_shoff) ^ ":\n"
+      there_are (List.length sht) "section header" ^ ", starting at offset 0x" ^ harness_hex (natural_of_elf64_off hdr.elf64_shoff) ^ ":\n"
       ^ harness_string_of_elf64_section_details_body os proc usr hdr sht stbl bs0
   end
 
