@@ -1475,13 +1475,18 @@ let {ocaml} harness_string_of_elf32_dynamic_section f1 bs0 os_additional_ranges 
   let print_msg = is_elf32_shared_object_file f1.elf32_file_header ||
     is_elf32_executable_file f1.elf32_file_header
   in
+  let sht = f1.elf32_file_section_header_table in
+  let usable_section =   (* Claude: as in the ELF64 case below *)
+    sht = [] || List.any (fun s -> natural_of_elf32_word s.elf32_sh_type = sht_dynamic && natural_of_elf32_word s.elf32_sh_size <> 0) sht
+  in
     match dyn with
+      | [x] -> if usable_section then harness_string_of_elf32_dynamic_section' f1 x bs0 os_additional_ranges os proc os_print os_dyn proc_dyn
+               else if print_msg then "\nThere is no dynamic section in this file." else ""
       | []  ->
         if print_msg then
           "\nThere is no dynamic section in this file."
         else
           ""
-      | [x] -> harness_string_of_elf32_dynamic_section' f1 x bs0 os_additional_ranges os proc os_print os_dyn proc_dyn
       | _   -> "Multiple dynamic sections detected."
     end
 
@@ -1558,13 +1563,22 @@ let {ocaml} harness_string_of_elf64_dynamic_section f1 bs0 os_additional_ranges 
       x.elf64_p_type = elf64_word_of_natural elf_pt_dynamic
     ) pht
   in
+  (* Claude: readelf takes the dynamic section from the section headers when
+   * the file has them, and reports no dynamic section when the PT_DYNAMIC
+   * segment has no non-empty SHT_DYNAMIC section behind it, as in the .debug
+   * files of objcopy --only-keep-debug, where .dynamic is SHT_NOBITS. *)
+  let sht = f1.elf64_file_section_header_table in
+  let usable_section =
+    sht = [] || List.any (fun s -> natural_of_elf64_word s.elf64_sh_type = sht_dynamic && natural_of_elf64_xword s.elf64_sh_size <> 0) sht
+  in
     match dyn with
+      | [x] -> if usable_section then harness_string_of_elf64_dynamic_section' f1 x bs0 os_additional_ranges os proc os_print os_dyn proc_dyn
+               else if print_msg then "\nThere is no dynamic section in this file." else ""
       | []  ->
         if print_msg then
           "\nThere is no dynamic section in this file."
         else
           ""
-      | [x] -> harness_string_of_elf64_dynamic_section' f1 x bs0 os_additional_ranges os proc os_print os_dyn proc_dyn
       | _   -> "Multiple dynamic sections detected."
     end
 
