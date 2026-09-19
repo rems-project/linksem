@@ -13,7 +13,7 @@ let string_of_unix_time (tm : Nat_big_num.num) =
   let hour = tm.tm_hour in
   let min  = tm.tm_min in
   let sec  = tm.tm_sec in
-    Printf.sprintf "%i-%i-%iT%02i:%02i:%02i" year mon day hour min sec
+    Printf.sprintf "%i-%02i-%02iT%02i:%02i:%02i" year mon day hour min sec  (* Claude: readelf zero-pads month and day *)
 
 let hex_string_of_nat_pad2 i : string =
   Printf.sprintf "%02i" i
