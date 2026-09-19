@@ -5975,14 +5975,14 @@ let pp_analysed_locations3_diff c d str (als_old: analysed_location_data) (als_n
   ppd_gone ++ ppd_upd
 
 let pp_analysed_location_format (xs : list (bool(*removed?*) * (string(*name*) * string(*offset*) * string(*kind*)) * (unit->string)(*string*)(*type*) * string(*locations*) * (unit->string)(*parents*))) = 
+  (* Claude: parents (function:file) first, then name and type, then the
+     location list last, so that the widest column is the unpadded one *)
   pad_rows 
     (List.map
        (fun ((removed,(name,offset,kind),typ,locs,parents) as x) ->
-         [ (if removed then "-" else " ") ^ name
-           ^ " (" ^ offset ^ "," ^ kind ^ ") "
-           ^ typ ();
-           locs;
-           parents ()]
+         [ (if removed then "-" else " ") ^ parents ();
+           name ^ " (" ^ offset ^ "," ^ kind ^ ") " ^ typ ();
+           locs ]
        )
        xs
     )
