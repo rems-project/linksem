@@ -67,6 +67,14 @@ let there_are n noun =
   if n = 1 then "There is 1 " ^ noun else "There are " ^ show n ^ " " ^ noun ^ "s"
 
 (** Claude: the "Section Headers:" title, singular for one section header. *)
+(** Claude: what readelf [-s] prints for a file with no symbol table: nothing
+  * when the file has section headers, and a note that the dynamic symbol
+  * information (which readelf would otherwise reconstruct from the segments)
+  * is unavailable when it has none, as in a core file. *)
+val no_symbols_message : nat -> string
+let no_symbols_message nsections =
+  if nsections = 0 then "\nDynamic symbol information is not available for displaying symbols." else ""
+
 val section_headers_title : nat -> string
 let section_headers_title n =
   if n = 1 then "Section Header:" else "Section Headers:"
@@ -1176,7 +1184,7 @@ let {ocaml} harness_string_of_elf32_syms f1 bs0 =
     x.elf32_sh_type = elf32_word_of_natural sht_symtab) sht
   in
   if List.length sym_secs = 0 then
-    "\nThere are no symbols in this file."
+    no_symbols_message (List.length sht)
   else
     match get_elf32_string_table_by_index f1 (natural_of_elf32_half hdr.elf32_shstrndx) with
       | Fail err     -> err
@@ -1253,7 +1261,7 @@ val harness_string_of_elf64_syms : elf64_file -> byte_sequence -> (natural -> bo
   (elf64_dyn -> string_table -> error elf64_dyn_value) -> string
 let {ocaml} harness_string_of_elf64_syms f1 bs0 os_additional_ranges os_tag proc_tag os_dyn proc_dyn =
   harness_string_of_elf64_syms_selected (fun t -> t = sht_dynsym || t = sht_symtab)
-    "\nThere are no symbols in this file." f1 bs0 os_additional_ranges os_tag proc_tag os_dyn proc_dyn
+    (no_symbols_message (List.length f1.elf64_file_section_header_table)) f1 bs0 os_additional_ranges os_tag proc_tag os_dyn proc_dyn
 
 val harness_string_of_elf64_dyn_syms : elf64_file -> byte_sequence -> (natural -> bool) ->
   (natural -> error tag_correspondence) -> (natural -> error tag_correspondence) ->

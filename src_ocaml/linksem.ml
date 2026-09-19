@@ -251,6 +251,7 @@ let readelf (dumps : dump list) (hex_specs : string list) (string_specs : string
   let dumps = List.stable_sort (fun d1 d2 -> compare (dump_order d1) (dump_order d2)) dumps in
   let ok = ref true in
   let report = function
+    | Error.Success (Some "") -> ()   (* Claude: a dump with nothing to say, e.g. -s without symbol tables *)
     | Error.Success (Some s) -> print_endline s
     | Error.Success None -> ()
     | Error.Fail err -> prerr_endline ("[!]: " ^ err); ok := false in
