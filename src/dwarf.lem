@@ -2392,6 +2392,7 @@ let pp_debug_str_entry (str: sym_byte_sequence) (n: sym_natural) : string =
   (* Claude: in a relocatable file a DW_FORM_strp value may be a relocation
      against an undefined symbol (a string-table label defined elsewhere);
      readelf and objdump use the addend, as the offset part here *)
+  if sym_bs_length str = 0 then "<no .debug_str section>" else   (* Claude: readelf's text *)
   match sym_dropbytes (sym_natural_offset_part n) str with
   | Fail _ -> "strp beyond .debug_str extent"
   | Success bs -> string_of_sym_byte_sequence (null_terminated_bs bs)
@@ -4375,7 +4376,7 @@ let od_form_data8 = attribute_form_encode "DW_FORM_data8"
 let od_form_sec_offset = attribute_form_encode "DW_FORM_sec_offset"
 let od_form_exprloc = attribute_form_encode "DW_FORM_exprloc"
 
-let od_location_attrs = ["DW_AT_frame_base"; "DW_AT_location"; "DW_AT_GNU_locviews"; "DW_AT_string_length";
+let od_location_attrs = ["DW_AT_frame_base"; "DW_AT_location"; "DW_AT_string_length";   (* Claude: not DW_AT_GNU_locviews, which objdump prints without "(location list)" *)
   "DW_AT_return_addr"; "DW_AT_data_member_location"; "DW_AT_vtable_elem_location"; "DW_AT_segment";
   "DW_AT_static_link"; "DW_AT_use_location"; "DW_AT_call_value"; "DW_AT_GNU_call_site_value";
   "DW_AT_call_data_value"; "DW_AT_GNU_call_site_data_value"; "DW_AT_call_target"; "DW_AT_GNU_call_site_target";
