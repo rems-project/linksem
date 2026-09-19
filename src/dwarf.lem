@@ -4598,7 +4598,7 @@ let od_file_has_frame_base (d:dwarf) : bool =
   end
 
 (* Claude: text of `objdump --dwarf=abbrev,info`; [regname] names DWARF registers for the machine *)
-val pp_dwarf_like_objdump : (natural -> string) -> dwarf -> string
+val pp_dwarf_like_objdump : bool -> (natural -> string) -> dwarf -> string
 (* Claude: the two sections of objdump --dwarf=abbrev,info separately; each is
    also what readelf --debug-dump=abbrev and (non-wide) --debug-dump=info print *)
 let od_debug_abbrev_section (d:dwarf) : string =
@@ -4611,10 +4611,13 @@ let od_debug_info_section regname (d:dwarf) : string =
   "Contents of the .debug_info section:\n\n"
   ^ String.concat "" (List.map (od_compilation_unit c d.d_str regname have_frame_base) d.d_compilation_units)
 
-let pp_dwarf_like_objdump regname (d:dwarf) : string =
-  od_debug_abbrev_section d
-  ^ "\n"
-  ^ od_debug_info_section regname d
+let pp_dwarf_like_objdump abbrev_first regname (d:dwarf) : string =
+  (* Claude: objdump prints the two sections in the order of the section
+     header table; [abbrev_first] says which that is *)
+  if abbrev_first then
+    od_debug_abbrev_section d ^ "\n" ^ od_debug_info_section regname d
+  else
+    od_debug_info_section regname d ^ "\n" ^ od_debug_abbrev_section d
 
 
 let pp_dwarf d =
@@ -7201,13 +7204,35 @@ let pp_text_section f ri =
 (** **  top level for main_elf  ******************************** *)
 (** ************************************************************ *)
 
+(** Claude: whether .debug_abbrev comes before .debug_info in the section
+  * header table, which is the order readelf and objdump dump them in
+  * (true when either is absent). *)
+val index_of_string : string -> list string -> maybe nat
+let rec index_of_string name names =
+  match names with
+  | [] -> Nothing
+  | n :: rest -> if n = name then Just 0 else Maybe.map (fun i -> i + 1) (index_of_string name rest)
+  end
+
+val debug_abbrev_precedes_debug_info : elf_file -> bool
+let debug_abbrev_precedes_debug_info f =
+  let names =
+    match f with
+    | ELF_File_32 f32 -> List.map (fun x -> x.Elf_interpreted_section.elf32_section_name_as_string) f32.elf32_file_interpreted_sections
+    | ELF_File_64 f64 -> List.map (fun x -> x.Elf_interpreted_section.elf64_section_name_as_string) f64.elf64_file_interpreted_sections
+    end in
+  match (index_of_string ".debug_abbrev" names, index_of_string ".debug_info" names) with
+  | (Just a, Just i) -> a < i
+  | _ -> true
+  end
+
 val harness_string_of_elf_like_objdump : elf_file -> relocation_interpreter reloc_target_data -> (natural -> string) -> string
 let harness_string_of_elf_like_objdump f1 ri regname =
   match extract_dwarf f1 ri with   (* Claude: the dump needs no analysis *)
   | Nothing -> "<no dwarf information extracted>"
   | Just d ->
    "" (*pp_text_section f1*)
-   ^ pp_dwarf_like_objdump regname d
+   ^ pp_dwarf_like_objdump (debug_abbrev_precedes_debug_info f1) regname d
   end
 
     

@@ -197,6 +197,18 @@ let harness_osabi_arch mach o =
     | Nothing   -> "<unknown: " ^ hex_string_of_natural o ^ ">"
   end
 
+(** Claude: whether .debug_abbrev comes before .debug_info in the section
+  * header table: readelf dumps them in that order, whatever the order of
+  * its options (true when either is absent). *)
+val harness_elf64_debug_abbrev_first : elf64_file -> bool
+let {ocaml} harness_elf64_debug_abbrev_first f1 =
+  let indexed = List.mapi (fun i s -> (i, s.elf64_section_name_as_string)) f1.elf64_file_interpreted_sections in
+  let index_of name = Maybe.map (fun (i, _) -> i) (List.find (fun (_, n) -> n = name) indexed) in
+  match (index_of ".debug_abbrev", index_of ".debug_info") with
+  | (Just a, Just i) -> a < i
+  | _ -> true
+  end
+
 val harness_string_of_elf32_file_header_full : bool -> maybe elf32_section_header_table_entry -> elf32_header -> string
 let {ocaml} harness_string_of_elf32_file_header_full pie sec0 hdr =
   unlines [

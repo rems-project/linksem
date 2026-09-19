@@ -270,7 +270,14 @@ let readelf (dumps : dump list) (hex_specs : string list) (string_specs : string
       (* -t takes precedence over -S, and -s already shows .dynsym *)
       not (d = Section_headers && List.mem Section_details dumps)
       && not (d = Dyn_syms && List.mem Symbols dumps)) dumps in
-  let dumps = List.stable_sort (fun d1 d2 -> compare (dump_order d1) (dump_order d2)) dumps in
+  (* Claude: readelf prints .debug_abbrev and .debug_info in section order,
+     whatever the order of the options; the file decides where Abbrev goes *)
+  let dump_key abbrev_first = function
+    | Debug_dump Abbrev -> if abbrev_first then 24 else 27
+    | Debug_dump _ -> 26
+    | d -> 2 * dump_order d in
+  let sorted abbrev_first =
+    List.stable_sort (fun d1 d2 -> compare (dump_key abbrev_first d1) (dump_key abbrev_first d2)) dumps in
   let ok = ref true in
   let report = function
     | Error.Success (Some "") -> ()   (* Claude: a dump with nothing to say, e.g. -s without symbol tables *)
@@ -284,6 +291,14 @@ let readelf (dumps : dump list) (hex_specs : string list) (string_specs : string
   (match Byte_sequence.acquire file >>= fun bs0 -> elf_class bs0 >>= fun cls -> Error.return (bs0, cls) with
    | Error.Fail err -> report (Error.Fail err)
    | Error.Success (bs0, cls) ->
+       let abbrev_first =
+         if Nat_big_num.equal cls Elf_header.elf_class_64
+            && List.mem (Debug_dump Abbrev) dumps && List.mem (Debug_dump Info_readelf) dumps
+         then (match Elf_file.read_elf64_file bs0 with
+               | Error.Success f1 -> Harness_interface.harness_elf64_debug_abbrev_first f1
+               | Error.Fail _ -> true)
+         else true in
+       let dumps = sorted abbrev_first in
        let before, after = List.partition (fun d -> dump_order d <= 10) dumps in
        List.iter (fun d -> report (run bs0 cls d)) before;
        if hex_specs <> [] || string_specs <> [] then begin
