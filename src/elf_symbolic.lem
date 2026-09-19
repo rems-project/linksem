@@ -57,7 +57,8 @@ end
 let symbolic_address_from_elf64_symbol_table_entry f ste =
   if natural_of_elf64_half ste.elf64_st_shndx = shn_undef then
     let name = natural_of_elf64_word ste.elf64_st_name in
-    get_elf64_file_symbol_string_table f >>= fun strtab ->
+    (* Claude: use the string table linked from .symtab, not the concatenation of all string tables *)
+    get_elf64_file_symtab_string_table f >>= fun strtab ->
     String_table.get_string_at name strtab >>= fun str ->
     return (Section ("UND."^str))
   else

@@ -827,6 +827,26 @@ let get_elf64_string_table_by_index ef link =
       | Just sym -> return (mk_string_table (Byte_sequence.string_of_byte_sequence sym.elf64_section_body) Missing_pervasives.null_char)
     end
 
+(** Claude: [get_elf64_file_symtab_string_table f1] returns the string table
+  * that the ELF file [f1]'s SHT_SYMTAB section links to (via sh_link), which
+  * is the one that its symbol names index.  Unlike
+  * [get_elf64_file_symbol_string_table], which concatenates all SHT_STRTAB
+  * sections and so gives wrong offsets when, e.g., .shstrtab precedes
+  * .strtab, this is correct for any section order.  May fail.
+  *)
+val get_elf64_file_symtab_string_table : elf64_file -> error string_table
+let get_elf64_file_symtab_string_table f3 =
+  let sht     = f3.elf64_file_section_header_table in
+  let symtabs = List.filter (fun sect ->
+    natural_of_elf64_word sect.elf64_sh_type = sht_symtab
+    ) sht
+  in
+    match symtabs with
+      | [symtab] -> get_elf64_string_table_by_index f3 (natural_of_elf64_word symtab.elf64_sh_link)
+      | []       -> fail "get_elf64_file_symtab_string_table: no SHT_SYMTAB section"
+      | _        -> fail "get_elf64_file_symtab_string_table: an ELF file may only have one symbol table of type SHT_SYMTAB"
+    end
+
         
 (** [get_elf32_file_symbol_table f1] returns the ELF file [f1] symbol
   * table.  May fail.
