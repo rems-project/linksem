@@ -333,7 +333,10 @@ let obtain_elf32_interpreted_segments pht bdy =
     let typ      = natural_of_elf32_word ph.elf32_p_type  in
     let align    = natural_of_elf32_word ph.elf32_p_align in
     let flags    = parse_elf_segment_permissions (natural_of_elf32_word ph.elf32_p_flags) in
-      if memsz < size then
+      (* Claude: only a loadable segment must have p_memsz >= p_filesz; the
+       * PT_NOTE segment of a core file has p_memsz = 0.  (The ELF64 reader
+       * below does not check at all.) *)
+      if typ = elf_pt_load && memsz < size then
         fail "obtain_elf32_interpreted_segments: memory size of segment cannot be less than file size"
       else
         return <| elf32_segment_body = relevant; elf32_segment_type = typ;
