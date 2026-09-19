@@ -2,6 +2,7 @@ open import Basic_classes
 open import Bool
 open import Function
 open import Maybe
+open import List
 open import Num
 open import String
 
@@ -31,6 +32,9 @@ open import Gnu_ext_dynamic
 open import Gnu_ext_section_header_table
 open import Gnu_ext_section_to_segment_mapping
 open import Gnu_ext_symbol_versioning
+open import Elf_note
+open import Gnu_ext_note
+open import Elf_interpreted_section
 
 (** Claude: [concatS ss] concatenates a list of strings.  It must be linear in
   * the total length: the relocation and symbol dumps join hundreds of
@@ -258,6 +262,24 @@ let {ocaml} harness_string_of_elf32_program_headers os proc hdr pht sht stbl bs0
       ; harness_string_of_elf32_segment_section_mappings hdr pht sht stbl
       ]
 
+(** Claude: the program-header dump without its three-line preamble, which
+  * readelf omits when the file header is also being displayed ([-h -l]). *)
+val harness_string_of_elf64_program_headers_body : (natural -> string) -> (natural -> string) -> elf64_header -> elf64_program_header_table -> elf64_section_header_table -> string_table -> byte_sequence -> string
+let {ocaml} harness_string_of_elf64_program_headers_body os proc hdr pht sht stbl bs0 =
+  let pht_len = List.length pht in
+    if pht_len = 0 then
+      "\nThere are no program headers in this file."
+    else
+      unlines [
+        ""
+      ; "Program Headers:"
+      ; harness_string_of_elf64_pht os proc pht bs0
+      ; ""
+      ; " Section to Segment mapping:"
+      ; "  Segment Sections..."
+      ; harness_string_of_elf64_segment_section_mappings hdr pht sht stbl
+      ]
+
 val harness_string_of_elf64_program_headers : (natural -> string) -> (natural -> string) -> elf64_header -> elf64_program_header_table -> elf64_section_header_table -> string_table -> byte_sequence -> string
 let {ocaml} harness_string_of_elf64_program_headers os proc hdr pht sht stbl bs0 =
   let pht_len = List.length pht in
@@ -269,14 +291,7 @@ let {ocaml} harness_string_of_elf64_program_headers os proc hdr pht sht stbl bs0
       ; "Elf file type is " ^ string_of_elf_file_type default_os_specific_print default_proc_specific_print (natural_of_elf64_half hdr.elf64_type)
       ; "Entry point " ^ "0x" ^ unsafe_hex_string_of_natural 1 (natural_of_elf64_addr hdr.elf64_entry)
       ; "There are " ^ show (List.length pht) ^ " program headers, starting at offset " ^ show hdr.elf64_phoff
-      ; ""
-      ; "Program Headers:"
-      ; harness_string_of_elf64_pht os proc pht bs0
-      ; ""
-      ; " Section to Segment mapping:"
-      ; "  Segment Sections..."
-      ; harness_string_of_elf64_segment_section_mappings hdr pht sht stbl
-      ]
+      ] ^ harness_string_of_elf64_program_headers_body os proc hdr pht sht stbl bs0
 
 (** Claude: the section-header output of this harness reproduces that of GNU
   * readelf in wide mode ([readelf -W -S]).  readelf's output changes between
@@ -496,14 +511,20 @@ let {ocaml} harness_string_of_elf32_section_headers os proc usr hdr sht stbl =
   ; harness_string_of_elf32_sht (natural_of_elf32_half hdr.elf32_machine) (get_elf32_osabi hdr) os proc usr sht stbl
   ] ^ harness_sht_flag_legend (natural_of_elf32_half hdr.elf32_machine) (get_elf32_osabi hdr)
 
-val harness_string_of_elf64_section_headers : (natural -> string) -> (natural -> string) -> (natural -> string) -> elf64_header -> elf64_section_header_table -> string_table -> string
-let {ocaml} harness_string_of_elf64_section_headers os proc usr hdr sht stbl =
+(** Claude: the section-header dump without its "There are N section headers"
+  * line, which readelf omits when the file header is also displayed ([-h -S]). *)
+val harness_string_of_elf64_section_headers_body : (natural -> string) -> (natural -> string) -> (natural -> string) -> elf64_header -> elf64_section_header_table -> string_table -> string
+let {ocaml} harness_string_of_elf64_section_headers_body os proc usr hdr sht stbl =
   unlines [
-    "There are " ^ show (List.length sht) ^ " section headers, starting at offset 0x" ^ unsafe_hex_string_of_natural 0 (natural_of_elf64_off hdr.elf64_shoff) ^ ":"
-  ; ""
+    ""
   ; "Section Headers:"
   ; harness_string_of_elf64_sht (natural_of_elf64_half hdr.elf64_machine) (get_elf64_osabi hdr) os proc usr sht stbl
   ] ^ harness_sht_flag_legend (natural_of_elf64_half hdr.elf64_machine) (get_elf64_osabi hdr)
+
+val harness_string_of_elf64_section_headers : (natural -> string) -> (natural -> string) -> (natural -> string) -> elf64_header -> elf64_section_header_table -> string_table -> string
+let {ocaml} harness_string_of_elf64_section_headers os proc usr hdr sht stbl =
+  "There are " ^ show (List.length sht) ^ " section headers, starting at offset 0x" ^ unsafe_hex_string_of_natural 0 (natural_of_elf64_off hdr.elf64_shoff) ^ ":\n"
+  ^ harness_string_of_elf64_section_headers_body os proc usr hdr sht stbl
 
 val harness_string_of_elf32_reloc_entry : (natural -> string) -> Map.map natural elf32_section_header_table_entry ->
   Map.map natural elf32_symbol_table_entry -> string_table -> string_table -> elf32_relocation -> string
@@ -1187,20 +1208,21 @@ let {ocaml} harness_string_of_elf64_syms' endian f1 filtered_sht sht shdr versio
       | Success s -> String.concat "\n\n" s
     end
 
-val harness_string_of_elf64_syms : elf64_file -> byte_sequence -> (natural -> bool) ->
+(** Claude: the symbol tables whose section type satisfies [keep], or
+  * [none_msg] if there are none; [harness_string_of_elf64_syms] is the
+  * readelf [-s] case and [harness_string_of_elf64_dyn_syms] the [--dyn-syms]
+  * case, which shows only .dynsym and prints nothing when there is none. *)
+val harness_string_of_elf64_syms_selected : (natural -> bool) -> string -> elf64_file -> byte_sequence -> (natural -> bool) ->
   (natural -> error tag_correspondence) -> (natural -> error tag_correspondence) ->
   (elf64_dyn -> string_table -> error elf64_dyn_value) ->
   (elf64_dyn -> string_table -> error elf64_dyn_value) -> string
-let {ocaml} harness_string_of_elf64_syms f1 bs0 os_additional_ranges os_tag proc_tag os_dyn proc_dyn =
+let {ocaml} harness_string_of_elf64_syms_selected keep none_msg f1 bs0 os_additional_ranges os_tag proc_tag os_dyn proc_dyn =
   let hdr = f1.elf64_file_header in
   let sht = f1.elf64_file_section_header_table in
   let endian = get_elf64_header_endianness hdr in
-  let sym_secs = List.filter (fun x ->
-    x.elf64_sh_type = elf64_word_of_natural sht_dynsym ||
-    x.elf64_sh_type = elf64_word_of_natural sht_symtab) sht
-  in
+  let sym_secs = List.filter (fun x -> keep (natural_of_elf64_word x.elf64_sh_type)) sht in
   if List.length sym_secs = 0 then
-    "\nThere are no symbols in this file."
+    none_msg
   else
     let has_dynsym = List.any (fun x -> x.elf64_sh_type = elf64_word_of_natural sht_dynsym) sht in
     let versions =
@@ -1213,6 +1235,22 @@ let {ocaml} harness_string_of_elf64_syms f1 bs0 os_additional_ranges os_tag proc
       | Fail err     -> err
       | Success shdr -> "\n" ^ harness_string_of_elf64_syms' endian f1 sym_secs sht shdr versions bs0
     end
+
+val harness_string_of_elf64_syms : elf64_file -> byte_sequence -> (natural -> bool) ->
+  (natural -> error tag_correspondence) -> (natural -> error tag_correspondence) ->
+  (elf64_dyn -> string_table -> error elf64_dyn_value) ->
+  (elf64_dyn -> string_table -> error elf64_dyn_value) -> string
+let {ocaml} harness_string_of_elf64_syms f1 bs0 os_additional_ranges os_tag proc_tag os_dyn proc_dyn =
+  harness_string_of_elf64_syms_selected (fun t -> t = sht_dynsym || t = sht_symtab)
+    "\nThere are no symbols in this file." f1 bs0 os_additional_ranges os_tag proc_tag os_dyn proc_dyn
+
+val harness_string_of_elf64_dyn_syms : elf64_file -> byte_sequence -> (natural -> bool) ->
+  (natural -> error tag_correspondence) -> (natural -> error tag_correspondence) ->
+  (elf64_dyn -> string_table -> error elf64_dyn_value) ->
+  (elf64_dyn -> string_table -> error elf64_dyn_value) -> string
+let {ocaml} harness_string_of_elf64_dyn_syms f1 bs0 os_additional_ranges os_tag proc_tag os_dyn proc_dyn =
+  harness_string_of_elf64_syms_selected (fun t -> t = sht_dynsym)
+    "" f1 bs0 os_additional_ranges os_tag proc_tag os_dyn proc_dyn
 
 (* convenient symbol table extractor for read-dwarf *)
 (*
@@ -1473,3 +1511,1150 @@ let {ocaml} harness_string_of_elf64_dynamic_section f1 bs0 os_additional_ranges 
       | [x] -> harness_string_of_elf64_dynamic_section' f1 x bs0 os_additional_ranges os proc os_print os_dyn proc_dyn
       | _   -> "Multiple dynamic sections detected."
     end
+
+(** ------------------------------------------------------------------------- *)
+(** Claude: further readelf-compatible dumps, following binutils 2.42
+  * [readelf -W] ([readelf.c]):
+  *
+  *   -t          [harness_string_of_elf64_section_details]
+  *   -g          [harness_string_of_elf64_section_groups]
+  *   -x / -p     [harness_string_of_elf64_section_dumps]
+  *   -V          [harness_string_of_elf64_version_sections]
+  *   -n          [harness_string_of_elf64_notes]
+  *   -I          [harness_string_of_elf64_histogram]
+  *   -u / -A     [harness_string_of_elf64_unwind], [harness_elf64_arch_specific_unsupported]
+  *
+  * ELF64 only.  As elsewhere in this file the strings carry no trailing
+  * newline; the caller adds one.  The traversals of the ELF structures and
+  * all the formatting are here; the command-line tool only selects and
+  * sequences these functions.
+  *)
+
+(** small formatting helpers *)
+
+(** C's [%x] *)
+val harness_hex : natural -> string
+let {ocaml} harness_hex n = hex_string_of_natural n
+
+(** C's [%#x]: [0x] prefix, but a bare [0] for zero *)
+val harness_hex_hash : natural -> string
+let {ocaml} harness_hex_hash n = unsafe_hex_string_of_natural_alternate n
+
+(** C's [%#06zx]: [0x] plus at least four digits, but [000000] for zero *)
+val harness_hex_hash_6 : natural -> string
+let {ocaml} harness_hex_hash_6 n =
+  if n = 0 then "000000" else "0x" ^ left_zero_padded_to 4 (harness_hex n)
+
+val harness_entry_word : natural -> string
+let {ocaml} harness_entry_word n = if n = 1 then "entry" else "entries"
+
+val harness_list_take : forall 'a. natural -> list 'a -> list 'a
+let rec {ocaml} harness_list_take n xs =
+  if n = 0 then [] else
+  match xs with
+    | [] -> []
+    | x :: xs' -> x :: harness_list_take (n - 1) xs'
+  end
+
+val harness_list_drop : forall 'a. natural -> list 'a -> list 'a
+let rec {ocaml} harness_list_drop n xs =
+  if n = 0 then xs else
+  match xs with
+    | [] -> []
+    | _ :: xs' -> harness_list_drop (n - 1) xs'
+  end
+
+(** the bits of [mask], lowest first, each named by [names] or rendered as
+  * readelf's [<unknown: %x>]; [none] is the text for an empty mask *)
+val harness_decode_bits_acc : list (natural * string) -> natural -> natural -> list string
+let rec {ocaml} harness_decode_bits_acc names bit m =
+  if m = 0 then []
+  else if natural_land m bit = 0 then harness_decode_bits_acc names (2 * bit) m
+  else
+    (match List.lookup bit names with
+      | Just s -> s
+      | Nothing -> "<unknown: " ^ harness_hex bit ^ ">"
+    end) :: harness_decode_bits_acc names (2 * bit) (m - bit)
+
+val harness_decode_bits : list (natural * string) -> string -> natural -> string
+let {ocaml} harness_decode_bits names none mask =
+  if mask = 0 then none else String.concat ", " (harness_decode_bits_acc names 1 mask)
+
+(** the words of a byte sequence, in the file's endianness *)
+val harness_words_of_byte_sequence : endianness -> byte_sequence -> error (list natural)
+let {ocaml} harness_words_of_byte_sequence endian bs =
+  group_elf64_words endian (byte_list_of_byte_sequence bs) >>= fun ws ->
+  return (List.map natural_of_elf64_word ws)
+
+(** the string up to the first NUL of a byte sequence *)
+val harness_c_string_of_byte_sequence : byte_sequence -> string
+let {ocaml} harness_c_string_of_byte_sequence bs =
+  toString (List.takeWhile (fun c -> c <> null_char) (char_list_of_byte_sequence bs))
+
+val harness_hex_bytes : string -> byte_sequence -> string
+let {ocaml} harness_hex_bytes sep bs =
+  String.concat "" (List.map (fun b -> unsafe_hex_string_of_natural 2 (natural_of_byte b) ^ sep) (byte_list_of_byte_sequence bs))
+
+val harness_section_name_or_empty : elf64_section_header_table -> string_table -> natural -> string
+let {ocaml} harness_section_name_or_empty sht stbl ndx =
+  match harness_elf64_section_name (index_map sht) stbl ndx with
+    | Just n -> n
+    | Nothing -> ""
+  end
+
+(** readelf -t: section details ******************************************)
+
+(** the section flags as readelf's [-t] spells them ([get_elf_section_flags]
+  * with [do_section_details]): [[%016x]: WRITE, ALLOC, ...], the bits taken
+  * lowest first, with unnamed OS, processor and other bits collected at the end. *)
+val harness_section_flag_names_acc : list (natural * string) -> natural -> natural ->
+  (list string * natural * natural * natural) -> (list string * natural * natural * natural)
+let rec {ocaml} harness_section_flag_names_acc named bit f acc =
+  if f = 0 then acc
+  else if natural_land f bit = 0 then harness_section_flag_names_acc named (2 * bit) f acc
+  else
+    let (names, os, proc, unknown) = acc in
+    let acc' =
+      match List.lookup bit named with
+        | Just s -> (names ++ [s], os, proc, unknown)
+        | Nothing ->
+          if natural_land bit shf_mask_os <> 0 then (names, os + bit, proc, unknown)
+          else if natural_land bit shf_mask_proc <> 0 then (names, os, proc + bit, unknown)
+          else (names, os, proc, unknown + bit)
+      end
+    in
+    harness_section_flag_names_acc named (2 * bit) (f - bit) acc'
+
+val harness_section_flag_names : natural -> natural -> natural -> string
+let {ocaml} harness_section_flag_names mach osabi f =
+  let shf_arm_entrysect : natural = 268435456 in       (* 0x10000000 *)
+  let shf_arm_comdef    : natural = 2 * 1073741824 in  (* 0x80000000 *)
+  let shf_ordered       : natural = 1073741824 in      (* 0x40000000, SPARC and x86 *)
+  let generic = [
+      (shf_write, "WRITE"); (shf_alloc, "ALLOC"); (shf_execinstr, "EXEC"); (shf_merge, "MERGE")
+    ; (shf_strings, "STRINGS"); (shf_info_link, "INFO LINK"); (shf_link_order, "LINK ORDER")
+    ; (shf_os_nonconforming, "OS NONCONF"); (shf_group, "GROUP"); (shf_tls, "TLS")
+    ; (shf_exclude, "EXCLUDE"); (shf_compressed, "COMPRESSED") ] in
+  let machine_specific =
+    if mach = elf_ma_arm then [ (shf_arm_entrysect, "ENTRYSECT"); (shf_arm_purecode, "ARM_PURECODE"); (shf_arm_comdef, "COMDEF") ]
+    else if mach = elf_ma_ppc then [ (shf_ppc_vle, "VLE") ]
+    else if mach = elf_ma_386 || mach = elf_ma_x86_64 || mach = elf_ma_sparc
+            || mach = elf_ma_sparc32plus || mach = elf_ma_sparcv9 then [ (shf_ordered, "ORDERED") ]
+    else [] in
+  let os_specific =
+    (if osabi = elf_osabi_gnu || osabi = elf_osabi_freebsd then [ (shf_gnu_retain, "GNU_RETAIN") ] else [])
+    ++ (if osabi = elf_osabi_gnu || osabi = elf_osabi_freebsd || osabi = elf_osabi_none then [ (shf_gnu_mbind, "GNU_MBIND") ] else []) in
+  let (names, os, proc, unknown) =
+    harness_section_flag_names_acc (generic ++ machine_specific ++ os_specific) 1 f ([], 0, 0, 0) in
+  let hex_field n = "(" ^ unsafe_hex_string_of_natural 16 n ^ ")" in
+  let extras =
+    (if os <> 0 then ["OS " ^ hex_field os] else [])
+    ++ (if proc <> 0 then ["PROC " ^ hex_field proc] else [])
+    ++ (if unknown <> 0 then ["UNKNOWN " ^ hex_field unknown] else []) in
+  "[" ^ unsafe_hex_string_of_natural 16 f ^ "]: " ^ String.concat ", " (names ++ extras)
+
+(** the extra line readelf prints under a compressed section's flags *)
+val harness_string_of_elf64_compression_header : endianness -> natural -> byte_sequence -> string
+let {ocaml} harness_string_of_elf64_compression_header endian off bs0 =
+  let res =
+    Byte_sequence.offset_and_cut off 24 bs0 >>= fun bs ->
+    read_elf64_word endian bs >>= fun (ch_type, bs) ->
+    read_elf64_word endian bs >>= fun (_reserved, bs) ->
+    read_elf64_xword endian bs >>= fun (ch_size, bs) ->
+    read_elf64_xword endian bs >>= fun (ch_addralign, _) ->
+    return (natural_of_elf64_word ch_type, natural_of_elf64_xword ch_size, natural_of_elf64_xword ch_addralign)
+  in
+  match res with
+    | Fail _ -> "       [<corrupt>]"
+    | Success (typ, size, align) ->
+      (if typ = 1 then "       ZLIB, "
+       else if typ = 2 then "       ZSTD, "
+       else "       [<unknown>: " ^ harness_hex_hash typ ^ "], ")
+      ^ unsafe_hex_string_of_natural 16 size ^ ", " ^ show align
+  end
+
+(** the [-t] table without its "There are N section headers" line (omitted
+  * by readelf when the file header is also displayed) *)
+val harness_string_of_elf64_section_details_body : (natural -> string) -> (natural -> string) -> (natural -> string) -> elf64_header -> elf64_section_header_table -> string_table -> byte_sequence -> string
+let {ocaml} harness_string_of_elf64_section_details_body os proc usr hdr sht stbl bs0 =
+  let mach = natural_of_elf64_half hdr.elf64_machine in
+  let osabi = get_elf64_osabi hdr in
+  let endian = get_elf64_header_endianness hdr in
+  let row i sec =
+    let name =
+      match String_table.get_string_at (natural_of_elf64_word sec.elf64_sh_name) stbl with
+        | Fail _ -> ""
+        | Success nm -> nm
+      end in
+    let typ = harness_string_of_section_type os proc usr (natural_of_elf64_word sec.elf64_sh_type) in
+    let flags = natural_of_elf64_xword sec.elf64_sh_flags in
+    let compression =
+      if natural_land flags shf_compressed <> 0 then
+        [harness_string_of_elf64_compression_header endian (natural_of_elf64_off sec.elf64_sh_offset) bs0]
+      else [] in
+    [ "  [" ^ rjust 2 (show i) ^ "] " ^ name
+    ; "       " ^ ljust 15 typ
+      ^ " " ^ unsafe_hex_string_of_natural 16 (natural_of_elf64_addr sec.elf64_sh_addr)
+      ^ " " ^ unsafe_hex_string_of_natural 6 (natural_of_elf64_off sec.elf64_sh_offset)
+      ^ " " ^ unsafe_hex_string_of_natural 6 (natural_of_elf64_xword sec.elf64_sh_size)
+      ^ " " ^ unsafe_hex_string_of_natural 2 (natural_of_elf64_xword sec.elf64_sh_entsize)
+      ^ "  " ^ rjust 2 (show (natural_of_elf64_word sec.elf64_sh_link))
+      ^ " " ^ rjust 3 (show (natural_of_elf64_word sec.elf64_sh_info))
+      ^ " " ^ rjust 2 (show (natural_of_elf64_xword sec.elf64_sh_addralign))
+    ; "       " ^ harness_section_flag_names mach osabi flags
+    ] ++ compression
+  in
+  unlines ([ ""
+           ; "Section Headers:"
+           ; "  [Nr] Name"
+           ; "       Type            Address          Off    Size   ES   Lk Inf Al"
+           ; "       Flags" ]
+           ++ List.concat (List.mapi row sht))
+
+val harness_string_of_elf64_section_details : (natural -> string) -> (natural -> string) -> (natural -> string) -> elf64_header -> elf64_section_header_table -> string_table -> byte_sequence -> string
+let {ocaml} harness_string_of_elf64_section_details os proc usr hdr sht stbl bs0 =
+  match sht with
+    | [] -> "\nThere are no sections in this file."
+    | _ ->
+      "There are " ^ show (List.length sht) ^ " section headers, starting at offset 0x" ^ harness_hex (natural_of_elf64_off hdr.elf64_shoff) ^ ":\n"
+      ^ harness_string_of_elf64_section_details_body os proc usr hdr sht stbl bs0
+  end
+
+(** readelf -g: section groups **********************************************)
+
+val harness_group_flags : natural -> string
+let {ocaml} harness_group_flags flags =
+  let grp_comdat   : natural = 1 in
+  let grp_maskos   : natural = 267386880 in       (* 0x0ff00000 *)
+  let grp_maskproc : natural = 4 * 1006632960 in  (* 0xf0000000 *)
+  if flags = 0 then ""
+  else if flags = grp_comdat then "COMDAT "
+  else
+    let known = natural_land flags (natural_lor grp_comdat (natural_lor grp_maskos grp_maskproc)) in
+    "[" ^ harness_hex_hash flags ^ ": "
+    ^ (if natural_land flags grp_maskos <> 0 then "<OS specific>" else "")
+    ^ (if natural_land flags grp_maskproc <> 0 then "<PROC specific>" else "")
+    ^ (if flags - known <> 0 then "<unknown>" else "")
+    ^ "]"
+
+val harness_string_of_elf64_section_groups : elf64_file -> string_table -> byte_sequence -> string
+let {ocaml} harness_string_of_elf64_section_groups f1 shstrtab bs0 =
+  let sht = f1.elf64_file_section_header_table in
+  let endian = get_elf64_header_endianness f1.elf64_file_header in
+  let shtmap = index_map sht in
+  let section_name = harness_section_name_or_empty sht shstrtab in
+  let nsections = naturalFromNat (List.length sht) in
+  let group_lines isec =
+    let (i, sec) = isec in
+    let lnk = natural_of_elf64_word sec.elf64_sh_link in
+    let res =
+      get_elf64_symbol_table_by_index f1 lnk >>= fun symtab ->
+      (match Missing_pervasives.index (natural_of_elf64_word sec.elf64_sh_info) symtab with
+        | Just sym -> return sym
+        | Nothing -> fail "bad sh_info in group section"
+      end) >>= fun sym ->
+      (if extract_symbol_type sym.elf64_st_info = stt_section then
+         return (section_name (natural_of_elf64_half sym.elf64_st_shndx))
+       else
+         (match Map.lookup lnk shtmap with
+           | Just symsec -> return (natural_of_elf64_word symsec.elf64_sh_link)
+           | Nothing -> fail "bad sh_link in group section"
+         end) >>= fun strndx ->
+         get_elf64_string_table_by_index f1 strndx >>= fun strtab ->
+         return (match String_table.get_string_at (natural_of_elf64_word sym.elf64_st_name) strtab with
+                   | Success s -> s
+                   | Fail _ -> "<corrupt>"
+                 end)) >>= fun group_name ->
+      Byte_sequence.offset_and_cut (natural_of_elf64_off sec.elf64_sh_offset) (natural_of_elf64_xword sec.elf64_sh_size) bs0 >>= fun body ->
+      harness_words_of_byte_sequence endian body >>= fun words ->
+      (match words with
+        | [] -> fail "empty group section"
+        | flags :: members -> return (flags, members)
+      end) >>= fun (flags, members) ->
+      return ([ ""
+              ; harness_group_flags flags ^ "group section [" ^ rjust 5 (show i) ^ "] `" ^ section_name i
+                ^ "' [" ^ group_name ^ "] contains " ^ show (List.length members) ^ " sections:"
+              ; "   [Index]    Name" ]
+              ++ List.map (fun m -> "   [" ^ rjust 5 (show m) ^ "]   " ^ section_name m)
+                   (List.filter (fun m -> m < nsections) members))
+    in
+    match res with
+      | Fail _ -> []
+      | Success ls -> ls
+    end
+  in
+  let groups =
+    List.filter (fun (_, sec) -> natural_of_elf64_word sec.elf64_sh_type = sht_group)
+      (List.mapi (fun i sec -> (naturalFromNat i, sec)) sht) in
+  match groups with
+    | [] -> "\nThere are no section groups in this file."
+    | _ -> unlines (List.concat (List.map group_lines groups))
+  end
+
+(** readelf -x / -p: hex and string dumps of sections ***********************)
+
+(** a section named on the command line by number or by name *)
+val harness_find_elf64_section : elf64_section_header_table -> string_table -> string -> maybe (natural * elf64_section_header_table_entry)
+let {ocaml} harness_find_elf64_section sht stbl spec =
+  let chars = toCharList spec in
+  let numeric = (not (List.null chars)) && List.all (fun c -> isJust (natural_of_decimal_digit c)) chars in
+  let indexed = List.mapi (fun i sec -> (naturalFromNat i, sec)) sht in
+  if numeric then
+    List.find (fun (i, _) -> i = natural_of_decimal_string spec) indexed
+  else
+    List.find (fun (_, sec) ->
+      match String_table.get_string_at (natural_of_elf64_word sec.elf64_sh_name) stbl with
+        | Success nm -> nm = spec
+        | Fail _ -> false
+      end) indexed
+
+val harness_section_not_dumped_message : string -> string
+let {ocaml} harness_section_not_dumped_message spec =
+  let chars = toCharList spec in
+  if (not (List.null chars)) && List.all (fun c -> isJust (natural_of_decimal_digit c)) chars then
+    "Section " ^ spec ^ " was not dumped because it does not exist!"
+  else
+    "Section '" ^ spec ^ "' was not dumped because it does not exist"
+
+(** readelf's NOTE lines under a hex or string dump *)
+val harness_section_dump_notes : elf64_section_header_table -> natural -> natural -> string
+let {ocaml} harness_section_dump_notes sht i flags =
+  let nsections = naturalFromNat (List.length sht) in
+  let compressed =
+    if natural_land flags shf_compressed <> 0 then
+      " NOTE: This section is compressed, but its contents have NOT been expanded for this dump.\n"
+    else "" in
+  let has_relocs =
+    List.any (fun relsec ->
+      let typ = natural_of_elf64_word relsec.elf64_sh_type in
+      (typ = sht_rel || typ = sht_rela)
+      && natural_of_elf64_word relsec.elf64_sh_info = i
+      && natural_of_elf64_xword relsec.elf64_sh_size <> 0
+      && natural_of_elf64_word relsec.elf64_sh_link < nsections) sht in
+  compressed
+  ^ (if has_relocs then
+       " NOTE: This section has relocations against it, but these have NOT been applied to this dump.\n"
+     else "")
+
+(** the rows of [readelf -x]: 16 bytes per row as four words, then the bytes as text *)
+val harness_hex_dump_rows : natural -> list byte -> list string
+let rec {ocaml} harness_hex_dump_rows addr bytes =
+  match bytes with
+    | [] -> []
+    | _ ->
+      let row = harness_list_take 16 bytes in
+      let rest = harness_list_drop 16 bytes in
+      let n = List.length row in
+      let group_gap j = if j mod 4 = 3 then " " else "" in
+      let hex = String.concat "" (List.mapi (fun j b -> unsafe_hex_string_of_natural 2 (natural_of_byte b) ^ group_gap j) row) in
+      let pad = String.concat "" (List.genlist (fun k -> "  " ^ group_gap (n + k)) (16 - n)) in
+      let text = toString (List.map (fun b ->
+          let k = natural_of_byte b in
+          if k >= 32 && k < 127 then char_of_byte b else #'.') row) in
+      ("  0x" ^ unsafe_hex_string_of_natural 8 addr ^ " " ^ hex ^ pad ^ text ^ "\n")
+      :: harness_hex_dump_rows (addr + 16) rest
+  end
+
+val harness_string_of_elf64_hex_dump : elf64_file -> string_table -> byte_sequence -> (natural * elf64_section_header_table_entry) -> error string
+let {ocaml} harness_string_of_elf64_hex_dump f1 stbl bs0 (i, sec) =
+  let sht = f1.elf64_file_section_header_table in
+  let name = harness_section_name_or_empty sht stbl i in
+  let siz = natural_of_elf64_xword sec.elf64_sh_size in
+  if siz = 0 || natural_of_elf64_word sec.elf64_sh_type = sht_nobits then
+    return ("Section '" ^ name ^ "' has no data to dump.")
+  else
+    Byte_sequence.offset_and_cut (natural_of_elf64_off sec.elf64_sh_offset) siz bs0 >>= fun body ->
+    return ("\nHex dump of section '" ^ name ^ "':\n"
+            ^ harness_section_dump_notes sht i (natural_of_elf64_xword sec.elf64_sh_flags)
+            ^ String.concat "" (harness_hex_dump_rows (natural_of_elf64_addr sec.elf64_sh_addr) (byte_list_of_byte_sequence body)))
+
+(** [readelf -p]'s string scanner ([dump_section_as_strings]): runs of
+  * printable characters, each ended by a NUL, a newline or the end of the
+  * data; control characters are shown as [^X]; a string cut by a newline
+  * continues on the next line indented instead of with a new offset. *)
+val harness_is_print : natural -> bool
+let {ocaml} harness_is_print k = k >= 32 && k < 127
+
+(** one string: its text, the number of bytes consumed, whether it ended with a
+  * newline, and whether the following byte is non-NUL *)
+(** the number of continuation bytes following lead byte [k] if they form a
+  * well-formed UTF-8 sequence with it, else 0 *)
+val harness_utf8_continuation_length : natural -> list byte -> natural
+let {ocaml} harness_utf8_continuation_length k rest =
+  let is_cont b = let v = natural_of_byte b in v >= 128 && v < 192 in
+  let n =
+    if k >= 194 && k < 224 then 1
+    else if k >= 224 && k < 240 then 2
+    else if k >= 240 && k < 245 then 3
+    else 0 in
+  let following = harness_list_take n rest in
+  (* the second byte's range excludes overlong forms (E0, F0), surrogates (ED)
+     and code points above U+10FFFF (F4), as mbrtowc does *)
+  let second_ok =
+    match following with
+      | b :: _ ->
+        let v = natural_of_byte b in
+        if k = 224 then v >= 160
+        else if k = 237 then v < 160
+        else if k = 240 then v >= 144
+        else if k = 244 then v < 144
+        else true
+      | [] -> true
+    end in
+  if n > 0 && naturalFromNat (List.length following) = n && List.all is_cont following && second_ok then n else 0
+
+val harness_string_dump_one : list byte -> (string * natural * bool * bool)
+let rec {ocaml} harness_string_dump_one bytes =
+  match bytes with
+    | [] -> ("", 0, false, false)
+    | b :: rest ->
+      let k = natural_of_byte b in
+      if k = 0 then ("", 1, false, false)
+      else if k = 10 then
+        ("\\n\n", 1, true, (match rest with
+                               | [] -> false
+                               | b' :: _ -> natural_of_byte b' <> 0
+                             end))
+      else
+        let c =
+          if k < 32 || k = 127 then "^" ^ toString [char_of_byte (byte_of_natural (k + 64))]
+          else toString [char_of_byte b] in
+        (* a byte outside ASCII is printed on its own; readelf then skips the
+           continuation bytes of a well-formed UTF-8 sequence (in a UTF-8
+           locale, via mbrtowc) *)
+        let skip = if k >= 128 then harness_utf8_continuation_length k rest else 0 in
+        let (s, n, nl, cont) = harness_string_dump_one (harness_list_drop skip rest) in
+        (c ^ s, n + 1 + skip, nl, cont)
+  end
+
+val harness_string_dump_pieces : natural -> bool -> list byte -> list string
+let rec {ocaml} harness_string_dump_pieces off continuing bytes =
+  match bytes with
+    | [] -> []
+    | b :: rest ->
+      if not (harness_is_print (natural_of_byte b)) then
+        harness_string_dump_pieces (off + 1) continuing rest
+      else
+        let prefix = if continuing then "            " else "  [" ^ rjust 6 (harness_hex off) ^ "]  " in
+        let (text, consumed, ended_by_newline, cont) = harness_string_dump_one bytes in
+        (prefix ^ text ^ (if ended_by_newline then "" else "\n"))
+        :: harness_string_dump_pieces (off + consumed) cont (harness_list_drop consumed bytes)
+  end
+
+val harness_string_of_elf64_string_dump : elf64_file -> string_table -> byte_sequence -> (natural * elf64_section_header_table_entry) -> error string
+let {ocaml} harness_string_of_elf64_string_dump f1 stbl bs0 (i, sec) =
+  let sht = f1.elf64_file_section_header_table in
+  let name = harness_section_name_or_empty sht stbl i in
+  let siz = natural_of_elf64_xword sec.elf64_sh_size in
+  if siz = 0 || natural_of_elf64_word sec.elf64_sh_type = sht_nobits then
+    return ("Section '" ^ name ^ "' has no data to dump.")
+  else
+    Byte_sequence.offset_and_cut (natural_of_elf64_off sec.elf64_sh_offset) siz bs0 >>= fun body ->
+    let pieces = harness_string_dump_pieces 0 false (byte_list_of_byte_sequence body) in
+    return ("\nString dump of section '" ^ name ^ "':\n"
+            ^ harness_section_dump_notes sht i (natural_of_elf64_xword sec.elf64_sh_flags)
+            ^ (match pieces with
+                 | [] -> "  No strings found in this section."
+                 | _ -> String.concat "" pieces
+               end))
+
+(** the [-x] and [-p] dumps requested on a command line, in readelf's order
+  * (by section index, a section's hex dump before its string dump), together
+  * with the warnings for sections that do not exist *)
+val harness_string_of_elf64_section_dumps : elf64_file -> string_table -> byte_sequence -> list string -> list string -> (list string * list string)
+let {ocaml} harness_string_of_elf64_section_dumps f1 stbl bs0 hex_specs string_specs =
+  let sht = f1.elf64_file_section_header_table in
+  let resolve specs =
+    List.map (fun spec -> (spec, harness_find_elf64_section sht stbl spec)) specs in
+  let hexes = resolve hex_specs in
+  let strings = resolve string_specs in
+  let warnings =
+    List.mapMaybe (fun (spec, found) ->
+      match found with
+        | Nothing -> Just (harness_section_not_dumped_message spec)
+        | Just _ -> Nothing
+      end) (hexes ++ strings) in
+  let wanted which i =
+    List.any (fun (_, found) ->
+      match found with
+        | Just (j, _) -> j = i
+        | Nothing -> false
+      end) which in
+  let render dump found =
+    match dump f1 stbl bs0 found with
+      | Success s -> s
+      | Fail err -> err
+    end in
+  let dumps =
+    List.concat (List.mapi (fun i sec ->
+      let i = naturalFromNat i in
+      (if wanted hexes i then [render harness_string_of_elf64_hex_dump (i, sec)] else [])
+      ++ (if wanted strings i then [render harness_string_of_elf64_string_dump (i, sec)] else [])) sht) in
+  (dumps, warnings)
+
+(** readelf -V: version sections ********************************************)
+
+val harness_ver_flags : natural -> string
+let {ocaml} harness_ver_flags flags =
+  if flags = 0 then "none" else
+  String.concat " | "
+    ((if natural_land flags 1 <> 0 then ["BASE"] else [])
+     ++ (if natural_land flags 2 <> 0 then ["WEAK"] else [])
+     ++ (if natural_land flags 4 <> 0 then ["INFO"] else [])
+     ++ (if flags - natural_land flags 7 <> 0 then ["<unknown>"] else []))
+
+(** the verdef entries as readelf lists them; the offsets are recomputed from
+  * the [vd_next], [vd_aux] and [vda_next] links, as readelf does *)
+val harness_strtab_name : string_table -> natural -> maybe string
+let {ocaml} harness_strtab_name strtab n =
+  match String_table.get_string_at n strtab with
+    | Success s -> Just s
+    | Fail _ -> Nothing
+  end
+
+(** the "Parent" lines of a verdef entry: the auxiliary entries after the first *)
+val harness_verdef_parents : string_table -> natural -> natural -> list gnu_ext_elf64_veraux -> list string
+let rec {ocaml} harness_verdef_parents strtab j isum auxs =
+  match auxs with
+    | prev :: (cur :: rest) ->
+      let isum' = isum + natural_of_elf64_word prev.gnu_ext_elf64_vda_next in
+      let n = natural_of_elf64_word cur.gnu_ext_elf64_vda_name in
+      (match harness_strtab_name strtab n with
+         | Just s -> "  " ^ harness_hex_hash_6 isum' ^ ": Parent " ^ show j ^ ": " ^ s
+         | Nothing -> "  " ^ harness_hex_hash_6 isum' ^ ": Parent " ^ show j ^ ", name index: " ^ show n
+       end) :: harness_verdef_parents strtab (j + 1) isum' (cur :: rest)
+    | _ -> []
+  end
+
+val harness_string_of_elf64_verdefs : string_table -> list (gnu_ext_elf64_verdef * list gnu_ext_elf64_veraux) -> list string
+let {ocaml} harness_string_of_elf64_verdefs strtab defs =
+  let name_of = harness_strtab_name strtab in
+  let (_, lines) =
+    List.foldl (fun (idx, acc) (vd, auxs) ->
+      let first =
+        "  " ^ harness_hex_hash_6 idx
+        ^ ": Rev: " ^ show (natural_of_elf64_half vd.gnu_ext_elf64_vd_version)
+        ^ "  Flags: " ^ harness_ver_flags (natural_of_elf64_half vd.gnu_ext_elf64_vd_flags)
+        ^ "  Index: " ^ show (natural_of_elf64_half vd.gnu_ext_elf64_vd_ndx)
+        ^ "  Cnt: " ^ show (natural_of_elf64_half vd.gnu_ext_elf64_vd_cnt) ^ "  "
+        ^ (match auxs with
+             | a :: _ ->
+               let n = natural_of_elf64_word a.gnu_ext_elf64_vda_name in
+               (match name_of n with
+                  | Just s -> "Name: " ^ s
+                  | Nothing -> "Name index: " ^ show n
+                end)
+             | [] -> "Name index: 0"
+           end) in
+      let isum0 = idx + natural_of_elf64_word vd.gnu_ext_elf64_vd_aux in
+      (idx + natural_of_elf64_word vd.gnu_ext_elf64_vd_next, acc ++ (first :: harness_verdef_parents strtab 1 isum0 auxs)))
+      (0, []) defs in
+  lines
+
+(** the auxiliary lines of a verneed entry *)
+val harness_verneed_auxes : string_table -> natural -> list gnu_ext_elf64_vernaux -> list string
+let rec {ocaml} harness_verneed_auxes strtab isum auxs =
+  match auxs with
+    | [] -> []
+    | a :: rest ->
+      let n = natural_of_elf64_word a.gnu_ext_elf64_vna_name in
+      ("  " ^ harness_hex_hash_6 isum
+       ^ (match harness_strtab_name strtab n with
+            | Just s -> ":   Name: " ^ s
+            | Nothing -> ":   Name index: " ^ harness_hex n
+          end)
+       ^ "  Flags: " ^ harness_ver_flags (natural_of_elf64_half a.gnu_ext_elf64_vna_flags)
+       ^ "  Version: " ^ show (natural_of_elf64_half a.gnu_ext_elf64_vna_other))
+      :: harness_verneed_auxes strtab (isum + natural_of_elf64_word a.gnu_ext_elf64_vna_next) rest
+  end
+
+val harness_string_of_elf64_verneeds : string_table -> list (gnu_ext_elf64_verneed * list gnu_ext_elf64_vernaux) -> list string
+let {ocaml} harness_string_of_elf64_verneeds strtab needs =
+  let name_of = harness_strtab_name strtab in
+  let (_, lines) =
+    List.foldl (fun (idx, acc) (vn, auxs) ->
+      let file = natural_of_elf64_word vn.gnu_ext_elf64_vn_file in
+      let first =
+        "  " ^ harness_hex_hash_6 idx
+        ^ ": Version: " ^ show (natural_of_elf64_half vn.gnu_ext_elf64_vn_version)
+        ^ "  File: " ^ (match name_of file with Just s -> s | Nothing -> harness_hex file end)
+        ^ "  Cnt: " ^ show (natural_of_elf64_half vn.gnu_ext_elf64_vn_cnt) in
+      (idx + natural_of_elf64_word vn.gnu_ext_elf64_vn_next,
+       acc ++ (first :: harness_verneed_auxes strtab (idx + natural_of_elf64_word vn.gnu_ext_elf64_vn_aux) auxs)))
+      (0, []) needs in
+  lines
+
+(** the versym table, four entries per row, each named from the verneed and
+  * verdef entries: [(other, name)] and [(ndx, name)] *)
+val harness_versym_cell : list (natural * string) -> list (natural * string) -> natural -> string
+let {ocaml} harness_versym_cell need_names def_names v =
+    if v = 0 then "   0 (*local*)    "
+    else if v = 1 then "   1 (*global*)   "
+    else
+      let value = natural_land v 32767 in
+      let base = rjust 4 (harness_hex value) ^ (if natural_land v 32768 <> 0 then "h" else " ") in
+      let from_need = List.lookup v need_names in
+      let from_def = if v <> 32769 then List.lookup value def_names else Nothing in
+      let name =
+        match (from_need, from_def) with
+          | (Just _, Just _) -> Just "*both*"
+          | (Just n, Nothing) -> Just n
+          | (Nothing, Just n) -> Just n
+          | (Nothing, Nothing) -> Nothing
+        end in
+      ljust 18 (base ^ (match name with
+                          | Just n ->
+                            let len = naturalFromNat (stringLength n) in
+                            (* C's [%-*s] with width [12 - len]: a negative width is
+                               taken as its absolute value *)
+                            "(" ^ n ^ (if len < 12 then ljust (natFromNatural (12 - len)) ")"
+                                       else if len > 12 then ljust (natFromNatural (len - 12)) ")"
+                                       else ")")
+                          | Nothing -> ""
+                        end))
+
+val harness_versym_rows : list (natural * string) -> list (natural * string) -> natural -> list natural -> list string
+let rec {ocaml} harness_versym_rows need_names def_names cnt vs =
+  match vs with
+    | [] -> []
+    | _ ->
+      ("  " ^ left_zero_padded_to 3 (harness_hex cnt) ^ ":"
+       ^ String.concat "" (List.map (harness_versym_cell need_names def_names) (harness_list_take 4 vs)))
+      :: harness_versym_rows need_names def_names (cnt + 4) (harness_list_drop 4 vs)
+  end
+
+val harness_string_of_elf64_versyms : list (natural * string) -> list (natural * string) -> list natural -> list string
+let {ocaml} harness_string_of_elf64_versyms need_names def_names versyms =
+  harness_versym_rows need_names def_names 0 versyms
+
+val harness_string_of_elf64_version_sections : elf64_file -> string_table -> byte_sequence -> string
+let {ocaml} harness_string_of_elf64_version_sections f1 shstrtab bs0 =
+  let sht = f1.elf64_file_section_header_table in
+  let endian = get_elf64_header_endianness f1.elf64_file_header in
+  let section_name = harness_section_name_or_empty sht shstrtab in
+  let indexed = List.mapi (fun i sec -> (naturalFromNat i, sec)) sht in
+  let body_of sec = Byte_sequence.offset_and_cut (natural_of_elf64_off sec.elf64_sh_offset) (natural_of_elf64_xword sec.elf64_sh_size) bs0 in
+  let of_type t = List.filter (fun (_, sec) -> natural_of_elf64_word sec.elf64_sh_type = t) indexed in
+  let parsed_verneeds =
+    List.mapMaybe (fun (_, sec) ->
+      match (body_of sec >>= fun body ->
+             read_gnu_ext_elf64_verneed_table endian (natural_of_elf64_word sec.elf64_sh_info) body >>= fun (tbl, _) ->
+             get_elf64_string_table_by_index f1 (natural_of_elf64_word sec.elf64_sh_link) >>= fun strtab ->
+             return (tbl, strtab)) with
+        | Success x -> Just x
+        | Fail _ -> Nothing
+      end) (of_type sht_gnu_verneed) in
+  let parsed_verdefs =
+    List.mapMaybe (fun (_, sec) ->
+      match (body_of sec >>= fun body ->
+             read_gnu_ext_elf64_verdef_table endian (natural_of_elf64_word sec.elf64_sh_info) body >>= fun (tbl, _) ->
+             get_elf64_string_table_by_index f1 (natural_of_elf64_word sec.elf64_sh_link) >>= fun strtab ->
+             return (tbl, strtab)) with
+        | Success x -> Just x
+        | Fail _ -> Nothing
+      end) (of_type sht_gnu_verdef) in
+  let string_at strtab n =
+    match String_table.get_string_at n strtab with
+      | Success s -> s
+      | Fail _ -> "*invalid*"
+    end in
+  let need_names =
+    List.concat (List.map (fun (tbl, strtab) ->
+      List.concat (List.map (fun (_, auxs) ->
+        List.map (fun a -> (natural_of_elf64_half a.gnu_ext_elf64_vna_other,
+                            string_at strtab (natural_of_elf64_word a.gnu_ext_elf64_vna_name))) auxs) tbl)) parsed_verneeds) in
+  let def_names =
+    List.concat (List.map (fun (tbl, strtab) ->
+      List.mapMaybe (fun (vd, auxs) ->
+        match auxs with
+          | a :: _ -> Just (natural_of_elf64_half vd.gnu_ext_elf64_vd_ndx,
+                            string_at strtab (natural_of_elf64_word a.gnu_ext_elf64_vda_name))
+          | [] -> Nothing
+        end) tbl) parsed_verdefs) in
+  let header title isec =
+    let (_, sec) = isec in
+    let lnk = natural_of_elf64_word sec.elf64_sh_link in
+    [ "\n" ^ title
+    ; " Addr: 0x" ^ unsafe_hex_string_of_natural 16 (natural_of_elf64_addr sec.elf64_sh_addr)
+      ^ "  Offset: 0x" ^ unsafe_hex_string_of_natural 8 (natural_of_elf64_off sec.elf64_sh_offset)
+      ^ "  Link: " ^ show lnk ^ " (" ^ section_name lnk ^ ")" ] in
+  let block isec =
+    let (i, sec) = isec in
+    let typ = natural_of_elf64_word sec.elf64_sh_type in
+    let name = section_name i in
+    let count = natural_of_elf64_word sec.elf64_sh_info in
+    if typ = sht_gnu_verdef then
+      let title = "Version definition section '" ^ name ^ "' contains " ^ show count ^ " " ^ harness_entry_word count ^ ":" in
+      header title (i, sec)
+      ++ (match (body_of sec >>= fun body ->
+                 read_gnu_ext_elf64_verdef_table endian count body >>= fun (tbl, _) ->
+                 get_elf64_string_table_by_index f1 (natural_of_elf64_word sec.elf64_sh_link) >>= fun strtab ->
+                 return (harness_string_of_elf64_verdefs strtab tbl)) with
+            | Success ls -> ls
+            | Fail err -> [err]
+          end)
+    else if typ = sht_gnu_verneed then
+      let title = "Version needs section '" ^ name ^ "' contains " ^ show count ^ " " ^ harness_entry_word count ^ ":" in
+      header title (i, sec)
+      ++ (match (body_of sec >>= fun body ->
+                 read_gnu_ext_elf64_verneed_table endian count body >>= fun (tbl, _) ->
+                 get_elf64_string_table_by_index f1 (natural_of_elf64_word sec.elf64_sh_link) >>= fun strtab ->
+                 return (harness_string_of_elf64_verneeds strtab tbl)) with
+            | Success ls -> ls
+            | Fail err -> [err]
+          end)
+    else if typ = sht_gnu_versym then
+      let total = natural_of_elf64_xword sec.elf64_sh_size / 2 in
+      let title = "Version symbols section '" ^ name ^ "' contains " ^ show total ^ " " ^ harness_entry_word total ^ ":" in
+      header title (i, sec)
+      ++ (match (body_of sec >>= fun body ->
+                 read_gnu_ext_elf64_versym_table endian body >>= fun vs ->
+                 return (harness_string_of_elf64_versyms need_names def_names (List.map natural_of_elf64_half vs))) with
+            | Success ls -> ls
+            | Fail err -> [err]
+          end)
+    else []
+  in
+  let lines = List.concat (List.map block indexed) in
+  match lines with
+    | [] -> "\nNo version information found in this file."
+    | _ -> unlines lines
+  end
+
+(** readelf -n: notes *********************************************************)
+
+val harness_gnu_note_type_name : natural -> string
+let {ocaml} harness_gnu_note_type_name t =
+  if t = 1 then "NT_GNU_ABI_TAG (ABI version tag)"
+  else if t = 2 then "NT_GNU_HWCAP (DSO-supplied software HWCAP info)"
+  else if t = 3 then "NT_GNU_BUILD_ID (unique build ID bitstring)"
+  else if t = 4 then "NT_GNU_GOLD_VERSION (gold version)"
+  else if t = 5 then "NT_GNU_PROPERTY_TYPE_0"
+  else if t = 256 then "NT_GNU_BUILD_ATTRIBUTE_OPEN"
+  else if t = 257 then "NT_GNU_BUILD_ATTRIBUTE_FUNC"
+  else "Unknown note type: (0x" ^ unsafe_hex_string_of_natural 8 t ^ ")"
+
+(** note types of unknown owners: readelf's [get_note_type], the core-file
+  * names for core files and the generic ones otherwise (only the common
+  * core-file notes are named here) *)
+val harness_note_type_name : bool -> natural -> string
+let {ocaml} harness_note_type_name is_core t =
+  let unknown = "Unknown note type: (0x" ^ unsafe_hex_string_of_natural 8 t ^ ")" in
+  if is_core then
+    if t = 1 then "NT_PRSTATUS (prstatus structure)"
+    else if t = 2 then "NT_FPREGSET (floating point registers)"
+    else if t = 3 then "NT_PRPSINFO (prpsinfo structure)"
+    else if t = 4 then "NT_TASKSTRUCT (task structure)"
+    else if t = 6 then "NT_AUXV (auxiliary vector)"
+    else if t = 1179208773 then "NT_FILE (mapped files)"          (* 0x46494c45 *)
+    else if t = 1397311305 then "NT_SIGINFO (siginfo_t data)"     (* 0x53494749 *)
+    else if t = 1189489535 then "NT_PRXFPREG (user_xfpregs structure)" (* 0x46e62b7f *)
+    else unknown
+  else
+    if t = 1 then "NT_VERSION (version)"
+    else if t = 2 then "NT_ARCH (architecture)"
+    else if t = 4 then "GO BUILDID"
+    else if t = 256 then "OPEN"
+    else if t = 257 then "func"
+    else if t = 1702857535 * 2 then "FDO_PACKAGING_METADATA"     (* 0xcafe1a7e *)
+    else unknown
+
+(** the properties of an NT_GNU_PROPERTY_TYPE_0 note ([print_gnu_property_note]) *)
+val harness_gnu_property : natural -> endianness -> natural -> natural -> byte_sequence -> string
+let {ocaml} harness_gnu_property mach endian typ datasz data =
+  let loproc : natural = 3 * 1073741824 in                (* 0xc0000000 *)
+  let louser : natural = 7 * 536870912 in                 (* 0xe0000000 *)
+  let uint32_and_lo : natural = 11 * 268435456 in         (* 0xb0000000 *)
+  let uint32_and_hi : natural = uint32_and_lo + 32767 in  (* 0xb0007fff *)
+  let uint32_or_lo  : natural = uint32_and_lo + 32768 in  (* 0xb0008000 *)
+  let uint32_or_hi  : natural = uint32_and_lo + 65535 in  (* 0xb000ffff *)
+  let x86_isa = [ (1, "x86-64-baseline"); (2, "x86-64-v2"); (4, "x86-64-v3"); (8, "x86-64-v4") ] in
+  let x86_feature_1 = [ (1, "IBT"); (2, "SHSTK"); (4, "LAM_U48"); (8, "LAM_U57") ] in
+  let x86_feature_2 = [ (1, "x86"); (2, "x87"); (4, "MMX"); (8, "XMM"); (16, "YMM"); (32, "ZMM"); (64, "FXSR")
+                      ; (128, "XSAVE"); (256, "XSAVEOPT"); (512, "XSAVEC"); (1024, "TMM"); (2048, "MASK") ] in
+  let x86_compat_isa = [ (1, "i486"); (2, "586"); (4, "686"); (8, "SSE"); (16, "SSE2"); (32, "SSE3"); (64, "SSSE3")
+                       ; (128, "SSE4_1"); (256, "SSE4_2"); (512, "AVX"); (1024, "AVX2"); (2048, "AVX512F")
+                       ; (4096, "AVX512CD"); (8192, "AVX512ER"); (16384, "AVX512PF"); (32768, "AVX512VL")
+                       ; (65536, "AVX512DQ"); (131072, "AVX512BW") ] in
+  let x86_compat_2_isa = [ (1, "CMOV"); (2, "SSE"); (4, "SSE2"); (8, "SSE3"); (16, "SSSE3"); (32, "SSE4_1")
+                         ; (64, "SSE4_2"); (128, "AVX"); (256, "AVX2"); (512, "FMA"); (1024, "AVX512F")
+                         ; (2048, "AVX512CD"); (4096, "AVX512ER"); (8192, "AVX512PF"); (16384, "AVX512VL")
+                         ; (32768, "AVX512DQ"); (65536, "AVX512BW"); (131072, "AVX512_4FMAPS")
+                         ; (262144, "AVX512_4VNNIW"); (524288, "AVX512_BITALG"); (1048576, "AVX512_IFMA")
+                         ; (2097152, "AVX512_VBMI"); (4194304, "AVX512_VBMI2"); (8388608, "AVX512_VNNI")
+                         ; (16777216, "AVX512_BF16") ] in
+  let aarch64_feature_1 = [ (1, "BTI"); (2, "PAC") ] in
+  let needed_1 = [ (1, "indirect external access") ] in
+  let word () =
+    match read_elf64_word endian data with
+      | Success (w, _) -> natural_of_elf64_word w
+      | Fail _ -> 0
+    end in
+  let xword () =
+    match read_elf64_xword endian data with
+      | Success (w, _) -> natural_of_elf64_xword w
+      | Fail _ -> 0
+    end in
+  let corrupt_length = "<corrupt length: " ^ harness_hex_hash datasz ^ "> " in
+  let bits label names none = label ^ (if datasz <> 4 then corrupt_length else harness_decode_bits names none (word ())) in
+  let unknown =
+    (if typ < loproc then "<unknown type "
+     else if typ < louser then "<processor-specific type "
+     else "<application-specific type ")
+    ^ harness_hex_hash typ ^ " data: " ^ harness_hex_bytes " " data ^ ">" in
+  if typ >= loproc && typ < louser then
+    if mach = elf_ma_386 || mach = elf_ma_x86_64 then
+      if typ = loproc + 65538 then bits "x86 ISA used: " x86_isa ""                 (* 0xc0010002 *)
+      else if typ = loproc + 32770 then bits "x86 ISA needed: " x86_isa ""          (* 0xc0008002 *)
+      else if typ = loproc + 2 then bits "x86 feature: " x86_feature_1 "<None>"     (* 0xc0000002 *)
+      else if typ = loproc + 65537 then bits "x86 feature used: " x86_feature_2 "<None>"     (* 0xc0010001 *)
+      else if typ = loproc + 32769 then bits "x86 feature needed: " x86_feature_2 "<None>"   (* 0xc0008001 *)
+      else if typ = loproc then bits "x86 ISA used: " x86_compat_isa ""             (* 0xc0000000 *)
+      else if typ = loproc + 1 then bits "x86 ISA needed: " x86_compat_isa ""       (* 0xc0000001 *)
+      else if typ = loproc + 65536 then bits "x86 ISA used: " x86_compat_2_isa "<None>"      (* 0xc0010000 *)
+      else if typ = loproc + 32768 then bits "x86 ISA needed: " x86_compat_2_isa "<None>"    (* 0xc0008000 *)
+      else unknown
+    else if mach = elf_ma_aarch64 && typ = loproc then
+      bits "AArch64 feature: " aarch64_feature_1 ""
+    else unknown
+  else if typ = 1 then
+    "stack size: " ^ (if datasz <> 8 then corrupt_length else harness_hex_hash (xword ()))
+  else if typ = 2 then
+    "no copy on protected " ^ (if datasz <> 0 then corrupt_length else "")
+  else if typ >= uint32_and_lo && typ <= uint32_or_hi then
+    if typ = uint32_or_lo then bits "1_needed: " needed_1 ""
+    else
+      (if typ <= uint32_and_hi then "UINT32_AND (" else "UINT32_OR (") ^ harness_hex_hash typ ^ "): "
+      ^ (if datasz <> 4 then corrupt_length else harness_hex_hash (word ()))
+  else unknown
+
+val harness_gnu_properties : natural -> endianness -> natural -> byte_sequence -> list string
+let rec {ocaml} harness_gnu_properties mach endian descsz bs =
+  if Byte_sequence.length bs = 0 then []
+  else if Byte_sequence.length bs < 8 then ["<corrupt descsz: " ^ harness_hex_hash descsz ^ ">"]
+  else
+    match (read_elf64_word endian bs >>= fun (typ, bs) ->
+           read_elf64_word endian bs >>= fun (datasz, bs) ->
+           return (natural_of_elf64_word typ, natural_of_elf64_word datasz, bs)) with
+      | Fail err -> [err]
+      | Success (typ, datasz, rest) ->
+        if datasz > Byte_sequence.length rest then
+          ["<corrupt type (" ^ harness_hex_hash typ ^ ") datasz: " ^ harness_hex_hash datasz ^ ">"]
+        else
+          let padded = ((datasz + 7) / 8) * 8 in
+          let remaining = Byte_sequence.length rest in
+          let data = match Byte_sequence.takebytes datasz rest with Success d -> d | Fail _ -> Byte_sequence.empty end in
+          let rest' = match Byte_sequence.dropbytes (if padded > remaining then remaining else padded) rest with
+                        | Success r -> r
+                        | Fail _ -> Byte_sequence.empty
+                      end in
+          harness_gnu_property mach endian typ datasz data :: harness_gnu_properties mach endian descsz rest'
+    end
+
+(** the description column of a note, in readelf's wide format (one line) *)
+val harness_string_of_elf64_note_description : natural -> endianness -> bool -> natural -> byte_sequence -> string
+let {ocaml} harness_string_of_elf64_note_description mach endian is_gnu typ desc =
+  let descsz = Byte_sequence.length desc in
+  let word_at n =
+    match Byte_sequence.dropbytes n desc >>= fun bs -> read_elf64_word endian bs with
+      | Success (w, _) -> natural_of_elf64_word w
+      | Fail _ -> 0
+    end in
+  if is_gnu then
+    if typ = 3 then "    Build ID: " ^ harness_hex_bytes "" desc
+    else if typ = 1 then
+      if descsz < 16 then "    <corrupt GNU_ABI_TAG>"
+      else
+        let os = word_at 0 in
+        let osname =
+          if os = 0 then "Linux" else if os = 1 then "Hurd" else if os = 2 then "Solaris"
+          else if os = 3 then "FreeBSD" else if os = 4 then "NetBSD" else if os = 5 then "Syllable"
+          else if os = 6 then "NaCl" else "Unknown" in
+        "    OS: " ^ osname ^ ", ABI: " ^ show (word_at 4) ^ "." ^ show (word_at 8) ^ "." ^ show (word_at 12)
+    else if typ = 4 then "    Version: " ^ harness_c_string_of_byte_sequence desc
+    else if typ = 2 then
+      "      Hardware Capabilities: "
+      ^ (if descsz < 8 then "<corrupt GNU_HWCAP>"
+         else "num entries: " ^ show (word_at 0) ^ ", enabled mask: " ^ harness_hex (word_at 4))
+    else if typ = 5 then
+      "      Properties: "
+      ^ (if descsz < 8 || descsz mod 8 <> 0 then "<corrupt GNU_PROPERTY_TYPE, size = " ^ harness_hex_hash descsz ^ ">"
+         else String.concat ", " (harness_gnu_properties mach endian descsz desc))
+    else "    Description data: " ^ harness_hex_bytes " " desc
+  else
+    if descsz > 0 then "   description data: " ^ harness_hex_bytes " " desc else ""
+
+(** a SystemTap probe descriptor ([print_stapsdt_note]): three addresses then
+  * three NUL-terminated strings *)
+val harness_string_of_elf64_stapsdt_note : endianness -> byte_sequence -> string
+let {ocaml} harness_string_of_elf64_stapsdt_note endian desc =
+  let too_small = "  <corrupt - note is too small>" in
+  let c_string bs =
+    let chars = char_list_of_byte_sequence bs in
+    let s = List.takeWhile (fun c -> c <> null_char) chars in
+    if naturalFromNat (List.length s) < naturalFromNat (List.length chars) then
+      (match Byte_sequence.dropbytes (naturalFromNat (List.length s) + 1) bs with
+         | Success rest -> Just (toString s, rest)
+         | Fail _ -> Nothing
+       end)
+    else Nothing in
+  let res =
+    read_elf64_xword endian desc >>= fun (pc, bs) ->
+    read_elf64_xword endian bs >>= fun (base, bs) ->
+    read_elf64_xword endian bs >>= fun (semaphore, bs) ->
+    return (natural_of_elf64_xword pc, natural_of_elf64_xword base, natural_of_elf64_xword semaphore, bs) in
+  match res with
+    | Fail _ -> too_small
+    | Success (pc, base, semaphore, bs) ->
+      (match c_string bs with
+         | Nothing -> too_small
+         | Just (provider, bs) ->
+           (match c_string bs with
+              | Nothing -> too_small
+              | Just (probe, bs) ->
+                (match c_string bs with
+                   | Nothing -> too_small
+                   | Just (args, _) ->
+                     "    Provider: " ^ provider ^ "\n"
+                     ^ "    Name: " ^ probe ^ "\n"
+                     ^ "    Location: 0x" ^ unsafe_hex_string_of_natural 16 pc
+                     ^ ", Base: 0x" ^ unsafe_hex_string_of_natural 16 base
+                     ^ ", Semaphore: 0x" ^ unsafe_hex_string_of_natural 16 semaphore ^ "\n"
+                     ^ "    Arguments: " ^ args
+                 end)
+            end)
+       end)
+  end
+
+(** the note lines of one note section or segment *)
+val harness_string_of_elf64_note_lines : natural -> endianness -> bool -> natural -> byte_sequence -> list string
+let {ocaml} harness_string_of_elf64_note_lines mach endian is_core align body =
+  match read_all_elf64_notes_aligned align endian body with
+    | Fail err -> [err]
+    | Success notes ->
+      List.map (fun note ->
+        let namesz = natural_of_elf64_word note.elf64_note_namesz in
+        let owner = if namesz = 0 then "(NONE)" else harness_c_string_of_byte_sequence note.elf64_note_name in
+        let is_gnu = namesz <> 0 && string_prefix 3 owner = Just "GNU" in
+        let is_stapsdt = namesz <> 0 && string_prefix 7 owner = Just "stapsdt" in
+        let typ = natural_of_elf64_word note.elf64_note_type in
+        let type_name =
+          if is_gnu then harness_gnu_note_type_name typ
+          else if is_stapsdt then
+            (if typ = 3 then "NT_STAPSDT (SystemTap probe descriptors)"
+             else "Unknown note type: (0x" ^ unsafe_hex_string_of_natural 8 typ ^ ")")
+          else harness_note_type_name is_core typ in
+        "  " ^ ljust 20 owner ^ " 0x" ^ unsafe_hex_string_of_natural 8 (natural_of_elf64_word note.elf64_note_descsz)
+        ^ "\t" ^ type_name ^ "\t"
+        ^ (if is_stapsdt then harness_string_of_elf64_stapsdt_note endian note.elf64_note_desc
+           else harness_string_of_elf64_note_description mach endian is_gnu typ note.elf64_note_desc)) notes
+  end
+
+val harness_string_of_elf64_notes : elf64_file -> string_table -> byte_sequence -> string
+let {ocaml} harness_string_of_elf64_notes f1 shstrtab bs0 =
+  let hdr = f1.elf64_file_header in
+  let sht = f1.elf64_file_section_header_table in
+  let mach = natural_of_elf64_half hdr.elf64_machine in
+  let endian = get_elf64_header_endianness hdr in
+  let is_core = natural_of_elf64_half hdr.elf64_type = elf_ft_core in
+  let section_name = harness_section_name_or_empty sht shstrtab in
+  let normalise_align a = if a < 4 then 4 else a in
+  let block_at title off len align =
+    let align = normalise_align align in
+    if align <> 4 && align <> 8 then []
+    else
+      match Byte_sequence.offset_and_cut off len bs0 with
+        | Fail err -> [err]
+        | Success body ->
+          [ "\n" ^ title; "  Owner                Data size \tDescription" ]
+          ++ harness_string_of_elf64_note_lines mach endian is_core align body
+      end in
+  let section_blocks =
+    List.concat (List.map (fun (i, sec) ->
+      block_at ("Displaying notes found in: " ^ section_name i)
+        (natural_of_elf64_off sec.elf64_sh_offset) (natural_of_elf64_xword sec.elf64_sh_size)
+        (natural_of_elf64_xword sec.elf64_sh_addralign))
+      (List.filter (fun (_, sec) -> natural_of_elf64_word sec.elf64_sh_type = sht_note)
+         (List.mapi (fun i sec -> (naturalFromNat i, sec)) sht))) in
+  let segment_blocks =
+    List.concat (List.map (fun seg ->
+      let off = natural_of_elf64_off seg.elf64_p_offset in
+      let len = natural_of_elf64_xword seg.elf64_p_filesz in
+      block_at ("Displaying notes found at file offset 0x" ^ unsafe_hex_string_of_natural 8 off
+                ^ " with length 0x" ^ unsafe_hex_string_of_natural 8 len ^ ":")
+        off len (natural_of_elf64_xword seg.elf64_p_align))
+      (List.filter (fun seg -> natural_of_elf64_word seg.elf64_p_type = elf_pt_note) f1.elf64_file_program_header_table)) in
+  let lines =
+    if is_core then segment_blocks
+    else match section_blocks with
+           | [] -> segment_blocks
+           | _ -> section_blocks
+         end in
+  unlines lines
+
+(** readelf -I: histogram of the hash table bucket lengths ********************)
+
+(** C's [%5.1f] of [num * 100 / den], rounding half to even as printf does for
+  * an exactly representable tie *)
+val harness_percent : natural -> natural -> string
+let {ocaml} harness_percent num den =
+  if den = 0 then "  0.0" else
+  let scaled = num * 1000 in
+  let q = scaled / den in
+  let r = scaled mod den in
+  let tenths =
+    if 2 * r > den then q + 1
+    else if 2 * r = den then (if q mod 2 = 1 then q + 1 else q)
+    else q in
+  rjust 5 (show (tenths / 10) ^ "." ^ show (tenths mod 10))
+
+(** the histogram table for the bucket lengths [lengths] *)
+val harness_histogram_count : list natural -> natural -> natural
+let {ocaml} harness_histogram_count lengths i =
+  naturalFromNat (List.length (List.filter (fun l -> l = i) lengths))
+
+(** the rows for lengths [i] up to [maxlength]; [covered] is the number of
+  * symbols in buckets of length below [i] *)
+val harness_histogram_rows : natural -> natural -> list natural -> natural -> natural -> natural -> list string
+let rec {ocaml} harness_histogram_rows nbuckets nsyms lengths maxlength i covered =
+  if i > maxlength then []
+  else
+    let c = harness_histogram_count lengths i in
+    let covered' = covered + c * i in
+    (rjust 7 (show i) ^ "  " ^ ljust 10 (show c) ^ " (" ^ harness_percent c nbuckets ^ "%)    " ^ harness_percent covered' nsyms ^ "%")
+    :: harness_histogram_rows nbuckets nsyms lengths maxlength (i + 1) covered'
+
+val harness_histogram_lines : string -> natural -> list natural -> list string
+let {ocaml} harness_histogram_lines title nbuckets lengths =
+  let maxlength = List.foldl (fun m l -> if l > m then l else m) 0 lengths in
+  let nsyms = List.foldl (fun s l -> s + l) 0 lengths in
+  let c0 = harness_histogram_count lengths 0 in
+  [ title
+  ; " Length  Number     % of total  Coverage"
+  ; "      0  " ^ ljust 10 (show c0) ^ " (" ^ harness_percent c0 nbuckets ^ "%)" ]
+  ++ harness_histogram_rows nbuckets nsyms lengths maxlength 1 0
+
+(** the length of a SysV hash chain starting at symbol index [si] *)
+val harness_sysv_chain_length : Map.map natural natural -> natural -> natural -> natural -> natural
+let rec {ocaml} harness_sysv_chain_length chains nchain si steps =
+  if si = 0 || steps > nchain then 0
+  else 1 + harness_sysv_chain_length chains nchain (match Map.lookup si chains with Just n -> n | Nothing -> 0 end) (steps + 1)
+
+(** the number of GNU hash chain entries from [off] before one with its low bit set *)
+val harness_gnu_chain_run : Map.map natural natural -> natural -> natural -> natural
+let rec {ocaml} harness_gnu_chain_run chains nchains off =
+  if off >= nchains then 0
+  else match Map.lookup off chains with
+         | Just w -> if natural_land w 1 = 0 then 1 + harness_gnu_chain_run chains nchains (off + 1) else 0
+         | Nothing -> 0
+       end
+
+val harness_string_of_elf64_histogram : elf64_file -> byte_sequence -> (natural -> bool) ->
+  (natural -> error tag_correspondence) -> (natural -> error tag_correspondence) -> string
+let {ocaml} harness_string_of_elf64_histogram f1 bs0 os_additional_ranges os_tag proc_tag =
+  let endian = get_elf64_header_endianness f1.elf64_file_header in
+  let dyns =
+    match obtain_elf64_dynamic_section_contents f1 os_additional_ranges os_tag proc_tag bs0 with
+      | Success ds -> ds
+      | Fail _ -> []
+    end in
+  let tag_value tag =
+    match List.find (fun d -> naturalFromInteger (integer_of_elf64_sxword d.elf64_dyn_tag) = tag) dyns with
+      | Nothing -> Nothing
+      | Just d ->
+        (match d.elf64_dyn_d_un with
+           | D_Ptr a -> Just (natural_of_elf64_addr a)
+           | D_Val v -> Just (natural_of_elf64_xword v)
+           | D_Ignored _ -> Nothing
+         end)
+    end in
+  let words_of_section_at addr =
+    match List.find (fun s -> s.elf64_section_addr = addr) f1.elf64_file_interpreted_sections with
+      | Nothing -> Nothing
+      | Just s ->
+        (match harness_words_of_byte_sequence endian s.elf64_section_body with
+           | Success ws -> Just ws
+           | Fail _ -> Nothing
+         end)
+    end in
+  let table_of tag = match tag_value tag with Just addr -> words_of_section_at addr | Nothing -> Nothing end in
+  let map_of ws = Map.fromList (List.mapi (fun i w -> (naturalFromNat i, w)) ws) in
+  let buckets_word n = if n = 1 then "bucket" else "buckets" in
+  let sysv =
+    match table_of dt_hash with
+      | Just (nbucket :: nchain :: rest) ->
+        let buckets = harness_list_take nbucket rest in
+        let chains = map_of (harness_list_take nchain (harness_list_drop nbucket rest)) in
+        let lengths = List.map (fun b -> harness_sysv_chain_length chains nchain b 0) buckets in
+        harness_histogram_lines
+          ("\nHistogram for bucket list length (total of " ^ show nbucket ^ " " ^ buckets_word nbucket ^ "):")
+          nbucket lengths
+      | _ -> []
+    end in
+  let gnu =
+    match table_of elf_dt_gnu_hash with
+      | Just (nbuckets :: symidx :: maskwords :: _shift2 :: rest) ->
+        let rest = harness_list_drop (2 * maskwords) rest in   (* the bloom filter, 64-bit words *)
+        let buckets = harness_list_take nbuckets rest in
+        let chain_list = harness_list_drop nbuckets rest in
+        let nchains = naturalFromNat (List.length chain_list) in
+        let chains = map_of chain_list in
+        let lengths = List.map (fun b -> if b = 0 || b < symidx then 0 else 1 + harness_gnu_chain_run chains nchains (b - symidx)) buckets in
+        harness_histogram_lines
+          ("\nHistogram for `.gnu.hash' bucket list length (total of " ^ show nbuckets ^ " " ^ buckets_word nbuckets ^ "):")
+          nbuckets lengths
+      | _ -> []
+    end in
+  unlines (sysv ++ gnu)
+
+(** readelf -u and -A ***********************************************************)
+
+(** readelf decodes unwind information only for a few machines (ARM, IA-64,
+  * PA-RISC, TI C6000), none of which linksem does; it prints a fixed message
+  * for the others. *)
+val harness_string_of_elf64_unwind : elf64_header -> string
+let {ocaml} harness_string_of_elf64_unwind hdr =
+  let mach = natural_of_elf64_half hdr.elf64_machine in
+  if mach = elf_ma_386 || mach = elf_ma_x86_64 then
+    "No processor specific unwind information to decode"
+  else
+    "\nThe decoding of unwind sections for machine type " ^ string_of_elf_machine_architecture mach ^ " is not currently supported."
+
+(** [readelf -A] prints nothing for most machines; for those with attribute
+  * sections that readelf decodes (ARM, RISC-V, MIPS, PowerPC, ...), which
+  * linksem does not, this says so *)
+val harness_elf64_arch_specific_unsupported : elf64_header -> maybe string
+let {ocaml} harness_elf64_arch_specific_unsupported hdr =
+  let mach = natural_of_elf64_half hdr.elf64_machine in
+  let handled : list natural = [ 2; 4; 8; 10; 18; 20; 21; 22; 40; 43; 45; 93; 105; 167; 195; 243; 252 ] in
+  if List.elem mach handled then
+    Just ("architecture-specific information for machine type " ^ string_of_elf_machine_architecture mach ^ " is not implemented")
+  else Nothing
+
+(** main_elf's --in-out: the re-serialised file as [hexdump -v] prints it *********)
+
+(** Claude: 16 bytes per line as eight little-endian byte pairs, a short last
+  * line padded with blank fields, then a final line giving the total length *)
+val harness_hexdump_rows : natural -> list byte -> list string
+let rec {ocaml} harness_hexdump_rows off bytes =
+  match bytes with
+    | [] -> [unsafe_hex_string_of_natural 7 off]
+    | _ ->
+      let row = harness_list_take 16 bytes in
+      let rest = harness_list_drop 16 bytes in
+      let k = naturalFromNat (List.length row) in
+      let pairs = (k + 1) / 2 in
+      let hex2 b = unsafe_hex_string_of_natural 2 (natural_of_byte b) in
+      let pair g =
+        match (Missing_pervasives.index (2 * g) row, Missing_pervasives.index (2 * g + 1) row) with
+          | (Just lo, Just hi) -> hex2 hi ^ hex2 lo
+          | (Just lo, Nothing) -> "00" ^ hex2 lo
+          | _ -> ""
+        end in
+      let fields = List.map pair (List.genlist (fun g -> naturalFromNat g) (natFromNatural pairs)) in
+      let fields = if k = 16 then fields else fields ++ [String.concat " " (replicate (8 - pairs) "    ")] in
+      (unsafe_hex_string_of_natural 7 off ^ " " ^ String.concat " " fields) :: harness_hexdump_rows (off + k) rest
+  end
+
+val harness_hexdump : byte_sequence -> string
+let {ocaml} harness_hexdump bs = unlines (harness_hexdump_rows 0 (byte_list_of_byte_sequence bs))

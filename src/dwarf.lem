@@ -4523,14 +4523,22 @@ let od_file_has_frame_base (d:dwarf) : bool =
 
 (* Claude: text of `objdump --dwarf=abbrev,info`; [regname] names DWARF registers for the machine *)
 val pp_dwarf_like_objdump : (natural -> string) -> dwarf -> string
-let pp_dwarf_like_objdump regname (d:dwarf) : string =
-  let c = p_context_of_d d in
-  let have_frame_base = od_file_has_frame_base d in
+(* Claude: the two sections of objdump --dwarf=abbrev,info separately; each is
+   also what readelf --debug-dump=abbrev and (non-wide) --debug-dump=info print *)
+let od_debug_abbrev_section (d:dwarf) : string =
   "Contents of the .debug_abbrev section:\n\n"
   ^ od_abbreviations_tables d
-  ^ "\n"
-  ^ "Contents of the .debug_info section:\n\n"
+
+let od_debug_info_section regname (d:dwarf) : string =
+  let c = p_context_of_d d in
+  let have_frame_base = od_file_has_frame_base d in
+  "Contents of the .debug_info section:\n\n"
   ^ String.concat "" (List.map (od_compilation_unit c d.d_str regname have_frame_base) d.d_compilation_units)
+
+let pp_dwarf_like_objdump regname (d:dwarf) : string =
+  od_debug_abbrev_section d
+  ^ "\n"
+  ^ od_debug_info_section regname d
 
 
 let pp_dwarf d =
@@ -7380,6 +7388,23 @@ let {ocaml} harness_string_of_elf32_debug_info_section f1 (*os proc usr hdr sht 
 val harness_string_of_elf64_like_objdump : elf64_file -> relocation_interpreter reloc_target_data -> (natural -> string) -> string
 let {ocaml} harness_string_of_elf64_like_objdump f1 ri regname =
   harness_string_of_elf_like_objdump (ELF_File_64 f1) ri regname
+
+(* Claude: readelf --debug-dump=abbrev, and readelf --debug-dump=info without
+   --wide: the same text as objdump's, one section at a time and without
+   objdump's file-format header *)
+val harness_string_of_elf64_debug_abbrev_like_readelf : elf64_file -> relocation_interpreter reloc_target_data -> string
+let {ocaml} harness_string_of_elf64_debug_abbrev_like_readelf f1 ri =
+  match extract_dwarf_static (ELF_File_64 f1) ri with
+  | Nothing -> "<no dwarf information extracted>"
+  | Just ds -> od_debug_abbrev_section ds.ds_dwarf
+  end
+
+val harness_string_of_elf64_debug_info_like_readelf : elf64_file -> relocation_interpreter reloc_target_data -> (natural -> string) -> string
+let {ocaml} harness_string_of_elf64_debug_info_like_readelf f1 ri regname =
+  match extract_dwarf_static (ELF_File_64 f1) ri with
+  | Nothing -> "<no dwarf information extracted>"
+  | Just ds -> od_debug_info_section regname ds.ds_dwarf
+  end
 
 val harness_string_of_elf32_like_objdump : elf32_file -> relocation_interpreter reloc_target_data -> (natural -> string) -> string
 let {ocaml} harness_string_of_elf32_like_objdump f1 ri regname =

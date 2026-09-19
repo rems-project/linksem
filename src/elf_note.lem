@@ -212,6 +212,46 @@ let rec read_all_elf32_notes endian bs =
     read_all_elf32_notes endian next_bs >>= fun next_notes ->
     return (note :: next_notes)
 
+(** Claude: [read_elf64_note_aligned align endian bs0] is [read_elf64_note] with
+  * the alignment of the name and descriptor fields given explicitly, as
+  * readelf takes it from the note section's [sh_addralign] (4, or 8 for the
+  * 64-bit .note.gnu.property).  Padding after the last descriptor may be
+  * absent, so only as many padding bytes as remain are consumed.
+  *)
+val read_elf64_note_aligned : natural -> endianness -> byte_sequence -> error (elf64_note * byte_sequence)
+let read_elf64_note_aligned align endian bs0 =
+  let aligned n = ((n + align - 1) / align) * align in
+  let partition_at_most n bs =
+    let len = Byte_sequence.length bs in
+    Byte_sequence.partition (if n > len then len else n) bs
+  in
+  read_elf64_word endian bs0 >>= fun (namesz, bs0) ->
+  read_elf64_word endian bs0 >>= fun (descsz, bs0) ->
+  read_elf64_word endian bs0 >>= fun (typ, bs0) ->
+  (* the descriptor starts at the first aligned offset after the 12-byte
+     header and the name, so the name's padding depends on the header size *)
+  partition_at_most (aligned (12 + natural_of_elf64_word namesz) - 12) bs0 >>= fun (name, bs0) ->
+  partition_at_most (aligned (natural_of_elf64_word descsz)) bs0 >>= fun (desc, bs0) ->
+  Byte_sequence.takebytes (natural_of_elf64_word namesz) name >>= fun name ->
+  Byte_sequence.takebytes (natural_of_elf64_word descsz) desc >>= fun desc ->
+  return (<|
+    elf64_note_namesz = namesz;
+    elf64_note_descsz = descsz;
+    elf64_note_type = typ;
+    elf64_note_name = name;
+    elf64_note_desc = desc
+  |>, bs0)
+
+(** Claude: all the notes of a section or segment body, with the given alignment. *)
+val read_all_elf64_notes_aligned : natural -> endianness -> byte_sequence -> error (list elf64_note)
+let rec read_all_elf64_notes_aligned align endian bs =
+  if Byte_sequence.length bs = 0 then
+    return []
+  else
+    read_elf64_note_aligned align endian bs >>= fun (note, next_bs) ->
+    read_all_elf64_notes_aligned align endian next_bs >>= fun next_notes ->
+    return (note :: next_notes)
+
 val read_all_elf64_notes : endianness -> byte_sequence -> error (list elf64_note)
 let rec read_all_elf64_notes endian bs =
   if Byte_sequence.length bs = 0 then
