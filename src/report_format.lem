@@ -1,0 +1,290 @@
+(* Claude: this file is largely written by Claude (24 September 2026).
+
+   A small line-oriented text format for reports that are both human- and
+   machine-readable, shared by the boot/runtime instrumentation scripts and
+   the Lem types that consume their output (see readdwarf-private-3
+   notes008 and notes016).  A report is a sequence of lines:
+
+     - a blank line;
+     - a comment, "# text" (or a bare "#");
+     - a section header, "[name]";
+     - a key line, "key = value", optionally followed by "   # comment";
+     - a table: a run of rows of "|"-separated cells, the first row naming
+       the columns; cells are padded with spaces so the "|" line up, and
+       trailing spaces are dropped.
+
+   Values and cells are kept here as trimmed strings; interpreting them (as
+   hex numbers, names, booleans, ...) is the consumer's business, with the
+   helpers at the end of this file.  Rendering a parsed report reproduces
+   its canonical layout byte for byte. *)
+
+open import Basic_classes
+open import Bool
+open import Maybe
+open import Num
+open import String
+open import List
+open import Function
+open import String_extra
+open import Show
+open import Error
+open import Missing_pervasives
+
+type report_item =
+  | Report_blank
+  | Report_comment of string                             (* text after "# "; "" for a bare "#" *)
+  | Report_section of string                             (* the name inside [ ] *)
+  | Report_key of string * string * maybe string         (* key, value, trailing comment *)
+  | Report_table of list string * list (list string)     (* header cells, then rows *)
+
+type report = list report_item
+
+(** {2 String helpers} *)
+
+val chars : string -> list char
+let chars s = toCharList s
+
+val unchars : list char -> string
+let unchars cs = toString cs
+
+val is_space : char -> bool
+let is_space c = c = #' '
+
+val is_ident_char : char -> bool
+let is_ident_char c =
+  let n = ord c in
+  (n >= ord #'a' && n <= ord #'z') || (n >= ord #'A' && n <= ord #'Z')
+  || (n >= ord #'0' && n <= ord #'9') || c = #'_'
+
+val trim_spaces : string -> string
+let trim_spaces s =
+  unchars (List.reverse (List.dropWhile is_space (List.reverse (List.dropWhile is_space (chars s)))))
+
+val rstrip_spaces : string -> string
+let rstrip_spaces s =
+  unchars (List.reverse (List.dropWhile is_space (List.reverse (chars s))))
+
+(* split on every occurrence of a character; n separators give n+1 pieces *)
+val split_on_char_helper : char -> list char -> list string -> list char -> list string
+let rec split_on_char_helper c cur acc cs =
+  match cs with
+  | [] -> List.reverse (unchars (List.reverse cur) :: acc)
+  | x :: rest ->
+    if x = c then split_on_char_helper c [] (unchars (List.reverse cur) :: acc) rest
+    else split_on_char_helper c (x :: cur) acc rest
+  end
+
+val split_on_char : char -> string -> list string
+let split_on_char c s = split_on_char_helper c [] [] (chars s)
+
+val split_lines : string -> list string
+let split_lines s =
+  (* a final newline ends the last line rather than starting an empty one *)
+  match List.reverse (split_on_char #'\n' s) with
+  | "" :: rev -> List.reverse rev
+  | _ -> split_on_char #'\n' s
+  end
+
+val starts_with : string -> string -> bool
+let starts_with prefix s = List.isPrefixOf (chars prefix) (chars s)
+
+val ends_with : string -> string -> bool
+let ends_with suffix s = List.isPrefixOf (List.reverse (chars suffix)) (List.reverse (chars s))
+
+(* position of the first occurrence of sub in s *)
+val find_substring_helper : list char -> nat -> list char -> maybe nat
+let rec find_substring_helper subcs i cs =
+  match cs with
+  | [] -> if List.null subcs then Just i else Nothing
+  | _ :: rest -> if List.isPrefixOf subcs cs then Just i else find_substring_helper subcs (i + 1) rest
+  end
+
+val find_substring : string -> string -> maybe nat
+let find_substring sub s = find_substring_helper (chars sub) 0 (chars s)
+
+val string_take : nat -> string -> string
+let string_take n s = unchars (List.take n (chars s))
+
+val string_drop : nat -> string -> string
+let string_drop n s = unchars (List.drop n (chars s))
+
+val pad_right : nat -> string -> string
+let pad_right w s =
+  let n = stringLength s in
+  if n >= w then s else s ^ makeString (w - n) #' '
+
+(** {2 Numbers} *)
+
+val hex_digit_value : char -> maybe natural
+let hex_digit_value c =
+  let n = ord c in
+  if n >= ord #'0' && n <= ord #'9' then Just (naturalFromNat (n - ord #'0'))
+  else if n >= ord #'a' && n <= ord #'f' then Just (naturalFromNat (10 + n - ord #'a'))
+  else if n >= ord #'A' && n <= ord #'F' then Just (naturalFromNat (10 + n - ord #'A'))
+  else Nothing
+
+(* "0x1f" or "1f" -> 31 *)
+val natural_of_hex_string : string -> error natural
+let natural_of_hex_string s =
+  let digits = if starts_with "0x" s || starts_with "0X" s then string_drop 2 s else s in
+  if digits = "" then fail ("natural_of_hex_string: no digits in " ^ s) else
+  foldM (fun acc c ->
+           match hex_digit_value c with
+           | Just d -> return (acc * 16 + d)
+           | Nothing -> fail ("natural_of_hex_string: bad digit in " ^ s)
+           end)
+        0 (chars digits)
+
+(* decimal, or hex with a 0x prefix *)
+val natural_of_number_string : string -> error natural
+let natural_of_number_string s =
+  if starts_with "0x" s || starts_with "0X" s then natural_of_hex_string s
+  else if s <> "" && List.all (fun c -> isJust (hex_digit_value c) && ord c <= ord #'9') (chars s) then
+    return (natural_of_decimal_string s)
+  else fail ("natural_of_number_string: not a number: " ^ s)
+
+val hex_of_natural : natural -> string
+let hex_of_natural n = "0x" ^ hex_string_of_natural n
+
+val string_of_bool_word : bool -> string
+let string_of_bool_word b = if b then "true" else "false"
+
+val bool_of_word : string -> error bool
+let bool_of_word s =
+  if s = "true" then return true else if s = "false" then return false
+  else fail ("bool_of_word: not a boolean: " ^ s)
+
+(** {2 Parsing} *)
+
+(* one physical line, before rows are grouped into tables *)
+type report_line =
+  | Line_item of report_item
+  | Line_row of list string
+
+val parse_report_line : nat -> string -> error report_line
+let parse_report_line lineno s =
+  let err m = fail ("report line " ^ stringFromNat lineno ^ ": " ^ m ^ ": " ^ s) in
+  if s = "" then return (Line_item Report_blank)
+  else if s = "#" then return (Line_item (Report_comment ""))
+  else if starts_with "# " s then return (Line_item (Report_comment (string_drop 2 s)))
+  else if starts_with "#" s then err "a comment must be \"# text\""
+  else if starts_with "[" s then
+    (if ends_with "]" s then return (Line_item (Report_section (string_take (stringLength s - 2) (string_drop 1 s))))
+     else err "unterminated section header")
+  else
+    (* "key = ..." with an identifier key is recognised before a table row,
+       because a trailing comment may itself contain "|" *)
+    let key_line =
+      match find_substring " = " s with
+      | Just p ->
+        let key = string_take p s in
+        if p > 0 && List.all is_ident_char (chars key) then
+          let rest = string_drop (p + 3) s in
+          match find_substring "   # " rest with
+          | Just q -> Just (Report_key key (string_take q rest) (Just (string_drop (q + 5) rest)))
+          | Nothing -> Just (Report_key key rest Nothing)
+          end
+        else Nothing
+      | Nothing -> Nothing
+      end
+    in
+    match key_line with
+    | Just item -> return (Line_item item)
+    | Nothing ->
+      if List.elem #'|' (chars s) then
+        return (Line_row (List.map trim_spaces (split_on_char #'|' s)))
+      else err "unrecognised line"
+    end
+
+(* the rows following a table header, with the line number and remainder after them *)
+val take_table_rows : nat -> list (list string) -> nat -> list report_line -> error (list (list string) * nat * list report_line)
+let rec take_table_rows ncols acc n ls =
+  match ls with
+  | Line_row r :: rest ->
+    if List.length r <> ncols then
+      fail ("report line " ^ stringFromNat n ^ ": row has " ^ stringFromNat (List.length r)
+            ^ " cells but the header has " ^ stringFromNat ncols)
+    else take_table_rows ncols (r :: acc) (n + 1) rest
+  | _ -> return (List.reverse acc, n, ls)
+  end
+
+(* group consecutive rows into tables *)
+val group_report_lines : nat -> list report_line -> error report
+let rec group_report_lines lineno ls =
+  match ls with
+  | [] -> return []
+  | Line_item it :: rest ->
+    group_report_lines (lineno + 1) rest >>= fun items -> return (it :: items)
+  | Line_row header :: rest ->
+    take_table_rows (List.length header) [] (lineno + 1) rest >>= fun (rs, n, rest') ->
+    group_report_lines n rest' >>= fun items -> return (Report_table header rs :: items)
+  end
+
+val parse_report : string -> error report
+let parse_report s =
+  let lines = split_lines s in
+  mapM (fun (i, l) -> parse_report_line i l) (List.zip (List.genlist (fun i -> i + 1) (List.length lines)) lines)
+  >>= group_report_lines 1
+
+(** {2 Rendering} *)
+
+val render_table : list string -> list (list string) -> list string
+let render_table header rows =
+  let all = header :: rows in
+  let ncols = List.length header in
+  let widths = List.map (fun j -> List.foldl (fun w r -> match List.index r j with Just c -> max w (stringLength c) | Nothing -> w end) 0 all)
+                        (List.genlist (fun j -> j) ncols) in
+  List.map (fun r -> rstrip_spaces (String.concat " | " (List.map (fun (c, w) -> pad_right w c) (List.zip r widths)))) all
+
+val render_report_item : report_item -> list string
+let render_report_item it =
+  match it with
+  | Report_blank -> [""]
+  | Report_comment "" -> ["#"]
+  | Report_comment c -> ["# " ^ c]
+  | Report_section n -> ["[" ^ n ^ "]"]
+  | Report_key k v Nothing -> [k ^ " = " ^ v]
+  | Report_key k v (Just c) -> [k ^ " = " ^ v ^ "   # " ^ c]
+  | Report_table header rows -> render_table header rows
+  end
+
+val render_report : report -> string
+let render_report r =
+  String.concat "" (List.map (fun l -> l ^ "\n") (List.concatMap render_report_item r))
+
+(** {2 Access} *)
+
+(* the items up to the next section header *)
+val items_before_next_section : list report_item -> list report_item
+let rec items_before_next_section items =
+  match items with
+  | Report_section _ :: _ -> []
+  | [] -> []
+  | it :: rest -> it :: items_before_next_section rest
+  end
+
+(* the items of the section called name, up to the next header *)
+val report_section : string -> report -> list report_item
+let rec report_section name items =
+  match items with
+  | Report_section n :: rest -> if n = name then items_before_next_section rest else report_section name rest
+  | _ :: rest -> report_section name rest
+  | [] -> []
+  end
+
+val report_lookup : string -> list report_item -> maybe string
+let report_lookup key items =
+  List.foldr (fun it acc -> match it with Report_key k v _ -> if k = key then Just v else acc | _ -> acc end) Nothing items
+
+(* the first table in a list of items, as header and rows *)
+val report_table : list report_item -> maybe (list string * list (list string))
+let report_table items =
+  List.foldr (fun it acc -> match it with Report_table h rs -> Just (h, rs) | _ -> acc end) Nothing items
+
+(* a two-column table as an association list of (first cell, second cell) *)
+val report_pairs : list report_item -> list (string * string)
+let report_pairs items =
+  match report_table items with
+  | Just (_, rows) -> List.mapMaybe (fun r -> match r with a :: b :: _ -> Just (a, b) | _ -> Nothing end) rows
+  | Nothing -> []
+  end

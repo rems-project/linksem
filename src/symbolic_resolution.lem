@@ -1,0 +1,436 @@
+(* Claude: this file is largely written by Claude (24 September 2026).
+
+   Symbolic resolution of a relocatable object's sections.
+
+   The relocated contents of a section depend on values that are only
+   chosen when the object is linked and loaded: the base address of each
+   of its sections, the values of the symbols it imports, the addresses of
+   their GOT slots, and (for the pKVM hypervisor) further runtime
+   parameters and the set of CPU capabilities.  Here those are left
+   symbolic: [resolve_object] produces, for every section, its bytes from
+   the object together with a sparse overlay of *symbolic words* -- one per
+   relocation (or, in later stages, per boot-time patch) -- each a
+   [sym_expr] over the leaves [SSection], [SSymbol], [SGotSlot], [SVar] and
+   [SFlag].  [concretise_section] then evaluates the overlay under a
+   [resolution_env] of actual values and splices the results in, and is
+   the point at which the safety checks of the relocations are made.
+
+   This mirrors, and is built on, linksem's symbolic relocation machinery
+   ([Elf_symbolic], [Abi_symbolic_relocation]): the relocation interpreter
+   of the ABI supplies, per relocation site, a value expression in the
+   section-and-constant language of [Elf_symbolic.symbolic_expression], a
+   bit-field mask, checks and a target kind; this module adds the leaves
+   for imported symbols and parameters (injecting [Elf_symbolic]'s
+   expressions rather than changing that type, so its existing users are
+   unaffected), the conditional [SIte], and the insertion of the value into
+   the instruction or data word, which needs a per-target [field_spec]
+   supplied by the ABI (for AArch64, [Abi_aarch64_instruction_fields]).
+
+   Arithmetic: expressions denote integers; [SAdd]/[SSub] are exact, the
+   bit operations act on the 64-bit two's-complement image of their
+   operands and yield a non-negative result, and a word's final value is
+   taken modulo 2^(8*width).  Addresses and parameters in the environment
+   are 64-bit unsigned ([elf64_addr], [elf64_xword]).
+
+   The section names used throughout are linksem's
+   [elf64_section_name_as_string]. *)
+
+open import Basic_classes
+open import Bool
+open import Maybe
+open import Num
+open import String
+open import List
+open import Function
+open import String_extra
+open import Show
+open import Error
+open import Missing_pervasives
+open import Endianness
+open import Byte_sequence
+open import Elf_types_native_uint
+open import Elf_header
+open import Elf_section_header_table
+open import Elf_interpreted_section
+open import Elf_relocation
+open import Elf_symbol_table
+open import Elf_file
+open import Elf_symbolic
+open import Report_format
+open import Sorting
+import Map_extra
+
+(** {2 Symbolic values} *)
+
+type sym_binop = SAdd | SSub | SAnd | SOr | SXor | SShl | SShr
+
+type sym_expr =
+  | SConst   of integer
+  | SSection of string                 (* base address of the object's section *)
+  | SSymbol  of string                 (* value of a symbol the object imports *)
+  | SGotSlot of string                 (* address of the GOT slot for an imported symbol *)
+  | SVar     of string                 (* a named runtime parameter *)
+  | SBin     of sym_binop * sym_expr * sym_expr
+  | SNot     of sym_expr               (* 64-bit complement *)
+  | SIte     of sym_flag * sym_expr * sym_expr
+
+and sym_flag =
+  | SFlag    of string                 (* a named runtime predicate, e.g. a cpucap *)
+  | SIsZero  of sym_expr
+  | SInRange of sym_expr * integer * integer   (* lo <= value < hi, e.g. a branch or adr displacement in range *)
+  | SBoth    of sym_flag * sym_flag
+
+val two64 : integer
+let two64 = 18446744073709551616
+
+val two_to : natural -> natural
+let two_to n = 2 ** natFromNatural n
+
+(* the 64-bit two's-complement image of an integer *)
+val to_u64 : integer -> natural
+let to_u64 x =
+  let r = integerMod x two64 in
+  naturalFromInteger (if r < 0 then r + two64 else r)
+
+val u64_not : natural -> natural
+let u64_not n = natural_lxor n (naturalFromInteger (two64 - 1))
+
+val u64_shl : natural -> natural -> natural
+let u64_shl n k = if k >= 64 then 0 else to_u64 (integerFromNatural n * integerFromNatural (two_to k))
+
+val u64_shr : natural -> natural -> natural
+let u64_shr n k = if k >= 64 then 0 else n / two_to k
+
+val string_of_sym_binop : sym_binop -> string
+let string_of_sym_binop op =
+  match op with SAdd -> "+" | SSub -> "-" | SAnd -> "&" | SOr -> "|" | SXor -> "^" | SShl -> "<<" | SShr -> ">>" end
+
+val string_of_sym_expr : sym_expr -> string
+let rec string_of_sym_expr e =
+  match e with
+  | SConst x -> if x < 0 then "-" ^ hex_of_natural (naturalFromInteger (0 - x)) else hex_of_natural (naturalFromInteger x)
+  | SSection s -> "section(" ^ s ^ ")"
+  | SSymbol s -> "symbol(" ^ s ^ ")"
+  | SGotSlot s -> "got(" ^ s ^ ")"
+  | SVar v -> "var(" ^ v ^ ")"
+  | SBin op a b -> "(" ^ string_of_sym_expr a ^ " " ^ string_of_sym_binop op ^ " " ^ string_of_sym_expr b ^ ")"
+  | SNot a -> "~" ^ string_of_sym_expr a
+  | SIte f a b -> "(if " ^ string_of_sym_flag f ^ " then " ^ string_of_sym_expr a ^ " else " ^ string_of_sym_expr b ^ ")"
+  end
+and string_of_sym_flag f =
+  match f with
+  | SFlag s -> "flag(" ^ s ^ ")"
+  | SIsZero e -> string_of_sym_expr e ^ " = 0"
+  | SInRange e lo hi -> show lo ^ " <= " ^ string_of_sym_expr e ^ " < " ^ show hi
+  | SBoth f1 f2 -> "(" ^ string_of_sym_flag f1 ^ " and " ^ string_of_sym_flag f2 ^ ")"
+  end
+
+(* the sections an expression's value depends on *)
+val sym_expr_sections : sym_expr -> list string
+let rec sym_expr_sections e =
+  match e with
+  | SSection s -> [s]
+  | SBin _ a b -> sym_expr_sections a ++ sym_expr_sections b
+  | SNot a -> sym_expr_sections a
+  | SIte f a b -> sym_flag_sections f ++ sym_expr_sections a ++ sym_expr_sections b
+  | _ -> []
+  end
+and sym_flag_sections f =
+  match f with
+  | SIsZero e -> sym_expr_sections e
+  | SInRange e _ _ -> sym_expr_sections e
+  | SBoth f1 f2 -> sym_flag_sections f1 ++ sym_flag_sections f2
+  | SFlag _ -> []
+  end
+
+(* linksem's relocation language names an undefined symbol x as the pseudo
+   section "UND.x", a common one as "COM.x" (Elf_symbolic) and, by the same
+   convention, x's GOT slot as "GOT.x" *)
+val sym_expr_of_symbolic_expression : symbolic_expression -> sym_expr
+let rec sym_expr_of_symbolic_expression e =
+  match e with
+  | Section s ->
+    if starts_with "UND." s then SSymbol (string_drop 4 s)
+    else if starts_with "GOT." s then SGotSlot (string_drop 4 s)
+    else SSection s
+  | Const x -> SConst x
+  | BinOp (a, Add, b) -> SBin SAdd (sym_expr_of_symbolic_expression a) (sym_expr_of_symbolic_expression b)
+  | BinOp (a, Sub, b) -> SBin SSub (sym_expr_of_symbolic_expression a) (sym_expr_of_symbolic_expression b)
+  | BinOp (a, And, b) -> SBin SAnd (sym_expr_of_symbolic_expression a) (sym_expr_of_symbolic_expression b)
+  | UnOp (Not, a) -> SNot (sym_expr_of_symbolic_expression a)
+  end
+
+(** {2 The environment of actual values} *)
+
+type resolution_env =
+  <| env_sections : list (string * elf64_addr)    (* base address of each section of the object *)
+   ; env_symbols  : list (string * elf64_addr)    (* value of each imported symbol, as the linker resolved it *)
+   ; env_got      : list (string * elf64_addr)    (* address of the GOT slot of an imported symbol, where one exists *)
+   ; env_params   : list (string * elf64_xword)   (* named runtime parameters *)
+   ; env_flags    : list (string * bool)          (* named runtime predicates *)
+   |>
+
+val empty_resolution_env : resolution_env
+let empty_resolution_env =
+  <| env_sections = []; env_symbols = []; env_got = []; env_params = []; env_flags = [] |>
+
+val env_lookup : forall 'a. string -> string -> list (string * 'a) -> error 'a
+let env_lookup kind name assoc =
+  match List.lookup name assoc with
+  | Just v -> return v
+  | Nothing -> fail ("symbolic resolution: no " ^ kind ^ " named " ^ name ^ " in the environment")
+  end
+
+val eval_sym_expr : resolution_env -> sym_expr -> error integer
+let rec eval_sym_expr env e =
+  match e with
+  | SConst x -> return x
+  | SSection s -> env_lookup "section" s env.env_sections >>= fun a -> return (integerFromNatural (natural_of_elf64_addr a))
+  | SSymbol s -> env_lookup "symbol" s env.env_symbols >>= fun a -> return (integerFromNatural (natural_of_elf64_addr a))
+  | SGotSlot s -> env_lookup "GOT slot" s env.env_got >>= fun a -> return (integerFromNatural (natural_of_elf64_addr a))
+  | SVar v -> env_lookup "parameter" v env.env_params >>= fun x -> return (integerFromNatural (natural_of_elf64_xword x))
+  | SBin op a b ->
+    eval_sym_expr env a >>= fun x ->
+    eval_sym_expr env b >>= fun y ->
+    return (match op with
+            | SAdd -> x + y
+            | SSub -> x - y
+            | SAnd -> integerFromNatural (natural_land (to_u64 x) (to_u64 y))
+            | SOr  -> integerFromNatural (natural_lor (to_u64 x) (to_u64 y))
+            | SXor -> integerFromNatural (natural_lxor (to_u64 x) (to_u64 y))
+            | SShl -> integerFromNatural (u64_shl (to_u64 x) (to_u64 y))
+            | SShr -> integerFromNatural (u64_shr (to_u64 x) (to_u64 y))
+            end)
+  | SNot a -> eval_sym_expr env a >>= fun x -> return (integerFromNatural (u64_not (to_u64 x)))
+  | SIte f a b -> eval_sym_flag env f >>= fun c -> if c then eval_sym_expr env a else eval_sym_expr env b
+  end
+and eval_sym_flag env f =
+  match f with
+  | SFlag s -> env_lookup "flag" s env.env_flags
+  | SIsZero e -> eval_sym_expr env e >>= fun x -> return (x = 0)
+  | SInRange e lo hi -> eval_sym_expr env e >>= fun x -> return (x >= lo && x < hi)
+  | SBoth f1 f2 -> eval_sym_flag env f1 >>= fun a -> if a then eval_sym_flag env f2 else return false
+  end
+
+(** {2 Symbolic sections} *)
+
+type sym_check =
+  | SCheck_overflow of sym_expr * integer * integer   (* min <= value < max *)
+  | SCheck_alignment of sym_expr * natural            (* value is a multiple of 2^n *)
+
+type sym_word = <| sw_width : natural ; sw_value : sym_expr |>   (* width in bytes *)
+
+type sym_section =
+  <| ss_name   : string
+   ; ss_bytes  : byte_sequence                (* the section's bytes in the object *)
+   ; ss_words  : list (natural * sym_word)    (* the overlay: offset -> word, ascending offsets *)
+   ; ss_checks : list sym_check
+   |>
+
+val plain_sym_section : string -> byte_sequence -> sym_section
+let plain_sym_section name bytes = <| ss_name = name; ss_bytes = bytes; ss_words = []; ss_checks = [] |>
+
+(* the symbolic word at an offset of the overlay, if any *)
+val sym_word_at : natural -> sym_section -> maybe sym_word
+let sym_word_at off ss = List.lookup off ss.ss_words
+
+(* the overlay with the word at [off] replaced (or added, keeping the offsets ascending) *)
+val set_sym_word : natural -> sym_word -> sym_section -> sym_section
+let set_sym_word off w ss =
+  let others = List.filter (fun (o, _) -> o <> off) ss.ss_words in
+  <| ss with ss_words = Sorting.sortByOrd (fun (a, _) (b, _) -> compare a b) ((off, w) :: others) |>
+
+(** {2 Bit-field insertion} *)
+
+(* How the bits of a relocation's (already shifted) value go into a word:
+   the word's fields [fs_clear] (lo bit, width) are zeroed and each
+   [field_piece] copies [fp_bits] bits of the value from bit [fp_value_lo]
+   to word bit [fp_insn_lo].  ADRP's split immediate is two pieces. *)
+type field_piece = <| fp_insn_lo : natural ; fp_value_lo : natural ; fp_bits : natural |>
+
+type field_spec =
+  <| fs_width  : natural                       (* bytes *)
+   ; fs_clear  : list (natural * natural)
+   ; fs_pieces : list field_piece
+   |>
+
+val bits_mask : natural -> natural -> integer
+let bits_mask lo n = integerFromNatural (u64_shl (two_to n - 1) lo)
+
+(* the word [orig] with the value's bits [hi:lo] inserted per [spec] *)
+val insert_field : field_spec -> (natural * natural) -> integer -> sym_expr -> error sym_expr
+let insert_field spec (hi, lo) orig value =
+  let nbits = hi + 1 - lo in
+  let piece_bits = List.foldl (fun n p -> n + p.fp_bits) 0 spec.fs_pieces in
+  if piece_bits <> nbits then
+    fail ("insert_field: the field pieces cover " ^ show piece_bits ^ " bits but the relocation mask ["
+          ^ show hi ^ ":" ^ show lo ^ "] has " ^ show nbits)
+  else
+    let clear = List.foldl (fun m (lo', n) -> integerFromNatural (natural_lor (to_u64 m) (to_u64 (bits_mask lo' n)))) 0 spec.fs_clear in
+    let shifted = SBin SShr value (SConst (integerFromNatural lo)) in
+    let base = SBin SAnd (SConst orig) (SConst (integerFromNatural (u64_not (to_u64 clear)))) in
+    return (List.foldl (fun acc p ->
+              SBin SOr acc (SBin SShl (SBin SAnd (SBin SShr shifted (SConst (integerFromNatural p.fp_value_lo)))
+                                                 (SConst (bits_mask 0 p.fp_bits)))
+                                      (SConst (integerFromNatural p.fp_insn_lo))))
+            base spec.fs_pieces)
+
+(** {2 Words in byte sequences} *)
+
+val natural_of_bytes_le : list byte -> natural
+let natural_of_bytes_le bs = List.foldr (fun b acc -> acc * 256 + natural_of_byte b) 0 bs
+
+val bytes_le_of_natural : natural -> natural -> list byte
+let bytes_le_of_natural width n =
+  List.map (fun i -> byte_of_natural ((n / two_to (8 * i)) mod 256)) (List.genlist naturalFromNat (natFromNatural width))
+
+val natural_of_bytes : endianness -> list byte -> natural
+let natural_of_bytes en bs = match en with Little -> natural_of_bytes_le bs | Big -> natural_of_bytes_le (List.reverse bs) end
+
+val bytes_of_natural : endianness -> natural -> natural -> list byte
+let bytes_of_natural en width n =
+  match en with Little -> bytes_le_of_natural width n | Big -> List.reverse (bytes_le_of_natural width n) end
+
+val read_word_at : endianness -> natural -> natural -> byte_sequence -> error natural
+let read_word_at en off width bs =
+  Byte_sequence.offset_and_cut off width bs >>= fun w ->
+  return (natural_of_bytes en (byte_list_of_byte_sequence w))
+
+(** {2 Relocation application} *)
+
+(* a relocation site: linksem's description of the relocation at [off] of the section *)
+val sym_word_of_relocation : forall 'a. endianness -> ('a -> field_spec) -> byte_sequence -> natural
+                             -> universal_relocation 'a -> error (sym_word * list sym_check)
+let sym_word_of_relocation en field_of_target body off rel =
+  let spec = field_of_target rel.rel_desc_target in
+  read_word_at en off spec.fs_width body >>= fun orig ->
+  let value = sym_expr_of_symbolic_expression rel.rel_desc_value in
+  insert_field spec rel.rel_desc_mask (integerFromNatural orig) value >>= fun word ->
+  let checks = List.map (fun c -> match c with
+                                  | Overflow (lo, hi) -> SCheck_overflow value lo hi
+                                  | Alignment n -> SCheck_alignment value n
+                                  end) rel.rel_desc_checks in
+  return (<| sw_width = spec.fs_width; sw_value = word |>, checks)
+
+(* the section [name] of the relocatable object [f], with its relocations applied symbolically *)
+val relocate_section : forall 'a. elf64_file -> relocation_interpreter 'a -> ('a -> field_spec) -> string -> error sym_section
+let relocate_section f interp field_of_target name =
+  let en = get_elf64_header_endianness f.elf64_file_header in
+  match List.filter (fun s -> s.elf64_section_name_as_string = name) f.elf64_file_interpreted_sections with
+  | [sec] ->
+    let body = sec.elf64_section_body in
+    Elf_symbolic.extract_elf64_relocations_for_section f interp name >>= fun rels ->
+    let sites = Sorting.sortByOrd (fun (a, _) (b, _) -> compare a b)
+                  (List.map (fun (off, r) -> (natural_of_elf64_addr off, r)) (Map_extra.toList rels)) in
+    mapM (fun (off, r) -> sym_word_of_relocation en field_of_target body off r >>= fun (w, cs) -> return (off, w, cs)) sites
+    >>= fun words ->
+    return <| ss_name = name; ss_bytes = body
+            ; ss_words = List.map (fun (off, w, _) -> (off, w)) words
+            ; ss_checks = List.concatMap (fun (_, _, cs) -> cs) words |>
+  | [] -> fail ("relocate_section: no section " ^ name)
+  | _ -> fail ("relocate_section: several sections named " ^ name)
+  end
+
+(* the sections of the object that have a relocation section *)
+val relocated_section_names : elf64_file -> list string
+let relocated_section_names f =
+  let secs = f.elf64_file_interpreted_sections in
+  List.mapMaybe (fun rs ->
+      if rs.elf64_section_type = sht_rela then
+        match List.index secs (natFromNatural rs.elf64_section_info) with
+        | Just s -> Just s.elf64_section_name_as_string
+        | Nothing -> Nothing
+        end
+      else Nothing) secs
+
+(* every section of the object, relocated where it has relocations, in section-header order *)
+val resolve_object : forall 'a. elf64_file -> relocation_interpreter 'a -> ('a -> field_spec) -> error (list (string * sym_section))
+let resolve_object f interp field_of_target =
+  let with_relocs = relocated_section_names f in
+  mapM (fun s ->
+      let name = s.elf64_section_name_as_string in
+      if List.elem name with_relocs then
+        relocate_section f interp field_of_target name >>= fun ss -> return (name, ss)
+      else return (name, plain_sym_section name s.elf64_section_body))
+    (List.filter (fun s -> s.elf64_section_type <> sht_null && s.elf64_section_type <> sht_rela
+                          && s.elf64_section_type <> sht_rel) f.elf64_file_interpreted_sections)
+
+(** {2 Concretisation} *)
+
+val run_sym_check : resolution_env -> sym_check -> error unit
+let run_sym_check env c =
+  match c with
+  | SCheck_overflow e lo hi ->
+    eval_sym_expr env e >>= fun x ->
+    if x >= lo && x < hi then return ()
+    else fail ("relocation overflow: " ^ string_of_sym_expr e ^ " = " ^ show x ^ " is not in [" ^ show lo ^ ", " ^ show hi ^ ")")
+  | SCheck_alignment e n ->
+    eval_sym_expr env e >>= fun x ->
+    if natural_land (to_u64 x) (two_to n - 1) = 0 then return ()
+    else fail ("relocation alignment: " ^ string_of_sym_expr e ^ " = " ^ show x ^ " is not a multiple of " ^ show (two_to n))
+  end
+
+val concretise_words : endianness -> resolution_env -> byte_sequence -> list (natural * sym_word) -> error byte_sequence
+let concretise_words en env bytes words =
+  let len = Byte_sequence.length bytes in
+  (* one linear pass over the ascending word offsets, building the pieces to concatenate *)
+  foldM (fun (pos, acc) (off, w) ->
+      if off < pos then fail ("concretise: overlapping symbolic words at offset " ^ hex_of_natural off)
+      else if off + w.sw_width > len then fail ("concretise: symbolic word at offset " ^ hex_of_natural off ^ " runs past the section end")
+      else
+        eval_sym_expr env w.sw_value >>= fun v ->
+        Byte_sequence.offset_and_cut pos (off - pos) bytes >>= fun gap ->
+        let word = byte_sequence_of_byte_list (bytes_of_natural en w.sw_width (to_u64 v mod two_to (8 * w.sw_width))) in
+        return (off + w.sw_width, word :: gap :: acc))
+    (0, []) words >>= fun (pos, acc) ->
+  Byte_sequence.offset_and_cut pos (len - pos) bytes >>= fun tail ->
+  return (Byte_sequence.concat (List.reverse (tail :: acc)))
+
+val concretise_section : endianness -> resolution_env -> sym_section -> error byte_sequence
+let concretise_section en env ss =
+  mapM (run_sym_check env) ss.ss_checks >>= fun _ ->
+  concretise_words en env ss.ss_bytes ss.ss_words
+
+(** {2 Rendering and parsing the environment} *)
+
+(* one report section per component, each a two-column table *)
+val render_resolution_env : resolution_env -> report
+let render_resolution_env env =
+  let table name comment rows =
+    [Report_blank; Report_section ("resolution_env " ^ name); Report_comment comment; Report_table ["name"; "value"] rows] in
+  table "sections" "base address of each section of the object, by section name"
+        (List.map (fun (n, a) -> [n; hex_of_natural (natural_of_elf64_addr a)]) env.env_sections)
+  ++ table "symbols" "value of each symbol the object imports, as the linker resolved it"
+        (List.map (fun (n, a) -> [n; hex_of_natural (natural_of_elf64_addr a)]) env.env_symbols)
+  ++ table "got" "address of the GOT slot of an imported symbol, where one exists"
+        (List.map (fun (n, a) -> [n; hex_of_natural (natural_of_elf64_addr a)]) env.env_got)
+  ++ table "params" "named runtime parameters"
+        (List.map (fun (n, x) -> [n; hex_of_natural (natural_of_elf64_xword x)]) env.env_params)
+  ++ table "flags" "named runtime predicates"
+        (List.map (fun (n, b) -> [n; string_of_bool_word b]) env.env_flags)
+
+val parse_env_addrs : string -> report -> error (list (string * elf64_addr))
+let parse_env_addrs name r =
+  mapM (fun (n, v) -> natural_of_number_string v >>= fun x -> return (n, elf64_addr_of_natural x))
+       (report_pairs (report_section ("resolution_env " ^ name) r))
+
+val parse_resolution_env : report -> error resolution_env
+let parse_resolution_env r =
+  parse_env_addrs "sections" r >>= fun sections ->
+  parse_env_addrs "symbols" r >>= fun symbols ->
+  parse_env_addrs "got" r >>= fun got ->
+  mapM (fun (n, v) -> natural_of_number_string v >>= fun x -> return (n, elf64_xword_of_natural x))
+       (report_pairs (report_section "resolution_env params" r)) >>= fun params ->
+  mapM (fun (n, v) -> bool_of_word v >>= fun b -> return (n, b))
+       (report_pairs (report_section "resolution_env flags" r)) >>= fun flags ->
+  return <| env_sections = sections; env_symbols = symbols; env_got = got; env_params = params; env_flags = flags |>
+
+(* the symbolic overlay of a section, for inspection *)
+val render_sym_section : sym_section -> report
+let render_sym_section ss =
+  [Report_blank; Report_section ("symbolic_section " ^ ss.ss_name)
+  ; Report_key "size" (hex_of_natural (Byte_sequence.length ss.ss_bytes)) Nothing
+  ; Report_key "words" (show (List.length ss.ss_words)) Nothing
+  ; Report_key "checks" (show (List.length ss.ss_checks)) Nothing
+  ; Report_table ["offset"; "width"; "value"]
+      (List.map (fun (off, w) -> [hex_of_natural off; show w.sw_width; string_of_sym_expr w.sw_value]) ss.ss_words)]

@@ -1,0 +1,150 @@
+(* Claude: this file is largely written by Claude (24 September 2026).
+
+   Where a relocation's value goes in an AArch64 instruction or data word,
+   for each target kind of [Abi_aarch64_symbolic_relocation], as a
+   [Symbolic_resolution.field_spec].  From the instruction encodings of the
+   Arm Architecture Reference Manual:
+
+     ADRP        immlo = bits 30:29, immhi = bits 23:5 (21 bits of the page offset)
+     ADD (imm)   imm12 = bits 21:10
+     LDR/STR (unsigned offset)  imm12 = bits 21:10, scaled by the access size
+     BL / B      imm26 = bits 25:0
+     B.cond      imm19 = bits 23:5
+     TBZ / TBNZ  imm14 = bits 18:5
+
+   The relocation's mask [hi:lo] (from the AArch64 ELF ABI) selects the
+   value bits; the pieces here place them, numbering from bit 0 of the
+   selected field.  For LDSTn the ABI writes value bits [11:n] into imm12,
+   so 12-n bits land in the low bits of the field and the rest of it is
+   cleared. *)
+
+open import Basic_classes
+open import Bool
+open import Maybe
+open import Num
+open import List
+open import Error
+open import Missing_pervasives
+open import Elf_types_native_uint
+open import Elf_header
+open import Elf_file
+open import Elf_symbolic
+open import Symbolic_resolution
+open import Abi_aarch64_symbolic_relocation
+import Map
+import Map_extra
+
+val piece : natural -> natural -> natural -> field_piece
+let piece insn_lo value_lo bits = <| fp_insn_lo = insn_lo; fp_value_lo = value_lo; fp_bits = bits |>
+
+val aarch64_field_spec : aarch64_relocation_target -> field_spec
+let aarch64_field_spec target =
+  match target with
+  | Data32 -> <| fs_width = 4; fs_clear = [(0, 32)]; fs_pieces = [piece 0 0 32] |>
+  | Data64 -> <| fs_width = 8; fs_clear = [(0, 64)]; fs_pieces = [piece 0 0 64] |>
+  | ADRP   -> <| fs_width = 4; fs_clear = [(29, 2); (5, 19)]; fs_pieces = [piece 29 0 2; piece 5 2 19] |>
+  | ADD    -> <| fs_width = 4; fs_clear = [(10, 12)]; fs_pieces = [piece 10 0 12] |>
+  | LDST n -> <| fs_width = 4; fs_clear = [(10, 12)]; fs_pieces = [piece 10 0 (12 - naturalFromInt n)] |>
+  | CALL   -> <| fs_width = 4; fs_clear = [(0, 26)]; fs_pieces = [piece 0 0 26] |>
+  | B      -> <| fs_width = 4; fs_clear = [(0, 26)]; fs_pieces = [piece 0 0 26] |>
+  | CONDBR -> <| fs_width = 4; fs_clear = [(5, 19)]; fs_pieces = [piece 5 0 19] |>
+  | TSTBR  -> <| fs_width = 4; fs_clear = [(5, 14)]; fs_pieces = [piece 5 0 14] |>
+  end
+
+(** {2 Linker relaxation of ADRP+ADD to NOP+ADR}
+
+   A linker may replace the pair
+       adrp xD, sym            (R_AARCH64_ADR_PREL_PG_HI21 sym)
+       add  xD, xD, :lo12:sym  (R_AARCH64_ADD_ABS_LO12_NC sym)
+   by  nop ; adr xD, sym  when sym is within the +-1 MiB reach of adr.  LLD
+   does this by default (`--relax`) for adjacent instructions with the same
+   destination register, the same symbol and zero addends, measuring the
+   displacement from the second instruction, which is where the adr goes;
+   GNU ld does not.  Both relocations must have a zero addend (so a
+   reference to `symbol` relaxes, a reference to `.text + 0x1954` does
+   not; observed on vmlinux, where LLD left every such pair alone).
+   Whether the linker relaxes is the runtime flag
+   [aarch64_relax_adrp_add_flag]; the displacement test is left symbolic,
+   so the resolved words are conditionals on both. *)
+
+val aarch64_relax_adrp_add_flag : string
+let aarch64_relax_adrp_add_flag = "linker_relax_adrp_add"
+
+val aarch64_nop : integer
+let aarch64_nop = 3573751839   (* 0xd503201f *)
+
+(* the ADR encoding: op=0 (bit 31), immlo 30:29, 10000 at 28:24, immhi 23:5, Rd 4:0 *)
+val aarch64_adr_field_spec : field_spec
+let aarch64_adr_field_spec = <| fs_width = 4; fs_clear = [(29, 2); (5, 19)]; fs_pieces = [piece 29 0 2; piece 5 2 19] |>
+
+(* does the original word look like adrp xD (bits 31 and 28:24 = 1 0000) / add xD, xD, #imm (unshifted, 64-bit)? *)
+val is_adrp_word : natural -> bool
+let is_adrp_word w = natural_land w 2583691264 = 2415919104        (* & 0x9f000000 = 0x90000000 *)
+
+val is_add_imm_word : natural -> bool
+let is_add_imm_word w = natural_land w 4290772992 = 2432696320     (* & 0xffc00000 = 0x91000000 *)
+
+val word_rd : natural -> natural
+let word_rd w = natural_land w 31
+
+val word_rn : natural -> natural
+let word_rn w = natural_land (w / 32) 31
+
+(* the relaxation of one adjacent pair at offsets off, off+4 of the section:
+   S+A of the pair is the expression the ADD's relocation was given *)
+val relax_adrp_add_pair : natural -> natural -> sym_expr -> sym_section -> error sym_section
+let relax_adrp_add_pair off adrp_word target ss =
+  match (sym_word_at off ss, sym_word_at (off + 4) ss) with
+  | (Just w1, Just w2) ->
+    let adr_addr = SBin SAdd (SSection ss.ss_name) (SConst (integerFromNatural (off + 4))) in
+    let disp = SBin SSub target adr_addr in
+    let cond = SBoth (SFlag aarch64_relax_adrp_add_flag) (SInRange disp (0 - 1048576) 1048576) in
+    let adr_base = 268435456 + integerFromNatural (word_rd adrp_word) in   (* 0x10000000 | Rd *)
+    insert_field aarch64_adr_field_spec (20, 0) adr_base disp >>= fun adr ->
+    return (set_sym_word off <| sw_width = 4; sw_value = SIte cond (SConst aarch64_nop) w1.sw_value |>
+              (set_sym_word (off + 4) <| sw_width = 4; sw_value = SIte cond adr w2.sw_value |> ss))
+  | _ -> return ss
+  end
+
+(* apply the relaxation wherever the section's relocations form such a pair *)
+val relax_adrp_add : elf64_file -> string -> sym_section -> error sym_section
+let relax_adrp_add f name ss =
+  let en = get_elf64_header_endianness f.elf64_file_header in
+  Elf_symbolic.extract_elf64_relocations_for_section f aarch64_relocation_interpreter name >>= fun rels ->
+  let sites = Map_extra.toList rels in
+  foldM (fun ss (off, r1) ->
+      let off = natural_of_elf64_addr off in
+      match (r1.rel_desc_target, Map.lookup (elf64_addr_of_natural (off + 4)) rels) with
+      | (ADRP, Just r2) ->
+        (match r2.rel_desc_target with
+         | ADD ->
+           (* the same symbol and addend: the ADRP's value is Page(S+A) - Page(P) and the
+              ADD's is S+A, so take S+A out of the ADRP's expression and require it to equal
+              the ADD's *)
+           read_word_at en off 4 ss.ss_bytes >>= fun adrp_word ->
+           read_word_at en (off + 4) 4 ss.ss_bytes >>= fun add_word ->
+           let target = sym_expr_of_symbolic_expression r2.rel_desc_value in
+           let adrp_target = match r1.rel_desc_value with
+                             | BinOp (BinOp (t, And, _), Sub, _) -> Just (sym_expr_of_symbolic_expression t)
+                             | _ -> Nothing
+                             end in
+           (* the interpreter builds S + A with the addend as the outermost constant *)
+           let addend_is_zero e = match e with BinOp (_, Add, Const a) -> a = 0 | _ -> false end in
+           if is_adrp_word adrp_word && is_add_imm_word add_word
+              && word_rd adrp_word = word_rd add_word && word_rd add_word = word_rn add_word
+              && adrp_target = Just target && addend_is_zero r2.rel_desc_value then
+             relax_adrp_add_pair off adrp_word target ss
+           else return ss
+         | _ -> return ss
+         end)
+      | _ -> return ss
+      end)
+    ss sites
+
+(* the whole object, symbolically relocated, for AArch64, with the linker's
+   possible ADRP+ADD relaxation represented *)
+val resolve_aarch64_object : elf64_file -> error (list (string * sym_section))
+let resolve_aarch64_object f =
+  resolve_object f aarch64_relocation_interpreter aarch64_field_spec >>= fun secs ->
+  mapM (fun (name, ss) -> if List.null ss.ss_words then return (name, ss)
+                          else relax_adrp_add f name ss >>= fun ss' -> return (name, ss')) secs
