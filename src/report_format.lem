@@ -11,7 +11,8 @@
      - a key line, "key = value", optionally followed by "   # comment";
      - a table: a run of rows of "|"-separated cells, the first row naming
        the columns; cells are padded with spaces so the "|" line up, and
-       trailing spaces are dropped.
+       trailing spaces are dropped.  A single-column table's rows have no
+       "|"; any line that is none of the above is such a row.
 
    Values and cells are kept here as trimmed strings; interpreting them (as
    hex numbers, names, booleans, ...) is the consumer's business, with the
@@ -191,9 +192,8 @@ let parse_report_line lineno s =
     match key_line with
     | Just item -> return (Line_item item)
     | Nothing ->
-      if List.elem #'|' (chars s) then
-        return (Line_row (List.map trim_spaces (split_on_char #'|' s)))
-      else err "unrecognised line"
+      (* anything else is a table row; a single-column table has no '|' at all *)
+      return (Line_row (List.map trim_spaces (split_on_char #'|' s)))
     end
 
 (* the rows following a table header, with the line number and remainder after them *)
