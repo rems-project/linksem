@@ -1,0 +1,214 @@
+(* Claude: this file is largely written by Claude (24 September 2026).
+
+   AArch64 instruction encodings needed to model what the Linux kernel's
+   boot-time patching of the pKVM hypervisor writes (Pkvm_alternatives):
+   nop, movz/movk, add (immediate), and/orr (bitmask immediate), extr (ror),
+   adr/adrp and the immediate branches, br; and the decoding of their
+   register and immediate fields.  Written from the instruction encodings
+   of the Arm Architecture Reference Manual (C6.2), in terms of
+   [Symbolic_resolution.sym_expr] so that a put_bits can be a symbolic value.
+
+   Conventions: words are 32-bit little-endian instruction words as
+   integers; a "put_bits" helper masks its value to the put_bits width before
+   placing it, so callers pass whole values and the helper takes the bits.
+   Nothing here is transcribed from the kernel's arch/arm64/lib/insn.c. *)
+
+open import Basic_classes
+open import Bool
+open import Maybe
+open import Num
+open import String
+open import List
+open import Show
+open import Error
+open import Missing_pervasives
+open import Elf_types_native_uint
+open import Symbolic_resolution
+
+(** {2 Fields} *)
+
+val c : natural -> sym_expr
+let c n = SConst (integerFromNatural n)
+
+(* the low [bits] bits of [e], placed at bit [lo] *)
+val put_bits : natural -> natural -> sym_expr -> sym_expr
+let put_bits lo bits e = SBin SShl (SBin SAnd e (c (2 ** natFromNatural bits - 1))) (c lo)
+
+(* the bitwise or of a list of fields *)
+val ors : list sym_expr -> sym_expr
+let ors es = match es with
+  | [] -> c 0
+  | e :: rest -> List.foldl (fun acc x -> SBin SOr acc x) e rest
+  end
+
+(* [e] as a two's-complement signed value of [bits] bits, as an integer expression *)
+val sign_extend : natural -> sym_expr -> sym_expr
+let sign_extend bits e =
+  let half = c (2 ** natFromNatural (bits - 1)) in
+  SBin SSub (SBin SAnd (SBin SAdd e half) (c (2 ** natFromNatural bits - 1))) half
+
+(** {2 Decoding a concrete word} *)
+
+val rd_of : natural -> natural
+let rd_of w = natural_land w 31
+
+val rn_of : natural -> natural
+let rn_of w = natural_land (w / 32) 31
+
+val is_nop : natural -> bool
+let is_nop w = w = 3573751839                                   (* d503201f *)
+
+(* the classes the kernel's alternatives patching cares about *)
+val is_adrp : natural -> bool
+let is_adrp w = natural_land w 2667577344 = 2415919104          (* & 9f000000 = 90000000 *)
+
+val is_b_or_bl : natural -> bool
+let is_b_or_bl w = natural_land w 2080374784 = 335544320        (* & 7c000000 = 14000000: b (0x14) and bl (0x94) *)
+
+val is_bcond : natural -> bool
+let is_bcond w = natural_land w 4278190096 = 1409286144         (* & ff000010 = 54000000 *)
+
+val is_cbz_cbnz : natural -> bool
+let is_cbz_cbnz w = natural_land w 2113929216 = 872415232       (* & 7e000000 = 34000000 *)
+
+val is_tbz_tbnz : natural -> bool
+let is_tbz_tbnz w = natural_land w 2113929216 = 905969664       (* & 7e000000 = 36000000 *)
+
+val is_branch_imm : natural -> bool
+let is_branch_imm w = is_b_or_bl w || is_bcond w || is_cbz_cbnz w || is_tbz_tbnz w
+
+(* ldr/ldrsw/prfm (literal) and adr, which the kernel refuses to move *)
+val is_ldr_literal : natural -> bool
+let is_ldr_literal w = natural_land w 1006632960 = 402653184    (* & 3b000000 = 18000000 *)
+
+val is_adr : natural -> bool
+let is_adr w = natural_land w 2667577344 = 268435456            (* & 9f000000 = 10000000 *)
+
+(* the (lo, bits) of an immediate branch's offset put_bits, in words, and the byte offset it encodes *)
+val branch_imm_field : natural -> maybe (natural * natural)
+let branch_imm_field w =
+  if is_b_or_bl w then Just (0, 26)
+  else if is_bcond w || is_cbz_cbnz w then Just (5, 19)
+  else if is_tbz_tbnz w then Just (5, 14)
+  else Nothing
+
+(* the byte offset an immediate branch [word] (possibly symbolic, but of the class of the
+   concrete [w]) encodes: sign-extended put_bits times 4 *)
+val branch_offset : natural -> sym_expr -> maybe sym_expr
+let branch_offset w word =
+  match branch_imm_field w with
+  | Just (lo, bits) -> Just (SBin SShl (sign_extend bits (SBin SAnd (SBin SShr word (c lo)) (c (2 ** natFromNatural bits - 1)))) (c 2))
+  | Nothing -> Nothing
+  end
+
+(* the same branch with its offset put_bits replaced by [offset] bytes *)
+val set_branch_offset : natural -> sym_expr -> sym_expr -> maybe sym_expr
+let set_branch_offset w word offset =
+  match branch_imm_field w with
+  | Just (lo, bits) ->
+    let keep = c (u64_not (to_u64 (bits_mask lo bits))) in
+    Just (ors [SBin SAnd word keep; put_bits lo bits (SBin SShr offset (c 2))])
+  | Nothing -> Nothing
+  end
+
+(* adrp's page offset: immlo (30:29) and immhi (23:5), sign-extended 21 bits, times 4 KiB *)
+val adrp_offset : sym_expr -> sym_expr
+let adrp_offset word =
+  let immlo = SBin SAnd (SBin SShr word (c 29)) (c 3) in
+  let immhi = SBin SAnd (SBin SShr word (c 5)) (c 524287) in
+  SBin SShl (sign_extend 21 (ors [SBin SShl immhi (c 2); immlo])) (c 12)
+
+val set_adrp_offset : sym_expr -> sym_expr -> sym_expr
+let set_adrp_offset word offset =
+  let pages = SBin SShr offset (c 12) in
+  ors [SBin SAnd word (c 2667577375)                              (* keep op, 10000 and Rd: & 9f00001f *)
+      ; put_bits 29 2 pages; put_bits 5 19 (SBin SShr pages (c 2))]
+
+(** {2 Encodings} *)
+
+val nop : sym_expr
+let nop = c 3573751839                                          (* d503201f *)
+
+(* movz/movk xd, #imm16, lsl #(16*hw): sf=1; movz opc=10 (d2800000), movk opc=11 (f2800000) *)
+val movz : natural -> sym_expr -> natural -> sym_expr
+let movz rd imm16 hw = ors [c 3531603968; put_bits 21 2 (c hw); put_bits 5 16 imm16; c rd]
+
+val movk : natural -> sym_expr -> natural -> sym_expr
+let movk rd imm16 hw = ors [c 4068474880; put_bits 21 2 (c hw); put_bits 5 16 imm16; c rd]
+
+(* the four-instruction load of a 64-bit value the kernel calls mov_q: movz then movk lsl 16, 32, 48 *)
+val mov_q : natural -> sym_expr -> list sym_expr
+let mov_q rd v =
+  [ movz rd v 0
+  ; movk rd (SBin SShr v (c 16)) 1
+  ; movk rd (SBin SShr v (c 32)) 2
+  ; movk rd (SBin SShr v (c 48)) 3 ]
+
+(* add xd, xn, #imm12 {, lsl #12}: sf=1 op=0 S=0 100010 sh imm12 Rn Rd (91000000) *)
+val add_imm : natural -> natural -> sym_expr -> bool -> sym_expr
+let add_imm rd rn imm12 shifted =
+  ors [c 2432696320; (if shifted then c 4194304 else c 0); put_bits 10 12 imm12; put_bits 5 5 (c rn); c rd]
+
+(* and xd, xn, #bitmask: sf=1 opc=00 100100 N immr imms Rn Rd (92000000) *)
+val and_bitmask : natural -> natural -> natural -> sym_expr -> sym_expr -> sym_expr
+let and_bitmask rd rn n immr imms =
+  ors [c 2449473536; put_bits 22 1 (c n); put_bits 16 6 immr; put_bits 10 6 imms; put_bits 5 5 (c rn); c rd]
+
+(* the low [len] bits set (len < 64): N=1, immr=0, imms=len-1 *)
+val and_low_mask : natural -> natural -> sym_expr -> sym_expr
+let and_low_mask rd rn len = and_bitmask rd rn 1 (c 0) (SBin SSub len (c 1))
+
+(* orr wd, wn, #bitmask (32-bit): sf=0 opc=01 100100 N=0 immr imms Rn Rd (32000000) *)
+val orr32_bitmask : natural -> natural -> natural -> natural -> sym_expr
+let orr32_bitmask rd rn immr imms =
+  ors [c 838860800; put_bits 16 6 (c immr); put_bits 10 6 (c imms); put_bits 5 5 (c rn); c rd]
+
+(* extr xd, xn, xn, #lsb, i.e. ror xd, xn, #lsb: sf=1 00 100111 N=1 0 Rm imms Rn Rd (93c00000) *)
+val ror_imm : natural -> natural -> sym_expr -> sym_expr
+let ror_imm rd rn lsb = ors [c 2478833664; put_bits 16 5 (c rn); put_bits 10 6 lsb; put_bits 5 5 (c rn); c rd]
+
+(* br xn: d61f0000 *)
+val br : natural -> sym_expr
+let br rn = ors [c 3592355840; put_bits 5 5 (c rn)]
+
+(** {2 Bitmask immediates, concretely} *)
+
+(* A bitmask immediate is ROR(ones(len), immr) over elements of size 2, 4, ..., 64
+   replicated to the width.  Found by search over the sizes, lengths and rotations,
+   which is cheap for the one constant this is used for. *)
+
+val ones : natural -> natural
+let ones n = 2 ** natFromNatural n - 1
+
+val ror_bits : natural -> natural -> natural -> natural
+let ror_bits size v r =
+  let r = r mod size in
+  natural_land (natural_lor (v / (2 ** natFromNatural r)) (v * (2 ** natFromNatural (size - r)))) (ones size)
+
+val replicate_elem : natural -> natural -> natural -> natural
+let replicate_elem width size elem =
+  List.foldl (fun acc i -> acc + elem * (2 ** (i * natFromNatural size))) 0
+             (List.genlist (fun i -> i) (natFromNatural (width / size)))
+
+(* (size, len, immr) with value = replicate (ROR (ones len) immr), if any *)
+val bitmask_immediate : natural -> natural -> maybe (natural * natural * natural)
+let bitmask_immediate width v =
+  let candidates = List.concatMap (fun size ->
+      List.concatMap (fun len -> List.map (fun r -> (size, naturalFromNat len, naturalFromNat r))
+                                   (List.genlist (fun r -> r) (natFromNatural size)))
+        (List.genlist (fun l -> l + 1) (natFromNatural size - 1)))
+    (List.filter (fun sz -> sz <= width) [2; 4; 8; 16; 32; 64]) in
+  List.find (fun (size, len, r) -> replicate_elem width size (ror_bits size (ones len) r) = v) candidates
+
+(* N:immr:imms for a bitmask immediate of the given width (32 or 64), if encodable.
+   imms carries the element size in its leading bits: 64 -> N=1; 32 -> 0xxxxx; 16 -> 10xxxx;
+   8 -> 110xxx; 4 -> 1110xx; 2 -> 11110x; the low bits are len-1. *)
+val encode_bitmask : natural -> natural -> maybe (natural * natural * natural)
+let encode_bitmask width v =
+  match bitmask_immediate width v with
+  | Nothing -> Nothing
+  | Just (size, len, immr) ->
+    let n = if size = 64 then 1 else 0 in
+    let size_bits = match size with 2 -> 60 | 4 -> 56 | 8 -> 48 | 16 -> 32 | _ -> 0 end in
+    Just (n, immr, size_bits + (len - 1))
+  end

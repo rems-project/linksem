@@ -1,0 +1,352 @@
+(* Claude: this file is largely written by Claude (24 September 2026).
+
+   pKVM: the Linux kernel's boot-time "alternatives" patching of the
+   hypervisor object's code, modelled symbolically over the environment
+   the instrumentation records (readdwarf-private-3 notes003, notes008,
+   notes016 section 3, notes022).
+
+   An .altinstructions entry (12 bytes: orig_offset, alt_offset as PREL32
+   relocations, cpucap u16, orig_len u8, alt_len u8) says: if cpucap
+   [cpucap & 0x7fff] is detected, replace the orig_len bytes of code at the
+   original site.  If bit 15 (ARM64_CB_BIT) is clear, the replacement is the
+   alt_len = orig_len bytes at the alternative site (kept in the same
+   section's subsection 1 by the kernel's ALTERNATIVE macro), copied with
+   patch_alternative()'s re-targeting of immediate branches and adrp whose
+   target lies outside the replacement block.  If bit 15 is set, the
+   alternative site is a callback function of the kernel, run with the
+   original words; those the hypervisor uses are modelled here from what
+   arch/arm64/kvm/va_layout.c and arch/arm64/kernel/proton-pack.c do with
+   their inputs, which the environment carries as parameters and flags.
+
+   The kernel applies the entries in two passes, apply_boot_alternatives()
+   over the caps of SCOPE_BOOT_CPU (flags boot_cpucap:NAME, before the hyp
+   VA layout exists) and apply_alternatives_all() over the rest (after
+   kvm_apply_hyp_relocations(), Pkvm_relocations); an entry is patched iff
+   its cap is in the pass's set and detected (flags cpucap:NAME).  The
+   result of each pass is, for every word of every entry,
+     SIte (in this pass and detected, patched word, current word)
+   so nothing is decided until concretisation. *)
+
+open import Basic_classes
+open import Bool
+open import Maybe
+open import Num
+open import String
+open import List
+open import Show
+open import Error
+open import Missing_pervasives
+open import Endianness
+open import Byte_sequence
+open import Elf_types_native_uint
+open import Elf_header
+open import Elf_interpreted_section
+open import Elf_file
+open import Elf_symbolic
+open import Report_format
+open import Symbolic_resolution
+open import Abi_aarch64_symbolic_relocation
+open import Abi_aarch64_instruction_fields
+open import Abi_aarch64_encodings
+open import Generated_cpucaps
+open import Pkvm_relocations
+import Map
+import Map_extra
+
+(** {2 The entries} *)
+
+type alt_entry =
+  <| ae_orig     : string * natural      (* section and offset of the original code *)
+   ; ae_alt      : sym_expr              (* the alternative site: section + offset, or an imported symbol *)
+   ; ae_cap      : natural               (* cpucap number, bit 15 cleared *)
+   ; ae_callback : bool                  (* bit 15 of the cpucap field *)
+   ; ae_orig_len : natural
+   ; ae_alt_len  : natural
+   |>
+
+val alt_cb_bit : natural
+let alt_cb_bit = 32768
+
+(* the entries of the object's .altinstructions *)
+val read_alt_entries : elf64_file -> error (list alt_entry)
+let read_alt_entries f =
+  let en = get_elf64_header_endianness f.elf64_file_header in
+  match List.filter (fun s -> s.elf64_section_name_as_string = ".altinstructions") f.elf64_file_interpreted_sections with
+  | [] -> return []
+  | sec :: _ ->
+    let body = sec.elf64_section_body in
+    let n = Byte_sequence.length body / 12 in
+    Elf_symbolic.extract_elf64_relocations_for_section f aarch64_relocation_interpreter ".altinstructions" >>= fun rels ->
+    let target_at off =
+      match Map.lookup (elf64_addr_of_natural off) rels with
+      | Just r -> (match target_of_pcrel r.rel_desc_value with
+                   | Just t -> return t
+                   | Nothing -> fail ("read_alt_entries: the relocation at " ^ hex_of_natural off ^ " is not PC-relative")
+                   end)
+      | Nothing -> fail ("read_alt_entries: no relocation at " ^ hex_of_natural off ^ " of .altinstructions")
+      end in
+    mapM (fun i ->
+        let base = naturalFromNat i * 12 in
+        target_at base >>= fun orig ->
+        target_at (base + 4) >>= fun alt ->
+        read_word_at en (base + 8) 2 body >>= fun cpucap ->
+        read_word_at en (base + 10) 1 body >>= fun orig_len ->
+        read_word_at en (base + 11) 1 body >>= fun alt_len ->
+        match section_offset_of_expr orig with
+        | Just so -> return <| ae_orig = so; ae_alt = alt; ae_cap = natural_land cpucap 32767
+                              ; ae_callback = natural_land cpucap alt_cb_bit <> 0
+                              ; ae_orig_len = orig_len; ae_alt_len = alt_len |>
+        | Nothing -> fail ("read_alt_entries: entry " ^ show i ^ " does not point into a section: " ^ string_of_sym_expr orig)
+        end)
+      (List.genlist (fun i -> i) (natFromNatural n))
+  end
+
+(** {2 The callbacks} *)
+
+type alt_callback =
+  | Cb_patch_nops
+  | Cb_update_va_mask
+  | Cb_patch_physvirt_offset
+  | Cb_get_kimage_voffset
+  | Cb_compute_final_ctr_el0
+  | Cb_patch_vector_branch
+  | Cb_spectre_bhb_patch_wa3
+  | Cb_other of string
+
+val callback_of_symbol : string -> alt_callback
+let callback_of_symbol name =
+  let n = if starts_with "__kvm_nvhe_" name then string_drop 11 name else name in
+  if n = "alt_cb_patch_nops" then Cb_patch_nops
+  else if n = "kvm_update_va_mask" then Cb_update_va_mask
+  else if n = "kvm_patch_physvirt_offset" then Cb_patch_physvirt_offset
+  else if n = "kvm_get_kimage_voffset" then Cb_get_kimage_voffset
+  else if n = "kvm_compute_final_ctr_el0" then Cb_compute_final_ctr_el0
+  else if n = "kvm_patch_vector_branch" then Cb_patch_vector_branch
+  else if n = "spectre_bhb_patch_wa3" then Cb_spectre_bhb_patch_wa3
+  else Cb_other n
+
+val flag_vhe : sym_flag
+let flag_vhe = SFlag (cpucap_flag_name ARM64_HAS_VIRT_HOST_EXTN)
+
+val flag_spectre_v3a : sym_flag
+let flag_spectre_v3a = SFlag (cpucap_flag_name ARM64_SPECTRE_V3A)
+
+val arm_smccc_arch_workaround_3 : natural
+let arm_smccc_arch_workaround_3 = 2147500031   (* 0x80003fff: fast call, SMC32, owner 0, function 0x3fff *)
+
+(* the patched words of a callback entry: [origs] are the object's own words at the site
+   (concrete: the registers come from them), [currents] the current symbolic words there,
+   [site] the kernel VA of the first word *)
+val callback_words : elf64_file -> alt_callback -> sym_expr -> list natural -> list sym_expr -> error (list sym_expr * list sym_check)
+let callback_words f cb site origs currents =
+  let n = List.length origs in
+  match cb with
+  | Cb_patch_nops -> return (List.map (fun _ -> nop) origs, [])
+  | Cb_update_va_mask ->
+    (* five instructions from the first: and, ror, add, add (lsl 12), ror, on the registers
+       of each original; all nop under VHE, and the last four nop when tag_val is zero *)
+    if n <> 5 then fail ("kvm_update_va_mask: " ^ show n ^ " instructions, not 5") else
+    let tag_lsb = SVar p_tag_lsb in
+    let tag_val = SVar p_tag_val in
+    let insn i oinsn =
+      let rd = rd_of oinsn in
+      let rn = rn_of oinsn in
+      match i with
+      | 0 -> and_low_mask rd rn tag_lsb
+      | 1 -> ror_imm rd rn tag_lsb
+      | 2 -> add_imm rd rn (SBin SAnd tag_val (c 4095)) false
+      | 3 -> SIte (SIsZero (SBin SAnd tag_val (c 16773120)))
+                  (add_imm rd rn (c 0) false)
+                  (add_imm rd rn (SBin SAnd (SBin SShr tag_val (c 12)) (c 4095)) true)
+      | _ -> ror_imm rd rn (SBin SSub (c 64) tag_lsb)
+      end in
+    let words = List.map (fun (i, oinsn) ->
+        let patched = insn i oinsn in
+        SIte flag_vhe nop (if i = 0 then patched else SIte (SIsZero tag_val) nop patched))
+        (List.zip (List.genlist (fun i -> i) 5) origs) in
+    (* the and encodes the mask as a run of tag_lsb ones, which is what kvm_compute_layout() makes va_mask *)
+    return (words, [SCheck_equal "va_mask is the low tag_lsb bits" (SVar p_va_mask) (SBin SSub (SBin SShl (c 1) tag_lsb) (c 1))])
+  | Cb_patch_physvirt_offset ->
+    (* mov_q of hyp_physvirt_offset into the first four of five; the fifth (sub/add) is left *)
+    if n <> 5 then fail ("kvm_patch_physvirt_offset: " ^ show n ^ " instructions, not 5") else
+    (match (origs, currents) with
+     | (o0 :: _, _ :: _ :: _ :: _ :: c4 :: _) -> return (mov_q (rd_of o0) (SVar p_hyp_physvirt_offset) ++ [c4], [])
+     | _ -> fail "kvm_patch_physvirt_offset: bad words"
+     end)
+  | Cb_get_kimage_voffset ->
+    if n <> 4 then fail ("kvm_get_kimage_voffset: " ^ show n ^ " instructions, not 4") else
+    (match origs with o0 :: _ -> return (mov_q (rd_of o0) (SVar p_kimage_voffset), []) | _ -> fail "kvm_get_kimage_voffset: no words" end)
+  | Cb_compute_final_ctr_el0 ->
+    if n <> 4 then fail ("kvm_compute_final_ctr_el0: " ^ show n ^ " instructions, not 4") else
+    (match origs with o0 :: _ -> return (mov_q (rd_of o0) (SVar p_ctr_el0_sys_val), []) | _ -> fail "kvm_compute_final_ctr_el0: no words" end)
+  | Cb_patch_vector_branch ->
+    (* only with SPECTRE_V3A and not VHE: movz/movk/movk x0 with the hyp VA of the same slot
+       of __kvm_hyp_vector (PC bits 10:7 select it), past the 8-byte preamble, then br x0 *)
+    if n <> 4 then fail ("kvm_patch_vector_branch: " ^ show n ^ " instructions, not 4") else
+    defined_symbol_expr f "__kvm_nvhe___kvm_hyp_vector" >>= fun vec ->
+    let addr = SBin SAdd (SBin SOr (hyp_va_of_kernel_va vec) (SBin SAnd site (c 1920))) (c 8) in
+    let patched = [ movz 0 addr 0; movk 0 (SBin SShr addr (c 16)) 1; movk 0 (SBin SShr addr (c 32)) 2; br 0 ] in
+    return (List.map (fun (p, cur) -> SIte flag_vhe cur (SIte flag_spectre_v3a p cur)) (List.zip patched currents), [])
+  | Cb_spectre_bhb_patch_wa3 ->
+    (* orr wd, wzr, #ARM_SMCCC_ARCH_WORKAROUND_3, only with CONFIG_MITIGATE_SPECTRE_BRANCH_HISTORY
+       and the firmware BHB mitigation (bit BHB_FW = 1 of system_bhb_mitigations) *)
+    if n <> 1 then fail ("spectre_bhb_patch_wa3: " ^ show n ^ " instructions, not 1") else
+    (match (origs, currents, encode_bitmask 32 arm_smccc_arch_workaround_3) with
+     | (o0 :: _, cur :: _, Just (_, immr, imms)) ->
+       let patched = orr32_bitmask (rd_of o0) 31 immr imms in
+       return ([SIte (SFlag "config:MITIGATE_SPECTRE_BRANCH_HISTORY")
+                     (SIte (SIsZero (SBin SAnd (SVar p_system_bhb_mitigations) (c 2))) cur patched)
+                     cur], [])
+     | _ -> fail "spectre_bhb_patch_wa3: bad words or unencodable immediate"
+     end)
+  | Cb_other name -> fail ("alternatives: the callback " ^ name ^ " is not modelled")
+  end
+
+(** {2 Plain replacements} *)
+
+(* patch_alternative(): the replacement's words copied to the original site, with an
+   immediate branch or adrp whose target lies outside the replacement block re-targeted
+   from the new position; [sec_orig]/[sec_alt] the sections' bytes for the classification *)
+val replacement_words : endianness -> alt_entry -> sym_section -> error (list sym_expr)
+let replacement_words en e alt_ss =
+  let (osec, ooff) = e.ae_orig in
+  match section_offset_of_expr e.ae_alt with
+  | Nothing -> fail ("alternatives: the replacement of the entry at " ^ osec ^ "+" ^ hex_of_natural ooff ^ " is not in a section")
+  | Just (asec, aoff) ->
+    if asec <> alt_ss.ss_name then fail "replacement_words: wrong alternative section" else
+    let nr = e.ae_orig_len / 4 in
+    mapM (fun i ->
+        let i = naturalFromNat i in
+        let oaddr = SBin SAdd (SSection osec) (c (ooff + 4 * i)) in
+        let aaddr = SBin SAdd (SSection asec) (c (aoff + 4 * i)) in
+        read_word_at en (aoff + 4 * i) 4 alt_ss.ss_bytes >>= fun w ->        (* the class, from the object's bytes *)
+        current_word en (aoff + 4 * i) 4 alt_ss >>= fun word ->             (* the relocated word *)
+        if is_branch_imm w then
+          (match (branch_offset w word) with
+           | Just offset ->
+             (* inside the block iff 0 <= (4i + offset) <= alt_len *)
+             let rel = SBin SAdd (c (4 * i)) offset in
+             let inside = SInRange rel 0 (integerFromNatural e.ae_alt_len + 1) in
+             (match set_branch_offset w word (SBin SAdd offset (SBin SSub aaddr oaddr)) with
+              | Just moved -> return (SIte inside word moved)
+              | Nothing -> fail "replacement_words: branch"
+              end)
+           | Nothing -> fail "replacement_words: branch"
+           end)
+        else if is_adrp w then
+          let page = c 4095 in
+          let target = SBin SAdd (SBin SAnd aaddr (SNot page)) (adrp_offset word) in
+          return (set_adrp_offset word (SBin SSub target (SBin SAnd oaddr (SNot page))))
+        else if is_ldr_literal w || is_adr w then
+          fail ("alternatives: the replacement at " ^ asec ^ "+" ^ hex_of_natural (aoff + 4 * i) ^ " uses a PC-relative literal, which the kernel refuses (BUG)")
+        else return word)
+      (List.genlist (fun i -> i) (natFromNatural nr))
+  end
+
+(** {2 The passes} *)
+
+type alt_pass = Pass_boot | Pass_system
+
+(* is entry [e] patched in this pass: its cap detected, and in the boot set (boot pass) or not (system pass) *)
+val pass_condition : alt_pass -> cpucap -> sym_expr -> sym_expr -> sym_expr
+let pass_condition pass cap patched current =
+  let detected = SFlag (cpucap_flag_name cap) in
+  let boot = SFlag (boot_cpucap_flag_name cap) in
+  match pass with
+  | Pass_boot -> SIte boot (SIte detected patched current) current
+  | Pass_system -> SIte boot current (SIte detected patched current)
+  end
+
+val apply_alt_entry : elf64_file -> alt_pass -> alt_entry -> list (string * sym_section) -> error (list (string * sym_section))
+let apply_alt_entry f pass e secs =
+  let en = get_elf64_header_endianness f.elf64_file_header in
+  let (osec, ooff) = e.ae_orig in
+  match cpucap_of_number e.ae_cap with
+  | Nothing -> fail ("alternatives: cpucap number " ^ show e.ae_cap ^ " is beyond the generated cpucaps (" ^ show arm64_ncaps ^ ")")
+  | Just cap ->
+    match List.lookup osec secs with
+    | Nothing -> fail ("alternatives: no section " ^ osec)
+    | Just orig_ss ->
+      let nr = e.ae_orig_len / 4 in
+      let offs = List.map (fun i -> ooff + 4 * naturalFromNat i) (List.genlist (fun i -> i) (natFromNatural nr)) in
+      mapM (fun o -> read_word_at en o 4 orig_ss.ss_bytes) offs >>= fun origs ->
+      mapM (fun o -> current_word en o 4 orig_ss) offs >>= fun currents ->
+      (if e.ae_callback then
+         (match symbol_of_expr e.ae_alt with
+          | Just name ->
+            (match (pass, callback_of_symbol name) with
+             | (Pass_boot, Cb_patch_nops) -> callback_words f Cb_patch_nops (SBin SAdd (SSection osec) (c ooff)) origs currents
+             | (Pass_boot, _) ->
+               (* a callback in the boot pass would read the layout parameters before they are
+                  set; none of the hypervisor's do, so make that case fail loudly if it arises *)
+               return (List.map (fun _ -> SVar ("unsupported:boot-pass callback " ^ name)) origs, [])
+             | (Pass_system, cb) -> callback_words f cb (SBin SAdd (SSection osec) (c ooff)) origs currents
+             end)
+          | Nothing -> fail ("alternatives: the callback of the entry at " ^ osec ^ "+" ^ hex_of_natural ooff ^ " is not a symbol: " ^ string_of_sym_expr e.ae_alt)
+          end)
+       else
+         (match section_offset_of_expr e.ae_alt with
+          | Just (asec, _) ->
+            (match List.lookup asec secs with
+             | Just alt_ss -> replacement_words en e alt_ss >>= fun ws -> return (ws, [])
+             | Nothing -> fail ("alternatives: no section " ^ asec)
+             end)
+          | Nothing -> fail "alternatives: replacement not in a section"
+          end)) >>= fun (patched, checks) ->
+      let words = List.map (fun ((o, p), cur) -> (o, pass_condition pass cap p cur)) (List.zip (List.zip offs patched) currents) in
+      let ss' = List.foldl (fun ss (o, w) -> set_sym_word o <| sw_width = 4; sw_value = w |> ss) orig_ss words in
+      let ss' = <| ss' with ss_checks = ss'.ss_checks ++ checks |> in
+      return (List.map (fun (n, ss) -> if n = osec then (n, ss') else (n, ss)) secs)
+    end
+  end
+
+val apply_alternatives : elf64_file -> alt_pass -> list (string * sym_section) -> error (list (string * sym_section))
+let apply_alternatives f pass secs =
+  read_alt_entries f >>= fun entries ->
+  foldM (fun secs e -> apply_alt_entry f pass e secs) secs entries
+
+(** {2 Host-written data} *)
+
+(* Before __pkvm_init the host writes its inputs into the hypervisor's data (hyp_cpu_logical_map,
+   kvm_arm_hyp_percpu_base, hyp_physvirt_offset, ...).  Those words are further parameters of
+   the initial state: a host-write site is (section, offset) of a 64-bit word, and its value is
+   the parameter named "hostwrite:<section>+0x<offset>" of the environment.  The sites are found
+   by comparing the resolved object with the memory at the do_pkvm_init stop (objcheck
+   host-writes) and recorded in the environment, so the list is data, not something fixed here. *)
+
+val host_write_param : string -> natural -> string
+let host_write_param sec off = "hostwrite:" ^ sec ^ "+" ^ hex_of_natural off
+
+(* the (section, offset) of a host-write parameter name, if it is one *)
+val host_write_site : string -> maybe (string * natural)
+let host_write_site name =
+  if not (starts_with "hostwrite:" name) then Nothing else
+  let rest = string_drop 10 name in
+  match find_substring "+" rest with
+  | Just p ->
+    (match natural_of_hex_string (string_drop (p + 1) rest) with
+     | Success off -> Just (string_take p rest, off)
+     | Fail _ -> Nothing
+     end)
+  | Nothing -> Nothing
+  end
+
+val apply_host_writes : list (string * natural) -> list (string * sym_section) -> list (string * sym_section)
+let apply_host_writes sites secs =
+  List.foldl (fun secs (sec, off) ->
+      List.map (fun (n, ss) -> if n = sec then (n, set_sym_word off <| sw_width = 8; sw_value = SVar (host_write_param sec off) |> ss) else (n, ss)) secs)
+    secs sites
+
+(** {2 The whole boot sequence, for the object's sections} *)
+
+(* link-time relocation (with the linker's relaxation), then the boot-CPU alternatives pass,
+   the .hyp.reloc rewrite, the host's writes into hyp data, and the system-wide pass; the host
+   writes are given as the parameter names of the environment (only the hostwrite: ones count) *)
+val resolve_pkvm : elf64_file -> list string -> error (list (string * sym_section))
+let resolve_pkvm f param_names =
+  let sites = List.mapMaybe host_write_site param_names in
+  resolve_aarch64_object f >>= fun secs ->
+  apply_alternatives f Pass_boot secs >>= fun secs ->
+  apply_hyp_relocations f secs >>= fun secs ->
+  let secs = apply_host_writes sites secs in
+  apply_alternatives f Pass_system secs

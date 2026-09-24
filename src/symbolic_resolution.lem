@@ -56,6 +56,7 @@ open import Elf_relocation
 open import Elf_symbol_table
 open import Elf_file
 open import Elf_symbolic
+open import String_table
 open import Report_format
 open import Sorting
 import Map_extra
@@ -217,6 +218,7 @@ and eval_sym_flag env f =
 type sym_check =
   | SCheck_overflow of sym_expr * integer * integer   (* min <= value < max *)
   | SCheck_alignment of sym_expr * natural            (* value is a multiple of 2^n *)
+  | SCheck_equal of string * sym_expr * sym_expr      (* an assumption the model relies on, named *)
 
 type sym_word = <| sw_width : natural ; sw_value : sym_expr |>   (* width in bytes *)
 
@@ -296,6 +298,57 @@ let read_word_at en off width bs =
   Byte_sequence.offset_and_cut off width bs >>= fun w ->
   return (natural_of_bytes en (byte_list_of_byte_sequence w))
 
+(* the current symbolic word at [off] of width [w], or the section's own bytes there as a constant *)
+val current_word : endianness -> natural -> natural -> sym_section -> error sym_expr
+let current_word en off w ss =
+  match sym_word_at off ss with
+  | Just sw -> if sw.sw_width = w then return sw.sw_value
+               else fail ("current_word: the word at " ^ hex_of_natural off ^ " has width " ^ show sw.sw_width ^ ", not " ^ show w)
+  | Nothing -> read_word_at en off w ss.ss_bytes >>= fun v -> return (SConst (integerFromNatural v))
+  end
+
+(* the kernel-VA expression of a symbol defined in the object: its section's base plus its value *)
+val defined_symbol_expr : elf64_file -> string -> error sym_expr
+let defined_symbol_expr f name =
+  get_elf64_file_symbol_table f >>= fun (symtab, strtab) ->
+  let secs = f.elf64_file_interpreted_sections in
+  let matches = List.filter (fun ste ->
+      match String_table.get_string_at (natural_of_elf64_word ste.elf64_st_name) strtab with
+      | Success n -> n = name
+      | Fail _ -> false
+      end) symtab in
+  match matches with
+  | ste :: _ ->
+    let shndx = natural_of_elf64_half ste.elf64_st_shndx in
+    (match List.index secs (natFromNatural shndx) with
+     | Just sec -> return (SBin SAdd (SSection sec.elf64_section_name_as_string) (SConst (integerFromNatural (natural_of_elf64_addr ste.elf64_st_value))))
+     | Nothing -> fail ("defined_symbol_expr: " ^ name ^ " is not in a section of the object")
+     end)
+  | [] -> fail ("defined_symbol_expr: no symbol " ^ name ^ " in the object")
+  end
+
+(* an expression that is a section base plus constants, as (section, offset) *)
+val section_offset_of_expr : sym_expr -> maybe (string * natural)
+let rec section_offset_of_expr e =
+  match e with
+  | SSection s -> Just (s, 0)
+  | SBin SAdd a (SConst k) ->
+    (match section_offset_of_expr a with
+     | Just (s, o) -> if integerFromNatural o + k >= 0 then Just (s, naturalFromInteger (integerFromNatural o + k)) else Nothing
+     | Nothing -> Nothing
+     end)
+  | _ -> Nothing
+  end
+
+(* an expression that is an imported symbol plus zero *)
+val symbol_of_expr : sym_expr -> maybe string
+let rec symbol_of_expr e =
+  match e with
+  | SSymbol s -> Just s
+  | SBin SAdd a (SConst k) -> if k = 0 then symbol_of_expr a else Nothing
+  | _ -> Nothing
+  end
+
 (** {2 Relocation application} *)
 
 (* a relocation site: linksem's description of the relocation at [off] of the section *)
@@ -368,6 +421,11 @@ let run_sym_check env c =
     eval_sym_expr env e >>= fun x ->
     if natural_land (to_u64 x) (two_to n - 1) = 0 then return ()
     else fail ("relocation alignment: " ^ string_of_sym_expr e ^ " = " ^ show x ^ " is not a multiple of " ^ show (two_to n))
+  | SCheck_equal what a b ->
+    eval_sym_expr env a >>= fun x ->
+    eval_sym_expr env b >>= fun y ->
+    if x = y then return ()
+    else fail ("assumption " ^ what ^ " fails: " ^ string_of_sym_expr a ^ " = " ^ show x ^ " but " ^ string_of_sym_expr b ^ " = " ^ show y)
   end
 
 val concretise_words : endianness -> resolution_env -> byte_sequence -> list (natural * sym_word) -> error byte_sequence

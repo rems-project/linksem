@@ -263,11 +263,13 @@ let rec items_before_next_section items =
   | it :: rest -> it :: items_before_next_section rest
   end
 
-(* the items of the section called name, up to the next header *)
+(* the items of the sections called name, each up to the next header, concatenated: a report
+   may carry several blocks of the same section (e.g. parameters appended by another tool) *)
 val report_section : string -> report -> list report_item
 let rec report_section name items =
   match items with
-  | Report_section n :: rest -> if n = name then items_before_next_section rest else report_section name rest
+  | Report_section n :: rest ->
+    if n = name then items_before_next_section rest ++ report_section name rest else report_section name rest
   | _ :: rest -> report_section name rest
   | [] -> []
   end
@@ -281,10 +283,12 @@ val report_table : list report_item -> maybe (list string * list (list string))
 let report_table items =
   List.foldr (fun it acc -> match it with Report_table h rs -> Just (h, rs) | _ -> acc end) Nothing items
 
-(* a two-column table as an association list of (first cell, second cell) *)
+(* the rows of every table among the items *)
+val report_rows : list report_item -> list (list string)
+let report_rows items =
+  List.concatMap (fun it -> match it with Report_table _ rs -> rs | _ -> [] end) items
+
+(* the tables' rows as an association list of (first cell, second cell); further cells are ignored *)
 val report_pairs : list report_item -> list (string * string)
 let report_pairs items =
-  match report_table items with
-  | Just (_, rows) -> List.mapMaybe (fun r -> match r with a :: b :: _ -> Just (a, b) | _ -> Nothing end) rows
-  | Nothing -> []
-  end
+  List.mapMaybe (fun r -> match r with a :: b :: _ -> Just (a, b) | _ -> Nothing end) (report_rows items)

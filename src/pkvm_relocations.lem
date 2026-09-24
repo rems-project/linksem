@@ -1,0 +1,96 @@
+(* Claude: this file is largely written by Claude (24 September 2026).
+
+   pKVM: the runtime parameters of the hypervisor's address layout, and the
+   kernel's boot-time rewriting of the hypervisor object's absolute pointers
+   from kernel image VAs to hyp VAs (kvm_apply_hyp_relocations(), driven by
+   the .hyp.reloc section that gen-hyprel puts in kvm_nvhe.o).  Everything
+   is symbolic over the parameters, which the instrumentation records in a
+   Symbolic_resolution environment:
+
+     kimage_voffset   kernel image VA - PA          memstart_addr  PHYS_OFFSET
+     page_offset      start of the linear map       va_mask, tag_lsb, tag_val: kern_hyp_va()
+
+   kern_hyp_va(lm_alias(x)) = ((x - kimage_voffset - memstart_addr + page_offset) & va_mask)
+                              | (tag_val << tag_lsb)
+   as in arch/arm64/kvm/va_layout.c.  See readdwarf-private-3 notes009 and
+   notes016 section 3. *)
+
+open import Basic_classes
+open import Bool
+open import Maybe
+open import Num
+open import String
+open import List
+open import Show
+open import Error
+open import Missing_pervasives
+open import Endianness
+open import Elf_types_native_uint
+open import Elf_header
+open import Elf_file
+open import Elf_symbolic
+open import Report_format
+open import Symbolic_resolution
+open import Abi_aarch64_symbolic_relocation
+import Map_extra
+
+val p_kimage_voffset : string
+let p_kimage_voffset = "kimage_voffset"
+val p_memstart_addr : string
+let p_memstart_addr = "memstart_addr"
+val p_page_offset : string
+let p_page_offset = "page_offset"
+val p_va_mask : string
+let p_va_mask = "va_mask"
+val p_tag_lsb : string
+let p_tag_lsb = "tag_lsb"
+val p_tag_val : string
+let p_tag_val = "tag_val"
+val p_hyp_physvirt_offset : string
+let p_hyp_physvirt_offset = "hyp_physvirt_offset"
+val p_ctr_el0_sys_val : string
+let p_ctr_el0_sys_val = "ctr_el0_sys_val"
+val p_system_bhb_mitigations : string
+let p_system_bhb_mitigations = "system_bhb_mitigations"
+
+val hyp_va_of_kernel_va : sym_expr -> sym_expr
+let hyp_va_of_kernel_va e =
+  let lin = SBin SAdd (SBin SSub (SBin SSub e (SVar p_kimage_voffset)) (SVar p_memstart_addr)) (SVar p_page_offset) in
+  SBin SOr (SBin SAnd lin (SVar p_va_mask)) (SBin SShl (SVar p_tag_val) (SVar p_tag_lsb))
+
+(* S + A of a relocation whose value is (S + A) - P, as the interpreter builds it *)
+val target_of_pcrel : symbolic_expression -> maybe sym_expr
+let target_of_pcrel e =
+  match e with
+  | BinOp (sa, Sub, _) -> Just (sym_expr_of_symbolic_expression sa)
+  | _ -> Nothing
+  end
+
+(* the words kvm_apply_hyp_relocations() rewrites: each .hyp.reloc entry is a PREL32 to a
+   64-bit kernel-VA word somewhere in the object, so its target is (section, offset) *)
+val hyp_reloc_targets : elf64_file -> error (list (string * natural))
+let hyp_reloc_targets f =
+  Elf_symbolic.extract_elf64_relocations_for_section f aarch64_relocation_interpreter ".hyp.reloc" >>= fun rels ->
+  mapM (fun (off, r) ->
+      match target_of_pcrel r.rel_desc_value with
+      | Just t -> (match section_offset_of_expr t with
+                   | Just so -> return so
+                   | Nothing -> fail ("hyp_reloc_targets: entry at " ^ hex_of_natural (natural_of_elf64_addr off) ^ " does not point into a section: " ^ string_of_sym_expr t)
+                   end)
+      | Nothing -> fail ("hyp_reloc_targets: entry at " ^ hex_of_natural (natural_of_elf64_addr off) ^ " is not PC-relative")
+      end) (Map_extra.toList rels)
+
+(* rewrite one 64-bit word of a section from kernel VA to hyp VA *)
+val hyp_relocate_word : endianness -> natural -> sym_section -> error sym_section
+let hyp_relocate_word en off ss =
+  current_word en off 8 ss >>= fun w ->
+  return (set_sym_word off <| sw_width = 8; sw_value = hyp_va_of_kernel_va w |> ss)
+
+(* the kernel's kvm_apply_hyp_relocations(), over the resolved sections *)
+val apply_hyp_relocations : elf64_file -> list (string * sym_section) -> error (list (string * sym_section))
+let apply_hyp_relocations f secs =
+  let en = get_elf64_header_endianness f.elf64_file_header in
+  hyp_reloc_targets f >>= fun targets ->
+  foldM (fun secs (sname, off) ->
+      mapM (fun (n, ss) -> if n = sname then hyp_relocate_word en off ss >>= fun ss' -> return (n, ss') else return (n, ss)) secs)
+    secs targets
