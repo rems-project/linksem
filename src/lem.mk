@@ -58,7 +58,7 @@ LEM_ELF_SRC := byte_sequence.lem byte_pattern.lem byte_pattern_extra.lem \
 	elf_interpreted_segment.lem elf_interpreted_section.lem \
 	elf_note.lem elf_file.lem elf_dynamic.lem \
 	elf_symbolic.lem \
-	report_format.lem symbolic_resolution.lem generated_cpucaps.lem \
+	report_format.lem symbolic_resolution.lem generated_arm64_cpucaps.lem \
 	dwarf_byte_sequence.lem \
 	dwarf_ctypes.lem dwarf.lem ldconfig.lem
 
@@ -79,8 +79,8 @@ LEM_ABI_SRC := \
 	abis/aarch64/abi_aarch64_relocation.lem \
 	abis/aarch64/abi_aarch64_symbolic_relocation.lem \
 	abis/aarch64/abi_aarch64_instruction_fields.lem \
-	abis/aarch64/abi_aarch64_encodings.lem \
-	pkvm_relocations.lem pkvm_alternatives.lem \
+	abis/aarch64/abi_aarch64_encodings_for_pkvm_alternatives.lem \
+	pkvm/pkvm_relocations.lem pkvm/pkvm_alternatives.lem \
 	abis/aarch64/abi_aarch64_le.lem \
 	abis/aarch64/abi_aarch64_dynamic.lem \
 	abstract_linker_script.lem \
@@ -137,7 +137,7 @@ OCAMLFIND_PACKAGES := -package num -package lem
 
 INCLUDEFLAGS := -I adaptors -I abis -I abis/amd64 -I abis/power64 \
   -I abis/aarch64 -I abis/x86 -I abis/mips64 -I abis/riscv \
-  -I abis/cheri_mips64 -I gnu_extensions
+  -I abis/cheri_mips64 -I gnu_extensions -I pkvm
 
 OCAMLFLAGS := -g $(INCLUDEFLAGS)
 

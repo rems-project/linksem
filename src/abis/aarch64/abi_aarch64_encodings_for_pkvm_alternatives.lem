@@ -1,7 +1,7 @@
 (* Claude: this file is largely written by Claude (24 September 2026).
 
    AArch64 instruction encodings needed to model what the Linux kernel's
-   boot-time patching of the pKVM hypervisor writes (Pkvm_alternatives):
+   boot-time patching of the pKVM hypervisor writes (pkvm/pkvm_alternatives.lem):
    nop, movz/movk, add (immediate), and/orr (bitmask immediate), extr (ror),
    adr/adrp and the immediate branches, br; and the decoding of their
    register and immediate fields.  Written from the instruction encodings
@@ -74,12 +74,22 @@ let is_cbz_cbnz w = natural_land w 2113929216 = 872415232       (* & 7e000000 = 
 val is_tbz_tbnz : natural -> bool
 let is_tbz_tbnz w = natural_land w 2113929216 = 905969664       (* & 7e000000 = 36000000 *)
 
+(* These are the classes the kernel's aarch64_insn_is_branch_imm() covers, and so the ones
+   patch_alternative() re-targets.  BC.cond (0x54000010, FEAT_HBC) is also a PC-relative
+   imm19 branch but is not in the kernel's list, so the kernel copies it unchanged and this
+   model does the same: a replacement containing one that branches out of its block would be
+   mis-patched by the kernel itself. *)
 val is_branch_imm : natural -> bool
 let is_branch_imm w = is_b_or_bl w || is_bcond w || is_cbz_cbnz w || is_tbz_tbnz w
 
-(* ldr/ldrsw/prfm (literal) and adr, which the kernel refuses to move *)
+(* The PC-relative literal loads: LDR (literal) 0x18000000 and 0x58000000 (32- and 64-bit),
+   LDRSW (literal) 0x98000000, PRFM (literal) 0xd8000000; their union is the four values of
+   bits 31:24 whose low six bits are 011000, i.e. & 3f000000 = 18000000.  These, with adr
+   and adrp, are what the kernel's aarch64_insn_uses_literal() covers and what
+   patch_alternative() refuses to move (BUG()).  It does not cover LDR (literal, SIMD&FP)
+   0x1c000000, so neither does this. *)
 val is_ldr_literal : natural -> bool
-let is_ldr_literal w = natural_land w 1006632960 = 402653184    (* & 3b000000 = 18000000 *)
+let is_ldr_literal w = natural_land w 1056964608 = 402653184    (* & 3f000000 = 18000000 *)
 
 val is_adr : natural -> bool
 let is_adr w = natural_land w 2667577344 = 268435456            (* & 9f000000 = 10000000 *)

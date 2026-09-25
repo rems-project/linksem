@@ -47,8 +47,8 @@ open import Report_format
 open import Symbolic_resolution
 open import Abi_aarch64_symbolic_relocation
 open import Abi_aarch64_instruction_fields
-open import Abi_aarch64_encodings
-open import Generated_cpucaps
+open import Abi_aarch64_encodings_for_pkvm_alternatives
+open import Generated_arm64_cpucaps
 open import Pkvm_relocations
 import Map
 import Map_extra
