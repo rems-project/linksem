@@ -96,7 +96,7 @@ val relax_adrp_add_pair : natural -> natural -> sym_expr -> sym_section -> error
 let relax_adrp_add_pair off adrp_word target ss =
   match (sym_word_at off ss, sym_word_at (off + 4) ss) with
   | (Just w1, Just w2) ->
-    let adr_addr = SBin SAdd (SSection ss.ss_name) (SConst (integerFromNatural (off + 4))) in
+    let adr_addr = SBin SAdd (SSection ss.sec_name) (SConst (integerFromNatural (off + 4))) in
     let disp = SBin SSub target adr_addr in
     let cond = SBoth (SFlag aarch64_relax_adrp_add_flag) (SInRange disp (0 - 1048576) 1048576) in
     let adr_base = 268435456 + integerFromNatural (word_rd adrp_word) in   (* 0x10000000 | Rd *)
@@ -121,8 +121,8 @@ let relax_adrp_add f name ss =
            (* the same symbol and addend: the ADRP's value is Page(S+A) - Page(P) and the
               ADD's is S+A, so take S+A out of the ADRP's expression and require it to equal
               the ADD's *)
-           read_word_at en off 4 ss.ss_bytes >>= fun adrp_word ->
-           read_word_at en (off + 4) 4 ss.ss_bytes >>= fun add_word ->
+           read_word_at en off 4 ss.sec_bytes >>= fun adrp_word ->
+           read_word_at en (off + 4) 4 ss.sec_bytes >>= fun add_word ->
            let target = sym_expr_of_symbolic_expression r2.rel_desc_value in
            let adrp_target = match r1.rel_desc_value with
                              | BinOp (BinOp (t, And, _), Sub, _) -> Just (sym_expr_of_symbolic_expression t)
@@ -146,5 +146,5 @@ let relax_adrp_add f name ss =
 val resolve_aarch64_object : elf64_file -> error (list (string * sym_section))
 let resolve_aarch64_object f =
   resolve_object f aarch64_relocation_interpreter aarch64_field_spec >>= fun secs ->
-  mapM (fun (name, ss) -> if List.null ss.ss_words then return (name, ss)
+  mapM (fun (name, ss) -> if List.null ss.sec_words then return (name, ss)
                           else relax_adrp_add f name ss >>= fun ss' -> return (name, ss')) secs

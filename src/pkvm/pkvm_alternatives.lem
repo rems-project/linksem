@@ -213,13 +213,13 @@ let replacement_words en e alt_ss =
   match section_offset_of_expr e.ae_alt with
   | Nothing -> fail ("alternatives: the replacement of the entry at " ^ osec ^ "+" ^ hex_of_natural ooff ^ " is not in a section")
   | Just (asec, aoff) ->
-    if asec <> alt_ss.ss_name then fail "replacement_words: wrong alternative section" else
+    if asec <> alt_ss.sec_name then fail "replacement_words: wrong alternative section" else
     let nr = e.ae_orig_len / 4 in
     mapM (fun i ->
         let i = naturalFromNat i in
         let oaddr = SBin SAdd (SSection osec) (c (ooff + 4 * i)) in
         let aaddr = SBin SAdd (SSection asec) (c (aoff + 4 * i)) in
-        read_word_at en (aoff + 4 * i) 4 alt_ss.ss_bytes >>= fun w ->        (* the class, from the object's bytes *)
+        read_word_at en (aoff + 4 * i) 4 alt_ss.sec_bytes >>= fun w ->        (* the class, from the object's bytes *)
         current_word en (aoff + 4 * i) 4 alt_ss >>= fun word ->             (* the relocated word *)
         if is_branch_imm w then
           (match (branch_offset w word) with
@@ -269,7 +269,7 @@ let apply_alt_entry f pass e secs =
     | Just orig_ss ->
       let nr = e.ae_orig_len / 4 in
       let offs = List.map (fun i -> ooff + 4 * naturalFromNat i) (List.genlist (fun i -> i) (natFromNatural nr)) in
-      mapM (fun o -> read_word_at en o 4 orig_ss.ss_bytes) offs >>= fun origs ->
+      mapM (fun o -> read_word_at en o 4 orig_ss.sec_bytes) offs >>= fun origs ->
       mapM (fun o -> current_word en o 4 orig_ss) offs >>= fun currents ->
       (if e.ae_callback then
          (match symbol_of_expr e.ae_alt with
@@ -295,7 +295,7 @@ let apply_alt_entry f pass e secs =
           end)) >>= fun (patched, checks) ->
       let words = List.map (fun ((o, p), cur) -> (o, pass_condition pass cap p cur)) (List.zip (List.zip offs patched) currents) in
       let ss' = List.foldl (fun ss (o, w) -> set_sym_word o <| sw_width = 4; sw_value = w |> ss) orig_ss words in
-      let ss' = <| ss' with ss_checks = ss'.ss_checks ++ checks |> in
+      let ss' = <| ss' with sec_checks = ss'.sec_checks ++ checks |> in
       return (List.map (fun (n, ss) -> if n = osec then (n, ss') else (n, ss)) secs)
     end
   end

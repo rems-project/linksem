@@ -223,24 +223,24 @@ type sym_check =
 type sym_word = <| sw_width : natural ; sw_value : sym_expr |>   (* width in bytes *)
 
 type sym_section =
-  <| ss_name   : string
-   ; ss_bytes  : byte_sequence                (* the section's bytes in the object *)
-   ; ss_words  : list (natural * sym_word)    (* the overlay: offset -> word, ascending offsets *)
-   ; ss_checks : list sym_check
+  <| sec_name   : string
+   ; sec_bytes  : byte_sequence                (* the section's bytes in the object *)
+   ; sec_words  : list (natural * sym_word)    (* the overlay: offset -> word, ascending offsets *)
+   ; sec_checks : list sym_check
    |>
 
 val plain_sym_section : string -> byte_sequence -> sym_section
-let plain_sym_section name bytes = <| ss_name = name; ss_bytes = bytes; ss_words = []; ss_checks = [] |>
+let plain_sym_section name bytes = <| sec_name = name; sec_bytes = bytes; sec_words = []; sec_checks = [] |>
 
 (* the symbolic word at an offset of the overlay, if any *)
 val sym_word_at : natural -> sym_section -> maybe sym_word
-let sym_word_at off ss = List.lookup off ss.ss_words
+let sym_word_at off ss = List.lookup off ss.sec_words
 
 (* the overlay with the word at [off] replaced (or added, keeping the offsets ascending) *)
 val set_sym_word : natural -> sym_word -> sym_section -> sym_section
 let set_sym_word off w ss =
-  let others = List.filter (fun (o, _) -> o <> off) ss.ss_words in
-  <| ss with ss_words = Sorting.sortByOrd (fun (a, _) (b, _) -> compare a b) ((off, w) :: others) |>
+  let others = List.filter (fun (o, _) -> o <> off) ss.sec_words in
+  <| ss with sec_words = Sorting.sortByOrd (fun (a, _) (b, _) -> compare a b) ((off, w) :: others) |>
 
 (** {2 Bit-field insertion} *)
 
@@ -304,7 +304,7 @@ let current_word en off w ss =
   match sym_word_at off ss with
   | Just sw -> if sw.sw_width = w then return sw.sw_value
                else fail ("current_word: the word at " ^ hex_of_natural off ^ " has width " ^ show sw.sw_width ^ ", not " ^ show w)
-  | Nothing -> read_word_at en off w ss.ss_bytes >>= fun v -> return (SConst (integerFromNatural v))
+  | Nothing -> read_word_at en off w ss.sec_bytes >>= fun v -> return (SConst (integerFromNatural v))
   end
 
 (* the kernel-VA expression of a symbol defined in the object: its section's base plus its value *)
@@ -377,9 +377,9 @@ let relocate_section f interp field_of_target name =
                   (List.map (fun (off, r) -> (natural_of_elf64_addr off, r)) (Map_extra.toList rels)) in
     mapM (fun (off, r) -> sym_word_of_relocation en field_of_target body off r >>= fun (w, cs) -> return (off, w, cs)) sites
     >>= fun words ->
-    return <| ss_name = name; ss_bytes = body
-            ; ss_words = List.map (fun (off, w, _) -> (off, w)) words
-            ; ss_checks = List.concatMap (fun (_, _, cs) -> cs) words |>
+    return <| sec_name = name; sec_bytes = body
+            ; sec_words = List.map (fun (off, w, _) -> (off, w)) words
+            ; sec_checks = List.concatMap (fun (_, _, cs) -> cs) words |>
   | [] -> fail ("relocate_section: no section " ^ name)
   | _ -> fail ("relocate_section: several sections named " ^ name)
   end
@@ -446,8 +446,8 @@ let concretise_words en env bytes words =
 
 val concretise_section : endianness -> resolution_env -> sym_section -> error byte_sequence
 let concretise_section en env ss =
-  mapM (run_sym_check env) ss.ss_checks >>= fun _ ->
-  concretise_words en env ss.ss_bytes ss.ss_words
+  mapM (run_sym_check env) ss.sec_checks >>= fun _ ->
+  concretise_words en env ss.sec_bytes ss.sec_words
 
 (** {2 Rendering and parsing the environment} *)
 
@@ -486,9 +486,9 @@ let parse_resolution_env r =
 (* the symbolic overlay of a section, for inspection *)
 val render_sym_section : sym_section -> report
 let render_sym_section ss =
-  [Report_blank; Report_section ("symbolic_section " ^ ss.ss_name)
-  ; Report_key "size" (hex_of_natural (Byte_sequence.length ss.ss_bytes)) Nothing
-  ; Report_key "words" (show (List.length ss.ss_words)) Nothing
-  ; Report_key "checks" (show (List.length ss.ss_checks)) Nothing
+  [Report_blank; Report_section ("symbolic_section " ^ ss.sec_name)
+  ; Report_key "size" (hex_of_natural (Byte_sequence.length ss.sec_bytes)) Nothing
+  ; Report_key "words" (show (List.length ss.sec_words)) Nothing
+  ; Report_key "checks" (show (List.length ss.sec_checks)) Nothing
   ; Report_table ["offset"; "width"; "value"]
-      (List.map (fun (off, w) -> [hex_of_natural off; show w.sw_width; string_of_sym_expr w.sw_value]) ss.ss_words)]
+      (List.map (fun (off, w) -> [hex_of_natural off; show w.sw_width; string_of_sym_expr w.sw_value]) ss.sec_words)]
