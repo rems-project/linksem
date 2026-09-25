@@ -110,7 +110,7 @@ val string_of_sym_expr : sym_expr -> string
 let rec string_of_sym_expr e =
   match e with
   | SConst x -> if x < 0 then "-" ^ hex_of_natural (naturalFromInteger (0 - x)) else hex_of_natural (naturalFromInteger x)
-  | SSection s -> "section(" ^ s ^ ")"
+  | SSection s -> s
   | SSymbol s -> "symbol(" ^ s ^ ")"
   | SGotSlot s -> "got(" ^ s ^ ")"
   | SVar v -> "var(" ^ v ^ ")"
@@ -127,6 +127,34 @@ and string_of_sym_flag f =
   end
 
 (* the sections an expression's value depends on *)
+(* Claude: a very simple simplifier for rendering: additions of the constant
+   zero are dropped (the relocation interpreters build S + A with an explicit,
+   often zero, addend) *)
+val is_zero_const : sym_expr -> bool
+let is_zero_const e = match e with SConst x -> x = 0 | _ -> false end
+
+val simplify_sym_expr : sym_expr -> sym_expr
+val simplify_sym_flag : sym_flag -> sym_flag
+let rec simplify_sym_expr e =
+  match e with
+  | SBin op a b ->
+    let a' = simplify_sym_expr a in
+    let b' = simplify_sym_expr b in
+    if op = SAdd && is_zero_const b' then a'
+    else if op = SAdd && is_zero_const a' then b'
+    else SBin op a' b'
+  | SNot a -> SNot (simplify_sym_expr a)
+  | SIte f a b -> SIte (simplify_sym_flag f) (simplify_sym_expr a) (simplify_sym_expr b)
+  | _ -> e
+  end
+and simplify_sym_flag f =
+  match f with
+  | SFlag s -> SFlag s
+  | SIsZero e -> SIsZero (simplify_sym_expr e)
+  | SInRange e lo hi -> SInRange (simplify_sym_expr e) lo hi
+  | SBoth f1 f2 -> SBoth (simplify_sym_flag f1) (simplify_sym_flag f2)
+  end
+
 val sym_expr_sections : sym_expr -> list string
 let rec sym_expr_sections e =
   match e with
