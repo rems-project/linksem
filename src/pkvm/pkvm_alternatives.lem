@@ -67,23 +67,24 @@ type alt_entry =
 val alt_cb_bit : natural
 let alt_cb_bit = 32768
 
-(* the entries of the object's .altinstructions *)
-val read_alt_entries : elf64_file -> error (list alt_entry)
-let read_alt_entries f =
+(* the entries of the object's alternatives section, [secname] (the kernel's is
+   .altinstructions); no section of that name gives no entries *)
+val read_alt_entries_of_section : elf64_file -> string -> error (list alt_entry)
+let read_alt_entries_of_section f secname =
   let en = get_elf64_header_endianness f.elf64_file_header in
-  match List.filter (fun s -> s.elf64_section_name_as_string = ".altinstructions") f.elf64_file_interpreted_sections with
+  match List.filter (fun s -> s.elf64_section_name_as_string = secname) f.elf64_file_interpreted_sections with
   | [] -> return []
   | sec :: _ ->
     let body = sec.elf64_section_body in
     let n = Byte_sequence.length body / 12 in
-    Elf_symbolic.extract_elf64_relocations_for_section f aarch64_relocation_interpreter ".altinstructions" >>= fun rels ->
+    Elf_symbolic.extract_elf64_relocations_for_section f aarch64_relocation_interpreter secname >>= fun rels ->
     let target_at off =
       match Map.lookup (elf64_addr_of_natural off) rels with
       | Just r -> (match target_of_pcrel r.rel_desc_value with
                    | Just t -> return t
                    | Nothing -> fail ("read_alt_entries: the relocation at " ^ hex_of_natural off ^ " is not PC-relative")
                    end)
-      | Nothing -> fail ("read_alt_entries: no relocation at " ^ hex_of_natural off ^ " of .altinstructions")
+      | Nothing -> fail ("read_alt_entries: no relocation at " ^ hex_of_natural off ^ " of " ^ secname)
       end in
     mapM (fun i ->
         let base = naturalFromNat i * 12 in
@@ -100,6 +101,10 @@ let read_alt_entries f =
         end)
       (List.genlist (fun i -> i) (natFromNatural n))
   end
+
+(* the entries of the object's .altinstructions *)
+val read_alt_entries : elf64_file -> error (list alt_entry)
+let read_alt_entries f = read_alt_entries_of_section f ".altinstructions"
 
 (** {2 The callbacks} *)
 
@@ -124,6 +129,20 @@ let callback_of_symbol name =
   else if n = "kvm_patch_vector_branch" then Cb_patch_vector_branch
   else if n = "spectre_bhb_patch_wa3" then Cb_spectre_bhb_patch_wa3
   else Cb_other n
+
+(* the kernel function's name (without the hypervisor's __kvm_nvhe_ prefix) *)
+val string_of_alt_callback : alt_callback -> string
+let string_of_alt_callback cb =
+  match cb with
+  | Cb_patch_nops -> "alt_cb_patch_nops"
+  | Cb_update_va_mask -> "kvm_update_va_mask"
+  | Cb_patch_physvirt_offset -> "kvm_patch_physvirt_offset"
+  | Cb_get_kimage_voffset -> "kvm_get_kimage_voffset"
+  | Cb_compute_final_ctr_el0 -> "kvm_compute_final_ctr_el0"
+  | Cb_patch_vector_branch -> "kvm_patch_vector_branch"
+  | Cb_spectre_bhb_patch_wa3 -> "spectre_bhb_patch_wa3"
+  | Cb_other n -> n
+  end
 
 val flag_vhe : sym_flag
 let flag_vhe = SFlag (cpucap_flag_name ARM64_HAS_VIRT_HOST_EXTN)
@@ -257,13 +276,14 @@ let pass_condition pass cap patched current =
   | Pass_system -> SIte boot current (SIte detected patched current)
   end
 
-val apply_alt_entry : elf64_file -> alt_pass -> alt_entry -> list (string * sym_section) -> error (list (string * sym_section))
-let apply_alt_entry f pass e secs =
+(* the words entry [e] writes at its original site if it is applied in [pass]: the
+   (offset, patched word) of each of its instructions, and the model's checks, over the
+   (relocated) sections [secs] it reads.  This is what is patched, without the condition
+   under which it is (pass_condition), so a viewer can show it *)
+val alt_entry_words : elf64_file -> alt_pass -> alt_entry -> list (string * sym_section) -> error (list (natural * sym_expr) * list sym_check)
+let alt_entry_words f pass e secs =
   let en = get_elf64_header_endianness f.elf64_file_header in
   let (osec, ooff) = e.ae_orig in
-  match cpucap_of_number e.ae_cap with
-  | Nothing -> fail ("alternatives: cpucap number " ^ show e.ae_cap ^ " is beyond the generated cpucaps (" ^ show arm64_ncaps ^ ")")
-  | Just cap ->
     match List.lookup osec secs with
     | Nothing -> fail ("alternatives: no section " ^ osec)
     | Just orig_ss ->
@@ -293,7 +313,23 @@ let apply_alt_entry f pass e secs =
              end)
           | Nothing -> fail "alternatives: replacement not in a section"
           end)) >>= fun (patched, checks) ->
-      let words = List.map (fun ((o, p), cur) -> (o, pass_condition pass cap p cur)) (List.zip (List.zip offs patched) currents) in
+      return (List.zip offs patched, checks)
+    end
+
+(* the sections with entry [e] applied under the condition of [pass] *)
+val apply_alt_entry : elf64_file -> alt_pass -> alt_entry -> list (string * sym_section) -> error (list (string * sym_section))
+let apply_alt_entry f pass e secs =
+  let en = get_elf64_header_endianness f.elf64_file_header in
+  let (osec, _) = e.ae_orig in
+  match cpucap_of_number e.ae_cap with
+  | Nothing -> fail ("alternatives: cpucap number " ^ show e.ae_cap ^ " is beyond the generated cpucaps (" ^ show arm64_ncaps ^ ")")
+  | Just cap ->
+    match List.lookup osec secs with
+    | Nothing -> fail ("alternatives: no section " ^ osec)
+    | Just orig_ss ->
+      alt_entry_words f pass e secs >>= fun (patched, checks) ->
+      mapM (fun (o, _) -> current_word en o 4 orig_ss) patched >>= fun currents ->
+      let words = List.map (fun ((o, p), cur) -> (o, pass_condition pass cap p cur)) (List.zip patched currents) in
       let ss' = List.foldl (fun ss (o, w) -> set_sym_word o <| sw_width = 4; sw_value = w |> ss) orig_ss words in
       let ss' = <| ss' with sec_checks = ss'.sec_checks ++ checks |> in
       return (List.map (fun (n, ss) -> if n = osec then (n, ss') else (n, ss)) secs)
