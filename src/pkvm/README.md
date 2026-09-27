@@ -8,7 +8,7 @@ and the hypervisor running on its own page tables, expressed symbolically
 over the values chosen at boot (section addresses, the hyp VA layout, the
 detected CPU capabilities, the host's inputs) so that the resolved sections
 can be compared byte for byte with the running machine once those values
-are known (readdwarf-private-3 `test-objcheck-pkvm`, notes022, notes023).
+are known (read-dwarf-private3 `test-objcheck-pkvm`, notes022, notes023).
 
 - `pkvm_relocations.lem`: the hyp VA layout parameters and `kern_hyp_va()`
   as a symbolic function; `kvm_apply_hyp_relocations()`, which rewrites
@@ -45,7 +45,7 @@ instruction encodings the patching writes).
 The following is the summary commit message of the series that added these
 modules (linksem commits `bf6dfb4..02ba03d`, 2299 lines over eleven new
 files), kept here so that it is readable from the tree.  It was done with
-the private repository readdwarf-private-3, whose notes016, notes017,
+the private repository read-dwarf-private3, whose notes016, notes017,
 notes022, notes023 and notes025 carry the detail and the evidence.
 
 > The question they answer is: given a relocatable object file and a
