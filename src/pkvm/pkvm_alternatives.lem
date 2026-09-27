@@ -107,6 +107,25 @@ let read_alt_entries_of_section f secname =
 val read_alt_entries : elf64_file -> error (list alt_entry)
 let read_alt_entries f = read_alt_entries_of_section f ".altinstructions"
 
+(* one line per entry, for inspection *)
+val string_of_alt_entry : alt_entry -> string
+let string_of_alt_entry e =
+  let (osec, ooff) = e.ae_orig in
+  "orig=" ^ osec ^ "+" ^ hex_of_natural ooff
+  ^ " alt=" ^ (match section_offset_of_expr e.ae_alt with
+               | Just (asec, aoff) -> asec ^ "+" ^ hex_of_natural aoff
+               | Nothing -> (match symbol_of_expr e.ae_alt with Just s -> s | Nothing -> string_of_sym_expr e.ae_alt end)
+               end)
+  ^ " cpucap=" ^ (match cpucap_of_number e.ae_cap with Just c -> string_of_cpucap c | Nothing -> show e.ae_cap end)
+  ^ (if e.ae_callback then " callback" else "")
+  ^ " orig_len=" ^ show e.ae_orig_len ^ " alt_len=" ^ show e.ae_alt_len
+
+val string_of_alt_entries : list alt_entry -> string
+let string_of_alt_entries es =
+  "alternatives: " ^ show (List.length es) ^ " entries\n"
+  ^ List.foldl (fun acc (i, e) -> acc ^ pad_right 5 (show i) ^ " " ^ string_of_alt_entry e ^ "\n") ""
+      (List.zip (List.genlist (fun i -> i) (List.length es)) es)
+
 (** {2 The callbacks} *)
 
 type alt_callback =
