@@ -181,6 +181,10 @@ let ror_imm rd rn lsb = ors [c 2478833664; put_bits 16 5 (c rn); put_bits 10 6 l
 val br : natural -> sym_expr
 let br rn = ors [c 3592355840; put_bits 5 5 (c rn)]
 
+(* b label: 000101 imm26 (14000000), [offset] the byte displacement from the b itself *)
+val b_imm : sym_expr -> sym_expr
+let b_imm offset = ors [c 335544320; put_bits 0 26 (SBin SShr offset (c 2))]
+
 (** {2 Bitmask immediates, concretely} *)
 
 (* A bitmask immediate is ROR(ones(len), immr) over elements of size 2, 4, ..., 64

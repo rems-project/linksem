@@ -50,6 +50,7 @@ open import Abi_aarch64_instruction_fields
 open import Abi_aarch64_encodings_for_pkvm_alternatives
 open import Generated_arm64_cpucaps
 open import Pkvm_relocations
+open import Pkvm_jump_table
 import Map
 import Map_extra
 
@@ -376,8 +377,10 @@ let apply_host_writes sites secs =
 (** {2 The whole boot sequence, for the object's sections} *)
 
 (* link-time relocation (with the linker's relaxation), then the boot-CPU alternatives pass,
-   the .hyp.reloc rewrite, the host's writes into hyp data, and the system-wide pass; the host
-   writes are given as the parameter names of the environment (only the hostwrite: ones count) *)
+   the .hyp.reloc rewrite, the host's writes into hyp data, the system-wide pass, and last the
+   static-key (jump label) sites, which the kernel patches whenever a key changes, up to just
+   before the host stage 2 is installed (Pkvm_jump_table); the host writes are given as the
+   parameter names of the environment (only the hostwrite: ones count) *)
 val resolve_pkvm : elf64_file -> list string -> error (list (string * sym_section))
 let resolve_pkvm f param_names =
   let sites = List.mapMaybe host_write_site param_names in
@@ -385,4 +388,5 @@ let resolve_pkvm f param_names =
   apply_alternatives f Pass_boot secs >>= fun secs ->
   apply_hyp_relocations f secs >>= fun secs ->
   let secs = apply_host_writes sites secs in
-  apply_alternatives f Pass_system secs
+  apply_alternatives f Pass_system secs >>= fun secs ->
+  apply_jump_table f secs

@@ -1,0 +1,224 @@
+(* Claude: this file is largely written by Claude (27 September 2026).
+
+   Linux static keys ("jump labels") in the pKVM hypervisor object, modelled
+   symbolically (read-dwarf-private3 notes028).
+
+   A static_branch_likely()/static_branch_unlikely() test of a static key
+   compiles to a single instruction, nop or b label, and to a 16-byte entry
+   of the section __jump_table: code (s32, PREL32 to the instruction),
+   target (s32, PREL32 to the label), key (s64, PREL64 to the struct
+   static_key, whose addend's bit 0 is "branch" and bit 1 "init").  In an
+   object all three fields are zero and the relocations carry them.
+
+   The kernel keeps every site consistent with its key: the site is
+   "b target" iff (key enabled) xor branch, else nop; the compiler emits the
+   word for the key's declared initial state, and the kernel rewrites the
+   sites of a key whenever the key changes.  For the hypervisor this
+   happens through the kernel's own mapping of the hyp text, so only until
+   the host stage 2 is installed (pkvm_drop_host_privileges enables
+   kvm_protected_mode_initialized just before __pkvm_prot_finalize).  Here a
+   key's state is the environment flag "static_key:<key>", and each site
+   becomes SIte on it, with a check that the object's own word is the
+   disabled-key one. *)
+
+open import Basic_classes
+open import Bool
+open import Maybe
+open import Num
+open import String
+open import List
+open import Show
+open import Error
+open import Missing_pervasives
+open import Endianness
+open import Byte_sequence
+open import Elf_types_native_uint
+open import Elf_header
+open import Elf_interpreted_section
+open import Elf_file
+open import Elf_symbolic
+open import Report_format
+open import Symbolic_resolution
+open import Abi_aarch64_symbolic_relocation
+open import Abi_aarch64_encodings_for_pkvm_alternatives
+open import Pkvm_relocations
+import Map
+
+(** {2 The entries} *)
+
+type jump_entry =
+  <| je_code   : string * natural      (* section and offset of the site instruction *)
+   ; je_target : string * natural      (* section and offset of the branch target *)
+   ; je_key    : sym_expr              (* the static key: an imported symbol (+ offset), or section + offset *)
+   ; je_branch : bool                  (* bit 0 of the key field's addend *)
+   ; je_init   : bool                  (* bit 1; clear in an object, set by the kernel for init text *)
+   |>
+
+type jump_table = list jump_entry
+
+val jump_entry_size : natural
+let jump_entry_size = 16
+
+(* the key expression with the addend's low two bits split off; the interpreter builds S + A
+   with the addend as the outermost constant *)
+val split_key_bits : sym_expr -> (sym_expr * natural)
+let split_key_bits e =
+  match e with
+  | SBin SAdd x (SConst a) ->
+    if a < 0 then (e, 0) else
+    let low = natural_land (naturalFromInteger a) 3 in
+    (SBin SAdd x (SConst (a - integerFromNatural low)), low)
+  | _ -> (e, 0)
+  end
+
+(* the entries of the object's jump-label section [secname] (the kernel's is __jump_table);
+   no section of that name gives no entries *)
+val read_jump_table_of_section : elf64_file -> string -> error jump_table
+let read_jump_table_of_section f secname =
+  match List.filter (fun s -> s.elf64_section_name_as_string = secname) f.elf64_file_interpreted_sections with
+  | [] -> return []
+  | sec :: _ ->
+    let size = Byte_sequence.length sec.elf64_section_body in
+    if size mod jump_entry_size <> 0 then
+      fail ("read_jump_table: the size of " ^ secname ^ " (" ^ hex_of_natural size ^ ") is not a multiple of 16")
+    else
+    let n = size / jump_entry_size in
+    Elf_symbolic.extract_elf64_relocations_for_section f aarch64_relocation_interpreter secname >>= fun rels ->
+    let target_at off =
+      match Map.lookup (elf64_addr_of_natural off) rels with
+      | Just r -> (match target_of_pcrel r.rel_desc_value with
+                   | Just t -> return t
+                   | Nothing -> fail ("read_jump_table: the relocation at " ^ hex_of_natural off ^ " of " ^ secname ^ " is not PC-relative")
+                   end)
+      | Nothing -> fail ("read_jump_table: no relocation at " ^ hex_of_natural off ^ " of " ^ secname)
+      end in
+    mapM (fun i ->
+        let base = naturalFromNat i * jump_entry_size in
+        target_at base >>= fun code ->
+        target_at (base + 4) >>= fun target ->
+        target_at (base + 8) >>= fun key ->
+        match (section_offset_of_expr code, section_offset_of_expr target) with
+        | (Just cso, Just tso) ->
+          let (key', low) = split_key_bits key in
+          return <| je_code = cso; je_target = tso; je_key = key'
+                  ; je_branch = natural_land low 1 <> 0; je_init = natural_land low 2 <> 0 |>
+        | (Nothing, _) -> fail ("read_jump_table: entry " ^ show i ^ ": the site is not in a section: " ^ string_of_sym_expr code)
+        | (_, Nothing) -> fail ("read_jump_table: entry " ^ show i ^ ": the target is not in a section: " ^ string_of_sym_expr target)
+        end)
+      (List.genlist (fun i -> i) (natFromNatural n))
+  end
+
+val read_jump_table : elf64_file -> error jump_table
+let read_jump_table f = read_jump_table_of_section f "__jump_table"
+
+(** {2 The keys} *)
+
+(* the key's name: its symbol, or symbol+offset for a key inside a structure, or
+   section+offset for a key defined in the object *)
+val static_key_name : jump_entry -> maybe string
+let static_key_name e =
+  match symbol_of_expr e.je_key with
+  | Just s -> Just s
+  | Nothing ->
+    match e.je_key with
+    | SBin SAdd (SSymbol s) (SConst k) -> if k >= 0 then Just (s ^ "+" ^ hex_of_natural (naturalFromInteger k)) else Nothing
+    | _ ->
+      match section_offset_of_expr e.je_key with
+      | Just (sec, off) -> Just (sec ^ "+" ^ hex_of_natural off)
+      | Nothing -> Nothing
+      end
+    end
+  end
+
+(* the environment flag under which a key's state (enabled or not) is recorded *)
+val static_key_flag_name : jump_entry -> error string
+let static_key_flag_name e =
+  match static_key_name e with
+  | Just n -> return ("static_key:" ^ n)
+  | Nothing ->
+    let (csec, coff) = e.je_code in
+    fail ("jump table: the key of the site at " ^ csec ^ "+" ^ hex_of_natural coff ^ " has no name: " ^ string_of_sym_expr e.je_key)
+  end
+
+(* the distinct key names of a table, in order of first occurrence *)
+val static_key_names : jump_table -> list string
+let static_key_names t =
+  List.foldl (fun acc e -> match static_key_name e with
+                           | Just n -> if List.elem n acc then acc else acc ++ [n]
+                           | Nothing -> acc
+                           end) [] t
+
+(** {2 The patching, symbolically} *)
+
+(* the word at the entry's site: b target iff (enabled xor branch), else nop; and the checks
+   that the object's own word is the disabled-key one and that the branch is in range *)
+val jump_entry_words : elf64_file -> jump_entry -> list (string * sym_section) -> error (sym_expr * list sym_check)
+let jump_entry_words f e secs =
+  let en = get_elf64_header_endianness f.elf64_file_header in
+  let (csec, coff) = e.je_code in
+  let (tsec, toff) = e.je_target in
+  match List.lookup csec secs with
+  | Nothing -> fail ("jump table: no section " ^ csec)
+  | Just ss ->
+    read_word_at en coff 4 ss.sec_bytes >>= fun orig ->
+    static_key_flag_name e >>= fun flag ->
+    let offset = SBin SSub (SBin SAdd (SSection tsec) (c toff)) (SBin SAdd (SSection csec) (c coff)) in
+    let b_word = b_imm offset in
+    let enabled = SFlag flag in
+    let disabled_word = if e.je_branch then b_word else nop in
+    let enabled_word = if e.je_branch then nop else b_word in
+    return (SIte enabled enabled_word disabled_word,
+            [ SCheck_equal ("the object's word at " ^ csec ^ "+" ^ hex_of_natural coff ^ " is the one for the key disabled") (c orig) disabled_word
+            ; SCheck_overflow offset (0 - 134217728) 134217728 ])
+  end
+
+(* the sections with every site of the object's __jump_table set from its key's flag; a site
+   that already carries a symbolic word (a relocation or an alternative) is an error rather than
+   an ordering question *)
+val apply_jump_table : elf64_file -> list (string * sym_section) -> error (list (string * sym_section))
+let apply_jump_table f secs =
+  read_jump_table f >>= fun entries ->
+  foldM (fun secs e ->
+      let (csec, coff) = e.je_code in
+      match List.lookup csec secs with
+      | Nothing -> fail ("jump table: no section " ^ csec)
+      | Just ss ->
+        match sym_word_at coff ss with
+        | Just _ -> fail ("jump table: the site " ^ csec ^ "+" ^ hex_of_natural coff ^ " already has a symbolic word (a relocation or an alternative)")
+        | Nothing ->
+          jump_entry_words f e secs >>= fun (w, checks) ->
+          let ss' = set_sym_word coff <| sw_width = 4; sw_value = w |> ss in
+          let ss' = <| ss' with sec_checks = ss'.sec_checks ++ checks |> in
+          return (List.map (fun (n, s) -> if n = csec then (n, ss') else (n, s)) secs)
+        end
+      end)
+    secs entries
+
+(** {2 Printing} *)
+
+val string_of_jump_entry : jump_entry -> string
+let string_of_jump_entry e =
+  let (csec, coff) = e.je_code in
+  let (tsec, toff) = e.je_target in
+  "code=" ^ csec ^ "+" ^ hex_of_natural coff ^ " target=" ^ tsec ^ "+" ^ hex_of_natural toff
+  ^ " key=" ^ (match static_key_name e with Just n -> n | Nothing -> string_of_sym_expr e.je_key end)
+  ^ " branch=" ^ (if e.je_branch then "1" else "0") ^ " init=" ^ (if e.je_init then "1" else "0")
+
+val string_of_jump_table : jump_table -> string
+let string_of_jump_table t =
+  "jump table: " ^ show (List.length t) ^ " entries\n"
+  ^ List.foldl (fun acc (i, e) -> acc ^ pad_right 5 (show i) ^ " " ^ string_of_jump_entry e ^ "\n") ""
+      (List.zip (List.genlist (fun i -> i) (List.length t)) t)
+
+(* the table in the report format, for the instrumentation *)
+val render_jump_table : jump_table -> report
+let render_jump_table t =
+  [ Report_blank; Report_section "jump_table"
+  ; Report_comment "the static-key test sites of the object: site, branch target, key (with the environment flag static_key:KEY), branch and init bits"
+  ; Report_table ["code"; "target"; "key"; "branch"; "init"]
+      (List.map (fun e ->
+           let (csec, coff) = e.je_code in
+           let (tsec, toff) = e.je_target in
+           [ csec ^ "+" ^ hex_of_natural coff; tsec ^ "+" ^ hex_of_natural toff
+           ; (match static_key_name e with Just n -> n | Nothing -> string_of_sym_expr e.je_key end)
+           ; (if e.je_branch then "1" else "0"); (if e.je_init then "1" else "0") ]) t) ]

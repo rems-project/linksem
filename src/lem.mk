@@ -80,7 +80,7 @@ LEM_ABI_SRC := \
 	abis/aarch64/abi_aarch64_symbolic_relocation.lem \
 	abis/aarch64/abi_aarch64_instruction_fields.lem \
 	abis/aarch64/abi_aarch64_encodings_for_pkvm_alternatives.lem \
-	pkvm/pkvm_relocations.lem pkvm/pkvm_alternatives.lem \
+	pkvm/pkvm_relocations.lem pkvm/pkvm_jump_table.lem pkvm/pkvm_alternatives.lem \
 	abis/aarch64/abi_aarch64_le.lem \
 	abis/aarch64/abi_aarch64_dynamic.lem \
 	abstract_linker_script.lem \
