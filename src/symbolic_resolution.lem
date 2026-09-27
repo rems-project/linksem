@@ -511,6 +511,36 @@ let parse_resolution_env r =
        (report_pairs (report_section "resolution_env flags" r)) >>= fun flags ->
   return <| env_sections = sections; env_symbols = symbols; env_got = got; env_params = params; env_flags = flags |>
 
+(* every word of a section, for inspection: the overlay's symbolic words at their offsets and
+   widths, and between them the section's own bytes as 4-byte (at the end, or up to the next
+   symbolic word, shorter) constant words *)
+val concrete_word_row : endianness -> sym_section -> natural -> natural -> list string
+let concrete_word_row en ss off n =
+  match read_word_at en off n ss.sec_bytes with
+  | Success v -> [hex_of_natural off; show n; hex_of_natural v]
+  | Fail m -> [hex_of_natural off; show n; "?" ^ m]
+  end
+
+val word_rows : endianness -> sym_section -> natural -> natural -> list (natural * sym_word) -> list (list string) -> list (list string)
+let rec word_rows en ss len off words acc =
+  if off >= len then List.reverse acc else
+  match words with
+  | (o, w) :: rest ->
+    if o < off then word_rows en ss len off rest acc
+    else if o = off then word_rows en ss len (off + w.sw_width) rest ([hex_of_natural off; show w.sw_width; string_of_sym_expr w.sw_value] :: acc)
+    else let n = min 4 (o - off) in word_rows en ss len (off + n) words (concrete_word_row en ss off n :: acc)
+  | [] -> let n = min 4 (len - off) in word_rows en ss len (off + n) [] (concrete_word_row en ss off n :: acc)
+  end
+
+val render_sym_section_words : endianness -> sym_section -> report
+let render_sym_section_words en ss =
+  let len = Byte_sequence.length ss.sec_bytes in
+  [Report_blank; Report_section ("symbolic_section " ^ ss.sec_name)
+  ; Report_key "size" (hex_of_natural len) Nothing
+  ; Report_key "symbolic_words" (show (List.length ss.sec_words)) Nothing
+  ; Report_key "checks" (show (List.length ss.sec_checks)) Nothing
+  ; Report_table ["offset"; "width"; "value"] (word_rows en ss len 0 ss.sec_words [])]
+
 (* the symbolic overlay of a section, for inspection *)
 val render_sym_section : sym_section -> report
 let render_sym_section ss =
