@@ -21,10 +21,16 @@ It contains:
     extraction of the linker, ELF model, and ABI formalisations mentioned above.
   * A formalisation of the DWARF debug information format, as an executable
     specification that interprets the DWARF information. 
+  * Partial support for processing sections and the debug information
+    symbolically, with symbolic relocations in terms of section
+    base-address variables (added by Matej Urban).
+  * Partial support for processing linux-kernel alternatives and
+    jump-table code modifications, as used in the pKVM hypervisor).
 
-The ELF formalisation (and parts of the ABI formalisation) are currently also
-being used as a subcomponent of the `rmem` architectural exploration tool,
+The ELF formalisation (and parts of the ABI formalisation) are 
+used as a subcomponent of the `rmem` architectural exploration tool,
 for parsing ELF files and setting up initial machine states.
+
 
 
 ## Papers
@@ -34,9 +40,9 @@ for parsing ELF files and setting up initial machine states.
 ## People
 
 The main authors are Stephen Kell, Dominic Mulligan and Peter Sewell,
-with additional contributions from Thibaut Pérami, Simon Ser, Shaked
+with additional contributions from Matej Urban, Thibaut Pérami, Simon Ser, Shaked
 Flur, Robert Norton, Ramana Kumar, Jonathan French, Brian Campbell,
-and Thomas Bauereiss.
+and Thomas Bauereiss. 
 
 
 
@@ -59,6 +65,13 @@ The top-level directory structure is as follows:
         external tools that rely on the formalisation in 'src'. For example, the
         file `src/adaptors/sail_interface.lem` presents a simplified interface
         for extracting executable process information to the `ppcmem2` project.
+      * 'pkvm' contains Lem code for processing Linux-kernel
+        alternatives and jump-table code rewrites, as used in the pKVM
+        hypervisor.
+  * 'src_ocaml' contains a command-line front-end to the linksem
+    library, with a `readelf` subcommand that takes some of the same
+    command-line arguments as `readelf` and produces output that
+    should be byte-for-byte identical with it.
   * 'prf' contains a copy of Fox's X64 HOL4 specification, and the sample
     Isabelle proof for AMD64 relocation.
   * 'talks' contains the LaTeX source code of talks and other publicity material
@@ -131,6 +144,9 @@ The same dumps are available from the `linksem` command-line tool in `src_ocaml/
      noted in a comment.
   3. Isabelle extractions of the Lem models require a small amount of hand
      editing to get Isabelle to accept them, due to various bugs in Lem.
+  4. The 2026 extensions have been written using AI, with human review
+     of the overall form but not the detailed code.  They are
+     validated by checking the text output against `readelf`.
 
 Any infelicities or missing pieces of formalisation should be
 noted in a camldoc-style comment at the top of the relevant Lem file.
