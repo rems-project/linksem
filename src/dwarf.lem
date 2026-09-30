@@ -1397,7 +1397,7 @@ let operation_encodings = [
 ("DW_OP_breg29",              sym_natural_of_hex "0x8d", [OAT_SLEB128]              , OpSem_breg); (*1*)
 ("DW_OP_breg30",              sym_natural_of_hex "0x8e", [OAT_SLEB128]              , OpSem_breg); (*1*)
 ("DW_OP_breg31",              sym_natural_of_hex "0x8f", [OAT_SLEB128]              , OpSem_breg); (*1*)
-("DW_OP_regx",                sym_natural_of_hex "0x90", [OAT_ULEB128]              , OpSem_lit); (*1*) (* ULEB128 register *)
+("DW_OP_regx",                sym_natural_of_hex "0x90", [OAT_ULEB128]              , OpSem_reg); (*1*) (* ULEB128 register *) (* Claude: was OpSem_lit, which pushed the register number as an address *)
 ("DW_OP_fbreg",               sym_natural_of_hex "0x91", [OAT_SLEB128]              , OpSem_fbreg); (*1*) (* SLEB128 offset *)
 ("DW_OP_bregx",               sym_natural_of_hex "0x92", [OAT_ULEB128; OAT_SLEB128] , OpSem_bregx); (*2*) (* ULEB128 register followed by SLEB128 offset *)
 ("DW_OP_piece",               sym_natural_of_hex "0x93", [OAT_ULEB128]              , OpSem_piece); (*1*) (* ULEB128 size of piece addressed *)
@@ -5024,6 +5024,9 @@ let rec evaluate_operation_list (c:p_context) (dloc: location_list_list) (evalua
         | (OpSem_reg, []) ->
             (* TODO: unclear whether this should push the register id or not *)
             let r = op.op_code - vDW_OP_reg0 in
+            Success <| s with s_stack = r :: s.s_stack; s_value = SL_register r |>
+        | (OpSem_reg, [OAV_natural r]) ->
+            (* Claude: DW_OP_regx, the register number as a ULEB128 operand *)
             Success <| s with s_stack = r :: s.s_stack; s_value = SL_register r |>
         | (OpSem_breg, [OAV_integer i]) ->
             let r = op.op_code - vDW_OP_breg0 in
