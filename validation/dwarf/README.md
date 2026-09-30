@@ -51,6 +51,20 @@ byte-faithful dumps: `objdump --dwarf=abbrev,info` against
 --debug-dump=abbrev,info` against `--debug-dump='abbrev,info<readelf>'`.
 The ELF row compares `readelf -W` `-h -S -l -r -s -t -g -n -V -I -a` with
 the same options of `linksem readelf`, and `hexdump -v` with `--in-out`.
+Since linksem's DWARF 5 support the parsing row also compares, for the
+files that have the section, `readelf --debug-dump=aranges`, `=addr`,
+`=str-offsets`, `=macro` and `=gdb_index` (readelf's option for
+`.debug_names`; files with a `.gdb_index` section are skipped) with the same
+options of `linksem readelf`.  One known oracle quirk: readelf 2.42 resolves
+`DW_MACRO_define_strx`/`undef_strx` string indices from the start of
+`.debug_str_offsets` rather than from the unit's `DW_AT_str_offsets_base`, so
+its macro dump of a clang `-fdebug-macro` DWARF 5 file shows the wrong
+strings (checked against the source's line numbers); linksem's is right, and
+those files differ in the `readelf-macro` comparison.  `linksem readelf
+--debug-dump=check` runs linksem's own content checks of `.debug_aranges`,
+`.debug_names` and `.debug_macro` against the DIE tree and line tables (see
+`src/dwarf.lem`, `check_aranges` and friends); it is not compared with
+anything here but can be run on any corpus file.
 Comparisons that cannot apply are skipped with a reason: ELF32 for the
 dumps that exist only for ELF64, relocatable objects for machines other than
 AArch64 (no data-relocation interpreter), compressed debug sections, and the

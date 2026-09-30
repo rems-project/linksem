@@ -489,7 +489,27 @@ parsing); `validation/dwarf-expr`'s DWARF 4 results are unchanged and its new
 typed sets agree with gdb except for gdb's own defects (see its
 `upstream-discrepancy-reports/gdb-DWARF5-typed-operations.md`).
 
-Not yet done: skeleton and split units (deferred, as agreed);
-`.debug_names`, `.debug_macro` and `.debug_aranges` parsing and content
-checks (PS (f)); readelf-format dumps of the new sections (`--debug-dump=addr`,
-`str-offsets`, `rnglists`, `loclists`); `DW_OP_entry_value`.
+PS (f), done later the same day (commit ec0cce7 and the following):
+`.debug_aranges`, `.debug_names` and `.debug_macro` are parsed into the
+`dwarf` record and checked against the rest of the file by `check_aranges`,
+`check_names` and `check_macro` (`linksem readelf --debug-dump=check`): each
+aranges range must lie in its unit's pc ranges or cover one of its addressed
+variables; a name index's units, hashes (case-folded DJB), buckets and every
+entry's DIE (existence, tag, name through abstract origins and type
+signatures) are checked; a macro unit's version, line-table reference, file
+indices, string offsets and indices, definition strings, imports and
+start/end nesting are checked.  Over the 155 corpus files with these
+sections the checks pass except on llvm's deliberately broken
+`debug-names-verify-*` and `dwarfdump-debug-names` inputs, which they catch
+(wrong hash, swapped names, bad unit lists), and hand-written aranges tests.
+readelf-format dumps of `.debug_aranges`, `.debug_addr`,
+`.debug_str_offsets`, `.debug_macro` and `.debug_names` (`--debug-dump=aranges`,
+`addr`, `str-offsets`, `macro`, `gdb_index`) are compared with readelf's in
+`validation/dwarf`; readelf 2.42's macro dump resolves `DW_MACRO_*_strx`
+indices from the section start rather than the unit's base and so shows the
+wrong strings for clang's `-fdebug-macro` output (checked against the source
+lines), a readelf bug the comparison exposes.
+
+Not yet done: skeleton and split units (deferred, as agreed); readelf-format
+dumps of `.debug_rnglists` and `.debug_loclists` (parsed and interpreted, but
+not dumped); `DW_OP_entry_value`.

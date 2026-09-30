@@ -45,11 +45,29 @@ def objdump_dwarf_applicable(c):
     if is_rel(c) and not dwarf_ok(c): return "dwarf5 relocatable (objdump does not relocate .debug_str_offsets)"
     return None
 
+def section_applicable(section, without=None):
+    """the DWARF rules, plus: only files having the section (and not the `without` one,
+    whose dump readelf would print under the same option)"""
+    def f(c):
+        r = dwarf_applicable(c)
+        if r: return r
+        if section not in c["debug_sections"]: return "no " + section
+        if without and without in c["debug_sections"]: return "has " + without
+        return None
+    return f
+
 # name -> (row, oracle argv, linksem argv, applicability -> skip reason or None)
 COMPARISONS = {
     # parsing row: byte-faithful dumps
     "objdump-abbrev-info": ("parse", [OBJDUMP, "--dwarf=abbrev,info"], [LINKSEM, "readelf", "--debug-dump=info<objdump>"], objdump_dwarf_applicable),
     "readelf-abbrev-info": ("parse", [READELF, "--debug-dump=abbrev,info"], [LINKSEM, "readelf", "--debug-dump=abbrev,info<readelf>"], dwarf_applicable),
+    # Claude: the other DWARF sections linksem dumps in readelf's formats, each only where the section exists
+    # (readelf prints nothing for an absent section, and so does linksem); gdb_index is readelf's option for .debug_names
+    "readelf-aranges":     ("parse", [READELF, "--debug-dump=aranges"],     [LINKSEM, "readelf", "--debug-dump=aranges"],     section_applicable(".debug_aranges")),
+    "readelf-addr":        ("parse", [READELF, "--debug-dump=addr"],        [LINKSEM, "readelf", "--debug-dump=addr"],        section_applicable(".debug_addr")),
+    "readelf-str-offsets": ("parse", [READELF, "--debug-dump=str-offsets"], [LINKSEM, "readelf", "--debug-dump=str-offsets"], section_applicable(".debug_str_offsets")),
+    "readelf-macro":       ("parse", [READELF, "--debug-dump=macro"],       [LINKSEM, "readelf", "--debug-dump=macro"],       section_applicable(".debug_macro")),
+    "readelf-names":       ("parse", [READELF, "--debug-dump=gdb_index"],   [LINKSEM, "readelf", "--debug-dump=gdb_index"],   section_applicable(".debug_names", without=".gdb_index")),
     # ELF structure against readelf -W
     "readelf-h":   ("elf", [READELF, "-W", "-h"], [LINKSEM, "readelf", "-h"], lambda c: None),
     "readelf-S":   ("elf", [READELF, "-W", "-S"], [LINKSEM, "readelf", "-S"], lambda c: None),

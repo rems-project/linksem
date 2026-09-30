@@ -1492,6 +1492,9 @@ let attribute_form_encodings = [
   ("DW_FORM_loclistx"    , sym_natural_of_hex "0x22", [DWA_loclist])  ;
   ("DW_FORM_rnglistx"    , sym_natural_of_hex "0x23", [DWA_rnglist])  ;
   ("DW_FORM_ref_sup8"    , sym_natural_of_hex "0x24", [DWA_reference]);
+  (* Claude: dwz's GNU forms: offsets into the supplementary file's .debug_info and .debug_str *)
+  ("DW_FORM_GNU_ref_alt" , sym_natural_of_hex "0x1f20", [DWA_reference]);
+  ("DW_FORM_GNU_strp_alt", sym_natural_of_hex "0x1f21", [DWA_string])   ;
   ("DW_FORM_strx1"       , sym_natural_of_hex "0x25", [DWA_string])   ;
   ("DW_FORM_strx2"       , sym_natural_of_hex "0x26", [DWA_string])   ;
   ("DW_FORM_strx3"       , sym_natural_of_hex "0x27", [DWA_string])   ;
@@ -3094,6 +3097,9 @@ let parser_of_attribute_form_non_indirect c cuh n =
   else if n = attribute_form_encode "DW_FORM_ref_sup4"     then pr_map2 (fun n -> AV_ref_sup4 n) (parse_uint32 c)
   else if n = attribute_form_encode "DW_FORM_ref_sup8"     then pr_map2 (fun n -> AV_ref_sup8 n) (parse_uint64 c)
   else if n = attribute_form_encode "DW_FORM_strp_sup"     then pr_map2 (fun n -> AV_strp_sup n) (parse_uintDwarfN c cuh.cuh_dwarf_format)
+  (* Claude: dwz's alternatives, offset-sized *)
+  else if n = attribute_form_encode "DW_FORM_GNU_strp_alt" then pr_map2 (fun n -> AV_strp_sup n) (parse_uintDwarfN c cuh.cuh_dwarf_format)
+  else if n = attribute_form_encode "DW_FORM_GNU_ref_alt"  then pr_map2 (fun n -> (match cuh.cuh_dwarf_format with Dwarf32 -> AV_ref_sup4 n | Dwarf64 -> AV_ref_sup8 n end)) (parse_uintDwarfN c cuh.cuh_dwarf_format)
 (* indirect: handled by parser_of_attribute_form *)
   else if n = attribute_form_encode "DW_FORM_indirect"     then
     Assert_extra.failwith "DW_FORM_INDIRECT cycle"
@@ -4294,8 +4300,11 @@ let location_list_of_attribute_value (str: unit_context) (av: attribute_value) :
   | _ -> Nothing
   end
 
-let ranges_of_attribute_value (str: unit_context) (av: attribute_value) : maybe (list (sym_natural * sym_natural)) =
+let rec ranges_of_attribute_value (str: unit_context) (av: attribute_value) : maybe (list (sym_natural * sym_natural)) =
   match av with
+  (* Claude: DWARF 2/3 producers give DW_AT_ranges as data4/data8 *)
+  | AV_block _ bs -> ranges_of_attribute_value str (AV_sec_offset (sym_natural_of_bytes str.uc_c.endianness bs))
+  | AV_constantN _ bs -> ranges_of_attribute_value str (AV_sec_offset (sym_natural_of_bytes str.uc_c.endianness bs))
   | AV_sec_offset n ->
       if unit_version str < 5 then
         match find_range_list str.uc_ranges n with
@@ -5959,6 +5968,7 @@ let parse_names_index c : parser (maybe names_index) =
     pr_bind (parse_replicate (if n bc = 0 then 0 else n nc) (parse_uint32 c) pc15) (fun hashes pc16 ->
     pr_bind (parse_replicate (n nc) (parse_uintDwarfN c df) pc16) (fun stroffs pc17 ->
     pr_bind (parse_replicate (n nc) (parse_uintDwarfN c df) pc17) (fun entoffs pc18 ->
+    if n ats > sym_bs_length pc18.pc_bytes then PR_fail "name index abbreviations table runs past the section" pc else
     pr_bind (parse_restrict_length ats (parse_list parse_names_abbreviation) pc18) (fun abbrevs _ ->
       let pool_start = pc18.pc_offset + n ats in
       let end_off = pc1.pc_offset + n ul in
@@ -6150,7 +6160,10 @@ let extract_section_body (f:elf_file) (ri:relocation_interpreter reloc_target_da
             x.Elf_interpreted_section.elf32_section_name_as_string = section_name
           ) f32.elf32_file_interpreted_sections in
       match sections with
-      | [section] ->
+      | section :: rest ->
+          (* Claude: several sections of the name (COMDAT .debug_macro groups in an
+             object file, say): the first is used, as readelf shows it first *)
+          if rest <> [] && strict then Assert_extra.failwith ("multiple " ^ section_name ^ " sections present") else
           let section_addr = if is_elf32_relocatable_file f32.elf32_file_header then
             sym_natural_section section_name
           else
@@ -6170,7 +6183,6 @@ let extract_section_body (f:elf_file) (ri:relocation_interpreter reloc_target_da
             Assert_extra.failwith ("" ^ section_name ^ " section not present")
           else
             (c,0,sym_bs_empty)
-      | _ -> Assert_extra.failwith ("multiple " ^ section_name ^ " sections present")
       end
 
 
@@ -6181,7 +6193,10 @@ let extract_section_body (f:elf_file) (ri:relocation_interpreter reloc_target_da
             x.Elf_interpreted_section.elf64_section_name_as_string = section_name
           ) f64.elf64_file_interpreted_sections in
       match sections with
-      | [section] ->
+      | section :: rest ->
+          (* Claude: several sections of the name (COMDAT .debug_macro groups in an
+             object file, say): the first is used, as readelf shows it first *)
+          if rest <> [] && strict then Assert_extra.failwith ("multiple " ^ section_name ^ " sections present") else
           let section_addr = if is_elf64_relocatable_file f64.elf64_file_header then
             sym_natural_section section_name
           else
@@ -6189,6 +6204,7 @@ let extract_section_body (f:elf_file) (ri:relocation_interpreter reloc_target_da
           in
           let section_body = section.Elf_interpreted_section.elf64_section_body in
           let _ = my_debug "extracted section body" in
+          if rest <> [] then (c, section_addr, sym_bs_construct section_body Map.empty) else   (* Claude: relocations are found by name, ambiguous here *)
           match extract_elf64_relocations_for_section f64 ri section_name with
           | Success relocations ->
               let _ = my_debug "extracted relocations" in
@@ -6201,7 +6217,6 @@ let extract_section_body (f:elf_file) (ri:relocation_interpreter reloc_target_da
             Assert_extra.failwith ("" ^ section_name ^ " section not present")
           else
             (c,0,sym_bs_empty)
-      | _ -> Assert_extra.failwith ("multiple " ^ section_name ^ " sections present")
       end
   end
 
@@ -7624,13 +7639,22 @@ let check_aranges (d: dwarf) : list string =
         let str = unit_context_of_cu d cu in
         (if ar.ar_address_size <> cu.cu_header.cuh_address_size then [pre ^ "address size " ^ show ar.ar_address_size ^ " differs from the unit's " ^ show cu.cu_header.cuh_address_size] else [])
         ++ version_msgs
-        ++ (match range_of_die c str cu.cu_die with
-            | Nothing -> if ar.ar_ranges = [] then [] else [pre ^ "the unit has no pc range (DW_AT_low_pc/high_pc/ranges) to check its " ^ show (List.length ar.ar_ranges) ^ " address ranges against"]
-            | Just nns ->
-                List.mapMaybe (fun (_, a, l) ->
-                  if List.any (fun (lo, hi) -> sym_range_within lo hi a l) nns then Nothing
-                  else Just (pre ^ "address range " ^ pphex_sym a ^ " length " ^ pphex_sym l ^ " lies outside the unit's ranges " ^ String.concat " " (List.map (fun (lo, hi) -> "[" ^ pphex_sym lo ^ "," ^ pphex_sym hi ^ ")") nns))) ar.ar_ranges
-            end)
+        ++ (let pcs = match range_of_die c str cu.cu_die with Just nns -> nns | Nothing -> [] end in
+            (* gcc's sets also cover the unit's variables: a range is accepted if it
+               contains the address of a variable located by a plain DW_OP_addr *)
+            let var_addrs = List.mapMaybe (fun (_, _, die) ->
+                match find_attribute_value "DW_AT_location" die with
+                | Just (AV_exprloc _ bs) -> (match parse_operations_bs c cu.cu_header bs with [op] -> (match (op.op_semantics, op.op_argument_values) with (OpSem_lit, [OAV_natural a]) -> Just a | _ -> Nothing end) | _ -> Nothing end)
+                | Just (AV_block _ bs) -> (match parse_operations_bs c cu.cu_header bs with [op] -> (match (op.op_semantics, op.op_argument_values) with (OpSem_lit, [OAV_natural a]) -> Just a | _ -> Nothing end) | _ -> Nothing end)
+                | _ -> Nothing
+                end) (find_dies_in_die (fun die -> sym_eq die.die_abbreviation_declaration.ad_tag (tag_encode "DW_TAG_variable")) cu [] cu.cu_die) in
+            if pcs = [] && var_addrs = [] then
+              (if ar.ar_ranges = [] then [] else [pre ^ "the unit has no pc range (DW_AT_low_pc/high_pc/ranges) or addressed variable to check its " ^ show (List.length ar.ar_ranges) ^ " address ranges against"])
+            else
+              List.mapMaybe (fun (_, a, l) ->
+                if List.any (fun (lo, hi) -> sym_range_within lo hi a l) pcs
+                   || List.any (fun va -> sym_range_within a (sym_natural_add a l) va (sym_natural_const 1)) var_addrs then Nothing
+                else Just (pre ^ "address range " ^ pphex_sym a ^ " length " ^ pphex_sym l ^ " lies outside the unit's ranges " ^ String.concat " " (List.map (fun (lo, hi) -> "[" ^ pphex_sym lo ^ "," ^ pphex_sym hi ^ ")") pcs) ^ " and covers none of its variables")) ar.ar_ranges)
     end) d.d_aranges)
 
 (* the DJB hash of a name (section 7.33), on the name folded to lower case (6.1.1.4.5;
@@ -7738,7 +7762,13 @@ let check_names (d: dwarf) : list string =
                                           | Just (_, av) -> (match av with AV_string bs -> Just (string_of_sym_byte_sequence bs) | AV_strp _ -> Just (string_of_string_attribute_value str av) | AV_strx _ -> Just (string_of_string_attribute_value str av) | AV_line_strp _ -> Just (string_of_string_attribute_value str av) | _ -> Nothing end)
                                           | Nothing -> Nothing
                                           end) ["DW_AT_name"; "DW_AT_linkage_name"] in
-                                      let die_names = own ++ via_origin in
+                                      (* a declaration with DW_AT_signature is named by its type unit's type DIE *)
+                                      let via_signature =
+                                        match find_reference_attribute_of_die c d cu str "DW_AT_signature" die with
+                                        | Just (cu', _, die') -> (match find_name_of_die (unit_context_of_cu d cu') die' with Just nm -> [nm] | Nothing -> [] end)
+                                        | Nothing -> []
+                                        end in
+                                      let die_names = own ++ via_origin ++ via_signature in
                                       if List.elem name die_names then []
                                       else [pre' ^ "the DIE at " ^ pphex_sym r ^ " is named " ^ (match die_names with [] -> "nothing" | _ -> String.concat " / " (List.map (fun s -> "\"" ^ s ^ "\"") die_names) end)])
                               end
