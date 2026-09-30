@@ -17,6 +17,8 @@ to this directory (`validation/dwarf/`).
 
     make go                                        # all three corpora (builds the library and tool first)
     make go CORPORA=elfutils                       # one corpus
+    make set-expected-results                      # the latest run becomes results/baseline, which later
+                                                   # `make go` runs report regressions and fixes against
     make clean                                     # drop cache/ (fetched sources, built objects) and tools/
 
 or by hand:
@@ -79,8 +81,8 @@ See `LICENCE-NOTE.md`.  Nothing fetched is distributed with linksem.  (The
     scripts/quickcheck.py 'strip-1[345]|^testfile$'
 
 re-runs the comparisons on the objects whose names match, reports every
-comparison whose status changed against `results/baseline/` (or the most
-recent run; `--against DIR` chooses), and exits with status 2 if anything got
+comparison whose status changed against `results/baseline/` (set by `make
+set-expected-results`; or the most recent run; `--against DIR` chooses), and exits with status 2 if anything got
 worse.  This is how each fix was checked before it was committed.
 
 ## Name tables by observation

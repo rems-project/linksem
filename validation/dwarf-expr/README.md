@@ -43,10 +43,10 @@ other one under qemu-user with the debuggers attached to its gdb stub.
     make check-one EXPR='DW_OP_lit1; DW_OP_lit2; DW_OP_minus'   # a single expression
     make minimize RUN=output/x86_64-random-seed1          # minimal standalone examples of a run's disagreements
     make diff A=output/x86_64-basic B=expected/x86_64-basic   # what changed between two runs
-    make fix-expected-results SET=basic # adopt a run's results as the expected ones
+    make set-expected-results SET=basic # adopt a run's results as the expected ones
 
 `ARCH=aarch64` (or `x86_64`) selects the architecture for `check-native-arch`,
-`check-random`, `check-one` and `fix-expected-results`.  Everything is written under `output/<arch>-<run>/`.
+`check-random`, `check-one` and `set-expected-results`.  Everything is written under `output/<arch>-<run>/`.
 
 ## What a run produces
 
@@ -134,7 +134,7 @@ results and report of each set on each architecture; `make check-native-arch` fa
 result file differs from it (a difference caused by a debugger not being
 installed is reported but not counted).  When a change to linksem, to the tests
 or to the tools is intended, `make diff` shows exactly which expressions
-changed, and `make fix-expected-results` adopts the new results.
+changed, and `make set-expected-results` adopts the new results.
 
 Results of the reference runs (30 September 2026; gdb 15.1, lldb 18.1.3,
 binutils 2.42, qemu 8.2.2, on an x86_64 host):

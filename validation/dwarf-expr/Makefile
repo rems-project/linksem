@@ -18,7 +18,7 @@
 #                                 minimal standalone examples of a run's disagreements
 #   make diff A=output/x86_64-basic B=expected/x86_64-basic
 #                                 expressions whose results or class differ between two runs
-#   make fix-expected-results SET=basic
+#   make set-expected-results SET=basic
 #                                 adopt output/$(ARCH)-$(SET) as the expected results
 #   make clean
 #
@@ -37,7 +37,7 @@ OPAM   ?= opam exec --switch ocaml551 --
 P       = scripts/pipeline.py
 BIN     = ocaml/_build/default/bin
 
-.PHONY: tools build check-native-arch check-all-archs check-random check-one minimize diff fix-expected-results clean
+.PHONY: tools build check-native-arch check-all-archs check-random check-one minimize diff set-expected-results clean
 
 tools:
 	$(P) tools
@@ -71,7 +71,7 @@ minimize:
 diff:
 	$(P) diff $(A) $(B)
 
-fix-expected-results:
+set-expected-results:
 	$(P) accept $(ARCH) $(SET)
 
 clean:
