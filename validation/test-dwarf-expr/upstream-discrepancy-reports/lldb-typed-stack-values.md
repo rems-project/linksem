@@ -70,5 +70,10 @@ the error.
 **Context.**  Found by linksem's DWARF expression cross-check
 (`linksem/validation/test-dwarf-expr`), which evaluates the same expressions
 with linksem's interpreter, gdb and lldb and compares the results.  In a random
-sample of 2000 well-formed expressions, 104 (5.2%) differ between lldb 18.1.3
-and gdb 15.1, all of them instances of the rows above.
+sample of 2000 well-formed expressions (`make validate SEED=7 N=2000 MAXOPS=12`),
+104 (5.2%) differ between lldb 18.1.3 and gdb 15.1, all of them instances of the
+rows above once minimised: 37 "extracting data from value failed" (row 5), 35
+"invalid load address" or "invalid file address" for an address the expression
+computes as -1 or another value lldb treats as invalid (row 6), and 32 different
+values or addresses from the typed `abs`, `neg`-then-`abs`, `mod` and comparison
+operations (rows 1 to 4).
