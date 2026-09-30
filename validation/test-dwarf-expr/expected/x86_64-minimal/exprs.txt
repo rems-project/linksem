@@ -81,3 +81,4 @@ m_mul_ovf_neg: DW_OP_const8u 0x100000001; DW_OP_const8u 0xfffffffeffffffff; DW_O
 m_mul_ovf_neg_s: DW_OP_const8u 0x100000001; DW_OP_const8s -0x100000001; DW_OP_mul         # the same with a signed constant
 m_mul_ovf_neg_neg: DW_OP_const8s -0x100000001; DW_OP_const8s -0x100000001; DW_OP_mul      # 0x200000001
 m_mul_small_neg: DW_OP_const1s -5; DW_OP_lit3; DW_OP_mul                                   # -15, no overflow, correct everywhere
+m_shl_ovf_neg: DW_OP_const2s -23230; DW_OP_consts 58; DW_OP_shl                          # low 6 bits of -23230 are 2: 0x0800000000000000; gdb 15.1 gives 0xf800000000000000 (the magnitude, as for DW_OP_mul)

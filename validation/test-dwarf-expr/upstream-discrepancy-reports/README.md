@@ -8,8 +8,8 @@ and the plain `gdb`/`lldb` commands that show the result):
 
 - `gdb-DW_OP_bra-internal-error.md`: gdb 15.1 aborts with an internal error
   on a `DW_OP_bra` whose target is also reached by falling through (example in
-  `gdb-bra-join-example/`), and its `DW_OP_mul` returns the magnitude of a
-  product that overflows negatively (example in `gdb-mul-overflow-example/`).
+  `gdb-bra-join-example/`), and its `DW_OP_mul` and `DW_OP_shl` return the magnitude of a
+  result that overflows negatively (example in `gdb-mul-overflow-example/`).
 - `lldb-typed-stack-values.md`: lldb 18.1.3 (and 23.1.2) give `DW_OP_abs`,
   `DW_OP_shra`, `DW_OP_mod` and the comparisons a signed or unsigned meaning
   depending on how the operand was produced, where DWARF 4 fixes it; plus two

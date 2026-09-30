@@ -2,8 +2,11 @@
 # Claude: the driver of the DWARF expression cross-check harness (see ../README.md).
 #
 #   pipeline.py tools                        what is installed, what to install
-#   pipeline.py run ARCH EXPRS RUNDIR         build the test program from EXPRS, evaluate
-#                                            with linksem, gdb and lldb, write RUNDIR/report.md
+#   pipeline.py run ARCH EXPRS RUNDIR [BATCH [JOBS]]
+#                                            build the test program from EXPRS, evaluate
+#                                            with linksem, gdb and lldb, write RUNDIR/report.md;
+#                                            with BATCH, split the expressions into programs of
+#                                            BATCH variables (RUNDIR/batchNN/), JOBS at a time
 #   pipeline.py check ARCH NAME [NAME...]     run tests/NAME.txt (or the random set NAME =
 #                                            random-seedS) into output/ARCH-NAME and compare
 #                                            with expected/ARCH-NAME; exit 1 on a difference
@@ -133,23 +136,23 @@ def eval_linksem(rundir):
 
 PORT = int(os.environ.get("DWEXPR_PORT", "1234"))
 
-def emulator_cmd(tools, prog):
-    return [tools.emu, "-g", str(PORT), prog] if tools.emu else None
+def emulator_cmd(tools, prog, port):
+    return [tools.emu, "-g", str(port), prog] if tools.emu else None
 
-def eval_gdb(rundir, tools):
+def eval_gdb(rundir, tools, port=PORT):
     path = os.path.join(rundir, "gdb.txt")
     prog = os.path.join(rundir, "prog")
     if not os.path.exists(prog): return not_run(path, "no test program")
     if not tools.gdb: return not_run(path, "gdb not found (sudo apt-get install %s)" % ("gdb" if tools.native else "gdb-multiarch"))
     if not tools.native and not tools.emu: return not_run(path, "no emulator for %s (sudo apt-get install qemu-user)" % tools.arch)
     env = dict(os.environ)
-    if not tools.native: env["DWEXPR_REMOTE"] = ":%d" % PORT
+    if not tools.native: env["DWEXPR_REMOTE"] = ":%d" % port
     args = [os.path.join(HERE, "gdb_run.py"), tools.gdb, prog, os.path.join(rundir, "state.txt"), os.path.join(rundir, "exprs.txt")]
-    if not tools.native: args += emulator_cmd(tools, prog)
+    if not tools.native: args += emulator_cmd(tools, prog, port)
     out = subprocess.run(args, env=env, stdout=subprocess.PIPE, stderr=subprocess.DEVNULL, text=True).stdout
     open(path, "w").write(out)
 
-def eval_lldb(rundir, tools):
+def eval_lldb(rundir, tools, port=PORT):
     path = os.path.join(rundir, "lldb.txt")
     prog = os.path.join(rundir, "prog")
     if not os.path.exists(prog): return not_run(path, "no test program")
@@ -158,19 +161,54 @@ def eval_lldb(rundir, tools):
     env = dict(os.environ, DWEXPR_PROG=prog, DWEXPR_STATE=os.path.join(rundir, "state.txt"), DWEXPR_EXPRS=os.path.join(rundir, "exprs.txt"))
     q = None
     if not tools.native:
-        env["DWEXPR_REMOTE"] = "127.0.0.1:%d" % PORT
-        q = subprocess.Popen(emulator_cmd(tools, prog), stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+        env["DWEXPR_REMOTE"] = "127.0.0.1:%d" % port
+        q = subprocess.Popen(emulator_cmd(tools, prog, port), stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
         time.sleep(0.5)
     r = subprocess.run([tools.lldb, "-b", "-o", "command script import " + os.path.join(HERE, "lldb_eval.py")], env=env, stdout=subprocess.PIPE, stderr=subprocess.DEVNULL, text=True)
     if q: q.kill(); q.wait()
     lines = [l for l in r.stdout.splitlines() if re.match(r"^(#|[A-Za-z_0-9]+ = )", l)]
     open(path, "w").write("\n".join(lines) + "\n")
 
-def run(arch, exprs, rundir, tools=None, quiet=False):
+def run_one(arch, exprs, rundir, tools, port):
+    """one program: build and the three evaluations"""
     tools = build(arch, exprs, rundir, tools)
     eval_linksem(rundir)
-    eval_gdb(rundir, tools)
-    eval_lldb(rundir, tools)
+    eval_gdb(rundir, tools, port)
+    eval_lldb(rundir, tools, port)
+    return tools
+
+def run(arch, exprs, rundir, tools=None, quiet=False, batch=None, jobs=1):
+    """batch: split the expressions into programs of that many variables (the
+    debuggers' start-up and gdb's restarts after a crash grow with the program's
+    DWARF, so large sets are faster in pieces), run them JOBS at a time, and
+    concatenate the results"""
+    tools = tools or Tools(arch)
+    lines = [l for l in open(exprs).read().splitlines() if l.split("#")[0].strip()]
+    if batch and len(lines) > batch:
+        import concurrent.futures
+        os.makedirs(rundir, exist_ok=True)
+        if os.path.abspath(exprs) != os.path.abspath(os.path.join(rundir, "exprs.txt")): shutil.copy(exprs, os.path.join(rundir, "exprs.txt"))
+        chunks = [lines[i:i + batch] for i in range(0, len(lines), batch)]
+        dirs = []
+        for k, c in enumerate(chunks):
+            d = os.path.join(rundir, "batch%02d" % k)
+            os.makedirs(d, exist_ok=True)
+            open(os.path.join(d, "exprs.txt"), "w").write("\n".join(c) + "\n")
+            dirs.append(d)
+        def job(k):
+            run_one(arch, os.path.join(dirs[k], "exprs.txt"), dirs[k], tools, PORT + k)
+            return k
+        with concurrent.futures.ThreadPoolExecutor(max_workers=max(1, jobs)) as ex:
+            for k in ex.map(job, range(len(dirs))):
+                if not quiet: print("  batch %d/%d done" % (k + 1, len(dirs)), flush=True)
+        for f in RESULT_FILES:
+            with open(os.path.join(rundir, f), "w") as out:
+                for d in dirs:
+                    p = os.path.join(d, f)
+                    if os.path.exists(p): out.write(open(p).read())
+        shutil.copy(os.path.join(dirs[0], "state.txt"), os.path.join(rundir, "state.txt"))
+    else:
+        run_one(arch, exprs, rundir, tools, PORT)
     rows, hg, hl = compare.load(rundir)
     summary = compare.write_report(rundir, rows, hg, hl, tools.versions())
     if not quiet:
@@ -397,7 +435,7 @@ def main():
     a = sys.argv[1:]
     if not a: print(__doc__); sys.exit(2)
     if a[0] == "tools": cmd_tools()
-    elif a[0] == "run": run(a[1], a[2], a[3])
+    elif a[0] == "run": run(a[1], a[2], a[3], batch=int(a[4]) if len(a) > 4 else None, jobs=int(a[5]) if len(a) > 5 else 1)
     elif a[0] == "check": sys.exit(cmd_check(a[1], a[2:]))
     elif a[0] == "accept": cmd_accept(a[1], a[2:])
     elif a[0] == "minimize": cmd_minimize(a[1])

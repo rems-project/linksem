@@ -76,3 +76,4 @@ m_mul_ovf_neg = addr 0xfffffffdffffffff
 m_mul_ovf_neg_s = addr 0xfffffffdffffffff
 m_mul_ovf_neg_neg = addr 0x200000001
 m_mul_small_neg = addr 0xfffffffffffffff1
+m_shl_ovf_neg = addr 0x800000000000000

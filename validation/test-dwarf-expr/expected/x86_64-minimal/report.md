@@ -11,20 +11,20 @@ Tools: as: GNU assembler (GNU Binutils for Ubuntu) 2.42; gdb: GNU gdb (Ubuntu 15
 | agree               |    50 |
 | linksem-unsupported |     0 |
 | linksem-differs     |     0 |
-| gdb-differs         |     2 |
+| gdb-differs         |     3 |
 | lldb-differs        |    22 |
 | all-differ          |     0 |
 | gdb-crash           |     3 |
 | incomparable        |     1 |
 | not-run             |     0 |
 
-gdb and lldb differ from each other on 27 expression(s) (see the last section).
+gdb and lldb differ from each other on 28 expression(s) (see the last section).
 
 ## Operations involved in disagreements
 
-- **lldb-differs**: DW_OP_const1s (11), DW_OP_shra (8), DW_OP_lit2 (5), DW_OP_mod (5), DW_OP_lit1 (4), DW_OP_lt (4), DW_OP_lit4 (4), DW_OP_constu (4), DW_OP_stack_value (3), DW_OP_lit0 (3), DW_OP_not (2), DW_OP_eq (2), DW_OP_neg (2), DW_OP_const1u (2), DW_OP_lit7 (2), DW_OP_abs (2), DW_OP_breg2 (2), DW_OP_lit20 (1), DW_OP_breg14 (1), DW_OP_const2s (1)
-- **gdb-crash**: DW_OP_lit1 (3), DW_OP_bra (3), DW_OP_not (3), DW_OP_nop (2), DW_OP_lit5 (1), DW_OP_lit0 (1)
-- **gdb-differs**: DW_OP_const8u (2), DW_OP_mul (2), DW_OP_const8s (1)
+- **lldb-differs**: DW_OP_const1s (11), DW_OP_shra (8), DW_OP_lit2 (5), DW_OP_mod (5), DW_OP_lit1 (4), DW_OP_lt (4), DW_OP_lit4 (4), DW_OP_constu (4), DW_OP_stack_value (3), DW_OP_lit0 (3), DW_OP_eq (2), DW_OP_not (2), DW_OP_neg (2), DW_OP_const1u (2), DW_OP_lit7 (2), DW_OP_breg2 (2), DW_OP_abs (2), DW_OP_lit20 (1), DW_OP_breg14 (1), DW_OP_const2s (1)
+- **gdb-crash**: DW_OP_bra (3), DW_OP_lit1 (3), DW_OP_not (3), DW_OP_nop (2), DW_OP_lit5 (1), DW_OP_lit0 (1)
+- **gdb-differs**: DW_OP_const8u (2), DW_OP_mul (2), DW_OP_const8s (1), DW_OP_shl (1), DW_OP_consts (1), DW_OP_const2s (1)
 
 ## Disagreements
 
@@ -58,6 +58,7 @@ gdb and lldb differ from each other on 27 expression(s) (see the last section).
 | t_mod_neg_second | lldb-differs | `DW_OP_const1s -7; DW_OP_lit2; DW_OP_mod` | addr 0x1 | addr 0x1 | error: invalid load address |
 | m_mul_ovf_neg | gdb-differs | `DW_OP_const8u 0x100000001; DW_OP_const8u 0xfffffffeffffffff; DW_OP_mul` | addr 0xfffffffdffffffff | addr 0x200000001 | addr 0xfffffffdffffffff |
 | m_mul_ovf_neg_s | gdb-differs | `DW_OP_const8u 0x100000001; DW_OP_const8s -0x100000001; DW_OP_mul` | addr 0xfffffffdffffffff | addr 0x200000001 | addr 0xfffffffdffffffff |
+| m_shl_ovf_neg | gdb-differs | `DW_OP_const2s -23230; DW_OP_consts 58; DW_OP_shl` | addr 0x800000000000000 | addr 0xf800000000000000 | addr 0x800000000000000 |
 
 ## gdb versus lldb
 
@@ -90,4 +91,5 @@ gdb and lldb differ from each other on 27 expression(s) (see the last section).
 | t_mod_neg_second | `DW_OP_const1s -7; DW_OP_lit2; DW_OP_mod` | addr 0x1 | error: invalid load address | addr 0x1 |
 | m_mul_ovf_neg | `DW_OP_const8u 0x100000001; DW_OP_const8u 0xfffffffeffffffff; DW_OP_mul` | addr 0x200000001 | addr 0xfffffffdffffffff | addr 0xfffffffdffffffff |
 | m_mul_ovf_neg_s | `DW_OP_const8u 0x100000001; DW_OP_const8s -0x100000001; DW_OP_mul` | addr 0x200000001 | addr 0xfffffffdffffffff | addr 0xfffffffdffffffff |
+| m_shl_ovf_neg | `DW_OP_const2s -23230; DW_OP_consts 58; DW_OP_shl` | addr 0xf800000000000000 | addr 0x800000000000000 | addr 0x800000000000000 |
 

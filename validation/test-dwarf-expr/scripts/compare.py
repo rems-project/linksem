@@ -20,7 +20,7 @@
 #                       debuggers report as a value, so not compared
 #   gdb-crash           gdb aborted with an internal error on this expression
 #   not-run             no debugger ran, so nothing to compare against
-import sys, collections, os
+import sys, collections, os, re
 
 CLASSES = ["agree", "linksem-unsupported", "linksem-differs", "gdb-differs", "lldb-differs", "all-differ", "gdb-crash", "incomparable", "not-run"]
 
@@ -78,9 +78,14 @@ def classify(l, g, d):
     return "linksem-differs"
 
 def signature(l, g, d):
-    """what a minimised reproducer must preserve: the class and the kind (addr, reg,
-    value, error, ...) of each evaluator's result"""
-    kind = lambda x: None if x is None else norm(x)[0]
+    """what a minimised reproducer must preserve: the class, the kind (addr, reg,
+    value, error, ...) of each evaluator's result, and for an error its message
+    (without numbers), so that one failure is not reduced to a different one"""
+    def kind(x):
+        if x is None: return None
+        k = norm(x)[0]
+        if k == "error": return ("error", re.sub(r"0x[0-9a-f]+|\d+", "N", x))
+        return k
     return (classify(l, g, d), kind(l), kind(g), kind(d))
 
 def load(rundir):

@@ -7,9 +7,10 @@
 #   make check-native-arch        regression: the basic, minimal and random-seed1 sets on
 #                                 the host architecture, compared with expected/
 #   make check-all-archs          the same for both architectures (the other one under qemu)
-#   make validate SEED=7 N=2000 MAXOPS=12
+#   make validate SEED=7 N=2000 MAXOPS=12 [BATCH=2000 JOBS=4 MINIMIZE=no]
 #                                 an extensive random run, with minimal examples of every
-#                                 disagreement, in output/$(ARCH)-validate-seed7/
+#                                 disagreement, in output/$(ARCH)-validate-seed7/; sets larger
+#                                 than BATCH are split into several programs, run JOBS at a time
 #   make one EXPR='DW_OP_lit1; DW_OP_lit2; DW_OP_minus'
 #                                 a single expression, all three evaluators, and its
 #                                 standalone example, in output/$(ARCH)-one/
@@ -28,6 +29,9 @@ SETS   ?= basic minimal random-seed1
 SEED   ?= 1
 N      ?= 2000
 MAXOPS ?= 12
+BATCH  ?= 2000
+JOBS   ?= 4
+MINIMIZE ?= yes
 OPAM   ?= opam exec --switch ocaml551 --
 P       = scripts/pipeline.py
 BIN     = ocaml/_build/default/bin
@@ -49,8 +53,8 @@ check-all-archs: build
 validate: build
 	mkdir -p output/$(ARCH)-validate-seed$(SEED)
 	$(BIN)/dwexpr_gen.exe $(ARCH) $(N) $(SEED) $(MAXOPS) > output/$(ARCH)-validate-seed$(SEED)/exprs.txt
-	$(P) run $(ARCH) output/$(ARCH)-validate-seed$(SEED)/exprs.txt output/$(ARCH)-validate-seed$(SEED)
-	$(P) minimize output/$(ARCH)-validate-seed$(SEED)
+	$(P) run $(ARCH) output/$(ARCH)-validate-seed$(SEED)/exprs.txt output/$(ARCH)-validate-seed$(SEED) $(BATCH) $(JOBS)
+	if [ "$(MINIMIZE)" = yes ]; then $(P) minimize output/$(ARCH)-validate-seed$(SEED); fi
 
 one: build
 	mkdir -p output/$(ARCH)-one

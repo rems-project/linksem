@@ -68,9 +68,14 @@ lists the disagreements, the operations involved in each class, and the
 expressions on which gdb and lldb differ from each other.  Results are compared
 by kind and number; error messages are not compared.
 
-`make minimize` (also run by `make validate`) reduces each disagreeing
-expression by deleting operations while the class and the kinds of the three
-results are preserved, evaluating all candidates in one batch per round, and
+Large sets are split into several programs (`BATCH=2000` variables each, run
+`JOBS` at a time): the debuggers' start-up and gdb's restart after a crash
+grow with the program's DWARF, so 100000 expressions take minutes rather than
+hours.
+
+`make minimize` (also run by `make validate` unless `MINIMIZE=no`) reduces
+each disagreeing expression by deleting operations while the class and the
+kinds of the three results (and an error's message) are preserved, evaluating all candidates in one batch per round, and
 writes `output/<arch>-<run>/discrepancies/<name>/`: a one-variable test program
 (`prog.s`, `prog`), the three results, and a `README.md` with the commands that
 reproduce them with plain `as`, `ld`, `gdb` and `lldb`, no harness needed.
@@ -79,7 +84,7 @@ These are what an upstream report should contain.
 ## Regression sets and expected results
 
 `tests/basic.txt` (76 expressions) exercises every operation at least once;
-`tests/minimal.txt` (78) holds one-line reproducers of every difference found so
+`tests/minimal.txt` (79) holds one-line reproducers of every difference found so
 far, with the expected result per the DWARF 4 text in comments;
 `random-seed1` is 1000 expressions from `dwexpr_gen` with seed 1 and at most 8
 operations (deterministic).  `expected/<arch>-<set>/` holds the committed
@@ -95,13 +100,21 @@ binutils 2.42, qemu 8.2.2, on an x86_64 host):
 | set          | expressions | agree | lldb-differs | gdb-differs | gdb-crash | incomparable |
 |--------------|-------------|-------|--------------|-------------|-----------|--------------|
 | basic        |          76 |    67 |            8 |           0 |         0 |            1 |
-| minimal      |          78 |    50 |           22 |           2 |         3 |            1 |
+| minimal      |          79 |    50 |           22 |           3 |         3 |            1 |
 | random-seed1 |        1000 |   958 |           28 |           0 |        14 |            0 |
 
-A larger run (`make validate SEED=11 N=8000 MAXOPS=12`, 50 seconds) gave 7308
-agree, 456 lldb-differs, 228 gdb-crash, 6 gdb-differs (all the `DW_OP_mul`
-overflow bug of gdb, see the gdb report) and 2 others explained by the same
-two debugger defects combining; no linksem defect.
+Larger runs: `make validate SEED=11 N=8000 MAXOPS=12` (50 seconds as one
+program, 20 seconds as four batches) gave 7308 agree, 456 lldb-differs, 228
+gdb-crash and 6 gdb-differs; `make validate SEED=17 N=100000 MAXOPS=12
+BATCH=2000 JOBS=8 MINIMIZE=no` (2.5 minutes on a 20-core x86_64 host) gave
+91293 agree, 5570 lldb-differs, 3031 gdb-crash (every one a `DW_OP_bra`
+join), 100 gdb-differs (90 `DW_OP_mul` and 10 `DW_OP_shl`, all the negative
+overflow bug in the gdb report) and 6 others in which that gdb bug and lldb's
+typed `abs` happen to agree; no linksem defect.  The lldb differences were all
+of the kinds in the lldb report; the new-looking messages "Unary negate
+failed", "Logical NOT failed", "DW_OP_plus_uconst failed" and "Failed to take
+the absolute value" are the operation after a `DW_OP_mod` by zero failing on
+the invalid value lldb leaves.
 
 The aarch64 results (under qemu) are identical, as expected for
 architecture-neutral expressions.  There are no `linksem-differs` left: where

@@ -47,8 +47,8 @@ assertion.  With the trailing `DW_OP_nop` removed from the location expression
 `.Lm_bra_join_nop_end`, and the `.uleb128` length is computed from the
 labels), the same command prints `0x1`.
 
-**A second bug: DW_OP_mul returns the magnitude of a product that overflows
-negatively.**  For
+**A second bug: DW_OP_mul (and DW_OP_shl) return the magnitude of a result
+that overflows negatively.**  For
 
     DW_OP_const8u 0x100000001; DW_OP_const8u 0xfffffffeffffffff; DW_OP_mul
 
@@ -61,12 +61,17 @@ modulo one plus the largest representable address".  The pattern, from a few
 hundred random cases, is: the result is wrong exactly when the product of the
 two operands read as signed 64-bit values is negative and does not fit in 64
 bits (`(2^32 + 1) * (2^32 + 1)`, `2^32 * -2^32`, and `-5 * 3` are all right).
-The magnitude is what one gets from converting a negative multi-precision
-result with `mpz_get_ui`, so the `gdb_mpz` path of `scalar_binop` for
-`BINOP_MUL` is the likely place.  Reproducer in `gdb-mul-overflow-example/`
-(variable `m_mul_ovf_neg`), same commands as above.  In a random sample of
-8000 expressions, 6 were affected (0.08%), and one more was masked by an
-unrelated lldb difference.
+`DW_OP_shl` behaves the same way: `DW_OP_const2s -23230; DW_OP_consts 58;
+DW_OP_shl` should give 0x0800000000000000 (the low six bits of -23230 are
+000010) and gdb gives 0xf800000000000000, which is 23230 << 58 truncated,
+the magnitude of the exact -23230 * 2^58; `-1 << 4` and `-1 << 60`, which fit,
+are right.  The magnitude is what one gets from converting a negative
+multi-precision result with `mpz_get_ui`, so the `gdb_mpz` path of
+`scalar_binop` for `BINOP_MUL` and `BINOP_LSH` is the likely place.
+Reproducer in `gdb-mul-overflow-example/` (variable `m_mul_ovf_neg`), same
+commands as above.  In a random sample of 100000 expressions of up to 12
+operations, 90 `DW_OP_mul` and 10 `DW_OP_shl` cases were affected (0.1%),
+plus a few masked by unrelated lldb differences.
 
 **Also observed** in the same cross-check, for information rather than as a
 bug: `DW_OP_mod` with a zero divisor (`DW_OP_lit20; DW_OP_lit0; DW_OP_mod`)
