@@ -52,9 +52,13 @@ byte-faithful dumps: `objdump --dwarf=abbrev,info` against
 The ELF row compares `readelf -W` `-h -S -l -r -s -t -g -n -V -I -a` with
 the same options of `linksem readelf`, and `hexdump -v` with `--in-out`.
 Comparisons that cannot apply are skipped with a reason: ELF32 for the
-dumps that exist only for ELF64, DWARF 5 (not yet parsed by linksem),
-relocatable objects for machines other than AArch64 (no data-relocation
-interpreter), compressed debug sections.  Oracles are binutils 2.42
+dumps that exist only for ELF64, relocatable objects for machines other than
+AArch64 (no data-relocation interpreter), compressed debug sections, and the
+objdump dump of DWARF 5 relocatable objects (objdump does not apply the
+relocations of `.debug_str_offsets`, so its indexed strings there are wrong;
+those files are compared against readelf only).  DWARF 5 files were skipped
+until linksem's DWARF 5 support (notes/notes008, 30 September 2026); they are
+now included.  Oracles are binutils 2.42
 (`readelf`, `objdump`; the AArch64 cross tools for AArch64 files, the native
 ones otherwise, since the cross objdump prints generic names for other
 machines).

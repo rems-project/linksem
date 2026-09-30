@@ -270,6 +270,30 @@ representation for expressions;
 
 PS: what's the choice for that? 
 
+(Claude, 30 September 2026, in answer:) the choice made, and implemented, is a
+faithful typed stack rather than the two cheaper alternatives (ignoring the
+types and treating the typed operations as no-ops or as conversions of the
+generic value, or refusing them).  Each stack entry is a pair of a value (a bit
+pattern, a natural below 2^(8*size)) and a type: the generic type, or a base
+type identified by the unit-relative offset of its `DW_TAG_base_type` DIE with
+that DIE's byte size and `DW_ATE` encoding, read through the unit context's DIE
+index.  `DW_OP_const_type`, `DW_OP_regval_type` and `DW_OP_deref_type` push
+typed values; `DW_OP_convert` re-represents the integer value in the target
+type (signed base types by two's complement, the generic type unsigned);
+`DW_OP_reinterpret` keeps the bits and requires equal sizes; the binary
+operations require operands of one type and compute in that type's arithmetic
+(width, and signedness for `div`, `abs`, the comparisons and `mod`), with the
+comparisons pushing a generic 0 or 1; `DW_OP_stack_value` yields the value's
+bytes at the type's size; floating-point base types are refused.  Where DWARF 5
+is silent (a typed value taken as an address, the signedness of `DW_OP_mod` on
+a signed type) gdb's behaviour is followed; where it speaks and gdb does not
+follow it (`DW_OP_plus_uconst` keeps the operand's type) the text is followed
+and gdb's deviation reported.  The cost was moderate: about 250 lines of Lem,
+and the untyped operations' code is unchanged apart from carrying the type.
+This was cross-checked against gdb and lldb with the `validation/dwarf-expr`
+harness, extended to DWARF 5 units and typed operations (sets `typed` and
+`random-typed-seed1`); see Appendix B.
+
 (f) whether `.debug_names`, `.debug_macro` and
 `.debug_aranges` version 5 changes are in scope (no).
 
@@ -431,4 +455,41 @@ expressions, `DW_OP_addrx` (with `.debug_addr`), `DW_OP_convert` between
 unsigned base types, and parsing (not evaluating) `DW_OP_entry_value`.
 Everything else in section 1 can follow, checked against the corpora.
 
+## Appendix B. Status, 30 September 2026 (Claude)
 
+Done, in commits 68c273b, ff3b606, f95014e and the following ones on
+reloc-new-ps (all `Claude:`):
+
+- Stage 1 (kvm_nvhe.o's subset and more): unit headers with unit types and
+  DWO ids, `implicit_const`, all the new forms, `.debug_str_offsets`,
+  `.debug_addr`, `.debug_line_str`, `.debug_rnglists`, `.debug_loclists`
+  (all `DW_LLE_*`/`DW_RLE_*` kinds), type units (parsed, printed, and
+  `DW_FORM_ref_sig8` resolved through them), the version 5 line header
+  (entry formats, `line_strp`/`strp`/`strx` paths, MD5s, 0-based tables via
+  `lnh_directory`/`lnh_file`).  A `unit_context` replaces the `.debug_str`
+  parameter throughout; indexed strings and addresses are resolved lazily in
+  the accessors from per-unit tables read once at parse time.
+- Stage 2 (expressions): `DW_OP_addrx`/`constx`, and the typed stack above.
+  `DW_OP_entry_value` and `DW_OP_implicit_pointer` remain unsupported
+  (parsed, `OpSem_not_supported`).
+- Printers: the readelf-format dumps handle version 5 units (Unit Type, DWO
+  ID, Signature/Type Offset lines; readelf's texts for indexed strings,
+  `DW_OP_addrx` blocks, out-of-range indices).
+- read-dwarf follows (`Pp.ml`, `copySources.ml`); test-pkvm on the DWARF 5
+  kvm_nvhe.o gives the same addresses, lines and columns as on the DWARF 4
+  one, and all variable locations evaluate except `DW_OP_entry_value`.
+
+Checked: linksem's `--debug-dump=abbrev,info` of both kvm_nvhe.o builds is
+byte-identical to readelf's; `validation/dwarf` now includes its 239 DWARF 5
+files (0 regressions against the DWARF 4 baseline; the remaining DWARF 5
+differences are readelf's printing of level-0 null entries and of
+`DW_AT_discr_list`, its empty value for an `implicit_const` DIE with no data
+(`implicit-const-test2`), and a supplementary-file case, none of them DWARF 5
+parsing); `validation/dwarf-expr`'s DWARF 4 results are unchanged and its new
+typed sets agree with gdb except for gdb's own defects (see its
+`upstream-discrepancy-reports/gdb-DWARF5-typed-operations.md`).
+
+Not yet done: skeleton and split units (deferred, as agreed);
+`.debug_names`, `.debug_macro` and `.debug_aranges` parsing and content
+checks (PS (f)); readelf-format dumps of the new sections (`--debug-dump=addr`,
+`str-offsets`, `rnglists`, `loclists`); `DW_OP_entry_value`.
