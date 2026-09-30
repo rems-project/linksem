@@ -815,6 +815,84 @@ type dwarf_sections =
     sec_rnglists: sym_byte_sequence;     (* DWARF 5 *)
     sec_frame: sym_byte_sequence;
     sec_line: sym_byte_sequence;
+    sec_aranges: sym_byte_sequence;      (* Claude: the accelerator and macro sections *)
+    sec_names: sym_byte_sequence;        (* DWARF 5 *)
+    sec_macro: sym_byte_sequence;        (* DWARF 5 *)
+  |>
+
+(** Claude: the accelerator and macro sections: .debug_aranges (DWARF 5 section
+    6.1.2, version 2), .debug_names (6.1.1, version 5) and .debug_macro (6.3,
+    version 5; also GNU's version 4), parsed for checking against the DIE tree
+    and the line tables and for readelf-format dumps *)
+
+type aranges_set =
+  <|
+  ar_offset: natural;                    (* of the set in the section *)
+  ar_dwarf_format: dwarf_format;
+  ar_unit_length: sym_natural;
+  ar_version: sym_natural;
+  ar_debug_info_offset: sym_natural;
+  ar_address_size: sym_natural;
+  ar_segment_selector_size: sym_natural;
+  ar_ranges: list (sym_natural * sym_natural * sym_natural);   (* segment selector (0 if none), address, length; without the terminating zeros *)
+  |>
+
+type names_abbreviation =
+  <| na_code: sym_natural; na_tag: sym_natural; na_attributes: list (sym_natural * sym_natural) |>   (* (DW_IDX attribute, DW_FORM form) *)
+
+type names_entry =
+  <| ne_abbreviation: names_abbreviation; ne_values: list (sym_natural * attribute_value) |>   (* (DW_IDX attribute, value) *)
+
+type names_index =
+  <|
+  ni_offset: natural;
+  ni_dwarf_format: dwarf_format;
+  ni_unit_length: sym_natural;
+  ni_version: sym_natural;
+  ni_padding: sym_natural;
+  ni_comp_unit_count: sym_natural;
+  ni_local_type_unit_count: sym_natural;
+  ni_foreign_type_unit_count: sym_natural;
+  ni_bucket_count: sym_natural;
+  ni_name_count: sym_natural;
+  ni_abbrev_table_size: sym_natural;
+  ni_augmentation: sym_byte_sequence;
+  ni_comp_units: list sym_natural;           (* .debug_info offsets *)
+  ni_local_type_units: list sym_natural;     (* .debug_info offsets *)
+  ni_foreign_type_units: list sym_natural;   (* type signatures *)
+  ni_buckets: list sym_natural;              (* 1-based indices into the hashes/names, 0 for an empty bucket *)
+  ni_hashes: list sym_natural;
+  ni_string_offsets: list sym_natural;       (* .debug_str offsets, one per name *)
+  ni_entry_offsets: list sym_natural;        (* into the entry pool, one per name *)
+  ni_abbreviations: list names_abbreviation;
+  ni_entries: list (list names_entry);       (* per name, in name-table order *)
+  ni_entry_errors: list string;              (* entry series that did not parse *)
+  |>
+
+type macro_entry =
+  | ME_define of sym_natural * sym_byte_sequence     (* line, string *)
+  | ME_undef of sym_natural * sym_byte_sequence
+  | ME_define_strp of sym_natural * sym_natural      (* line, .debug_str offset *)
+  | ME_undef_strp of sym_natural * sym_natural
+  | ME_define_strx of sym_natural * sym_natural      (* line, string index *)
+  | ME_undef_strx of sym_natural * sym_natural
+  | ME_define_sup of sym_natural * sym_natural       (* line, supplementary .debug_str offset *)
+  | ME_undef_sup of sym_natural * sym_natural
+  | ME_start_file of sym_natural * sym_natural       (* line, file index *)
+  | ME_end_file
+  | ME_import of sym_natural                         (* .debug_macro offset *)
+  | ME_import_sup of sym_natural
+  | ME_other of natural * list attribute_value       (* a vendor opcode, its operands by the unit's operands table *)
+
+type macro_unit =
+  <|
+  mu_offset: natural;                        (* of the unit in the section, as DW_AT_macros and DW_MACRO_import name it *)
+  mu_version: sym_natural;
+  mu_flags: sym_natural;
+  mu_dwarf_format: dwarf_format;             (* the offset_size_flag *)
+  mu_debug_line_offset: maybe sym_natural;
+  mu_opcode_operands: list (natural * list natural);   (* (opcode, operand forms) *)
+  mu_entries: list macro_entry;
   |>
 
 (* top-level collection of dwarf data *)
@@ -830,6 +908,9 @@ type dwarf =
     d_ranges: range_list_list;
     d_frame_info: frame_info;
     d_line_info: list line_number_program;
+    d_aranges: list aranges_set;         (** Claude: .debug_aranges *)
+    d_names: list names_index;           (** Claude: .debug_names *)
+    d_macro: list macro_unit;            (** Claude: .debug_macro *)
     d_diagnostics: list string;   (** Claude: what could not be parsed, as readelf would warn *)
   |>
 
@@ -5516,6 +5597,238 @@ let od_debug_info_section regname (d:dwarf) : string =
   "Contents of the .debug_info section:\n\n"
   ^ od_units_in_order c d regname have_frame_base d.d_compilation_units d.d_type_units
 
+let vDW_IDX_compile_unit : natural = 1
+let vDW_IDX_type_unit : natural = 2
+let vDW_IDX_die_offset : natural = 3
+let vDW_IDX_parent : natural = 4
+let vDW_IDX_type_hash : natural = 5
+
+let rec nth_maybe (i: natural) (xs: list 'a) : maybe 'a =
+  match xs with
+  | [] -> Nothing
+  | x :: xs' -> if i = 0 then Just x else nth_maybe (i - 1) xs'
+  end
+
+(* the compilation unit whose DW_AT_macros (or DW_AT_GNU_macros) names a macro
+   unit, else the one whose line table the unit names *)
+let cu_of_macro_unit (d: dwarf) (mu: macro_unit) : maybe compilation_unit =
+  let c = p_context_of_d d in
+  let by_attr = List.find (fun cu ->
+      List.any (fun an -> match find_attribute_value an cu.cu_die with Just (AV_sec_offset n) -> sym_natural_offset_part n = mu.mu_offset | _ -> false end)
+        ["DW_AT_macros"; "DW_AT_GNU_macros"]) d.d_compilation_units in
+  match by_attr with
+  | Just cu -> Just cu
+  | Nothing ->
+      match mu.mu_debug_line_offset with
+      | Just lo -> List.find (fun cu -> match line_number_offset_of_compilation_unit c cu with Just off -> sym_natural_offset_part off = sym_natural_offset_part lo | Nothing -> false end) d.d_compilation_units
+      | Nothing -> Nothing
+      end
+  end
+
+(** Claude: readelf-format dumps of the DWARF 5 tables and the accelerator and
+    macro sections: --debug-dump=aranges, addr, str-offsets, macro, and gdb_index
+    (under which readelf prints .debug_names).  Formats from readelf 2.42's output. *)
+
+(* a string without its final newline, for the dumps readelf ends without a blank line *)
+let chop_final_newline (s: string) : string =
+  let nl = match String.toCharList "\n" with c :: _ -> Just c | [] -> Nothing end in
+  match (List.reverse (String.toCharList s), nl) with
+  | (c :: cs, Just n) -> if c = n then String.toString (List.reverse cs) else s
+  | _ -> s
+  end
+
+(* a natural as 2*size hex digits *)
+let od_hex_width (size: natural) (n: sym_natural) : string =
+  let s = pphexplain (sym_natural_offset_part n) in
+  let w = 2 * size in
+  let l = naturalFromNat (String.stringLength s) in
+  (if l < w then String.concat "" (List.replicate (natFromNatural (w - l)) "0") else "") ^ s
+
+let od_debug_aranges_section (d: dwarf) : string =
+  if sym_bs_length d.d_sections.sec_aranges = 0 then "" else
+  "Contents of the .debug_aranges section:\n\n"
+  ^ String.concat "" (List.map (fun ar ->
+      let as' = sym_natural_offset_part ar.ar_address_size in
+      "  Length:                   " ^ od_dec_sym ar.ar_unit_length ^ "\n"
+      ^ "  Version:                  " ^ od_dec_sym ar.ar_version ^ "\n"
+      ^ "  Offset into .debug_info:  " ^ od_hx_sym ar.ar_debug_info_offset ^ "\n"
+      ^ "  Pointer Size:             " ^ od_dec_sym ar.ar_address_size ^ "\n"
+      ^ "  Segment Size:             " ^ od_dec_sym ar.ar_segment_selector_size ^ "\n"
+      ^ "\n    Address            Length\n"
+      ^ String.concat "" (List.map (fun (_, a, l) -> "    " ^ od_hex_width as' a ^ " " ^ od_hex_width as' l ^ "\n") ar.ar_ranges)
+      ^ "    " ^ od_hex_width as' 0 ^ " " ^ od_hex_width as' 0 ^ "\n") d.d_aranges)
+
+(* the entries of an index table, whose indices are contiguous from 0 *)
+let rec index_table_entries (m: Map.map natural sym_natural) (i: natural) : list (natural * sym_natural) =
+  match Map.lookup i m with
+  | Just a -> (i, a) :: index_table_entries m (i + 1)
+  | Nothing -> []
+  end
+
+(* the address table of each unit that has one, in unit order *)
+let od_debug_addr_section (d: dwarf) : string =
+  if sym_bs_length d.d_sections.sec_addr = 0 then "" else
+  "Contents of the .debug_addr section:\n\n"
+  ^ String.concat "" (List.mapMaybe (fun cu ->
+      match sec_offset_attribute_of_die "DW_AT_addr_base" cu.cu_die with
+      | Nothing -> Nothing
+      | Just _ ->
+          let as' = sym_natural_offset_part cu.cu_header.cuh_address_size in
+          Just ("  For compilation unit at offset " ^ od_hx_sym cu.cu_header.cuh_offset ^ ":\n\tIndex\tAddress\n"
+                ^ String.concat "" (List.map (fun (i, a) -> "\t" ^ show i ^ ":\t" ^ od_hex_width as' a ^ "\n") (index_table_entries cu.cu_tables.ut_addrs 0)))
+      end) d.d_compilation_units)
+
+(* the string offsets contributions, one after another through the section *)
+let rec od_str_offsets_contributions c (sec: sym_byte_sequence) (str: sym_byte_sequence) (pos: natural) : string =
+  match sym_dropbytes pos sec with
+  | Fail _ -> ""
+  | Success bs ->
+      if sym_bs_length bs = 0 then "" else
+      match parse_unit_length c <| pc_bytes = bs; pc_offset = pos |> with
+      | PR_fail _ _ -> ""
+      | PR_success (df, ul) pc1 ->
+          match parse_pair (parse_uint16 c) (parse_uint16 c) pc1 with
+          | PR_fail _ _ -> ""
+          | PR_success (v, _) pc2 ->
+              let l = sym_natural_offset_part ul in
+              let end_off = pc1.pc_offset + l in
+              let count = if l >= 4 then (l - 4) div (offset_size df) else 0 in
+              let entries =
+                match parse_replicate count (parse_uintDwarfN c df) pc2 with
+                | PR_success es _ -> es
+                | PR_fail _ _ -> []
+                end in
+              "    Length: " ^ od_hx_sym ul ^ "\n    Version: " ^ od_hx_sym v ^ "\n       Index   Offset [String]\n"
+              ^ String.concat "" (List.map (fun (i, off) ->
+                  left_space_padded_to 12 (show i) ^ " " ^ od_hex_width (offset_size df) off ^ "  " ^ pp_debug_str_entry_bytes str off ^ "\n") (index_list 0 entries))
+              ^ od_str_offsets_contributions c sec str end_off
+          end
+      end
+  end
+
+let od_debug_str_offsets_section (d: dwarf) : string =
+  if sym_bs_length d.d_sections.sec_str_offsets = 0 then "" else
+  chop_final_newline ("Contents of the .debug_str_offsets section:\n\n"
+  ^ od_str_offsets_contributions (p_context_of_d d) d.d_sections.sec_str_offsets d.d_sections.sec_str 0)
+
+(* .debug_macro as readelf prints it: the unit header, then one line per entry;
+   indexed strings are resolved through the unit that refers to the macro unit,
+   and a start_file's file name is shown only for a DWARF 2-4 line table, as
+   readelf does *)
+let od_macro_unit (d: dwarf) (mu: macro_unit) : string =
+  let c = p_context_of_d d in
+  let mcu = cu_of_macro_unit d mu in
+  let mstr = match mcu with Just cu -> Just (unit_context_of_cu d cu) | Nothing -> Nothing end in
+  let mlnp = match mcu with
+    | Just cu -> (match line_number_offset_of_compilation_unit c cu with
+                  | Just off -> List.find (fun lnp -> sym_eq lnp.lnp_header.lnh_offset off) d.d_line_info
+                  | Nothing -> Nothing end)
+    | Nothing -> Nothing end in
+  let strp off = pp_debug_str_entry_bytes d.d_sections.sec_str off in
+  let strx i = match mstr with Just str -> strx_string str i | Nothing -> "<no compilation unit for this macro unit>" end in
+  let filename fi =
+    match mlnp with
+    | Just lnp ->
+        if lnp.lnp_header.lnh_version >= sym_natural_const 5 then "" else
+        (match lnh_file lnp.lnp_header fi with
+         | Just lnfe ->
+             let dir = match lnh_directory lnp.lnp_header lnfe.lnfe_directory_index with Just dbs -> string_of_sym_byte_sequence dbs ^ "/" | Nothing -> "" end in
+             " filename: " ^ dir ^ string_of_sym_byte_sequence lnfe.lnfe_path
+         | Nothing -> "" end)
+    | Nothing -> ""
+    end in
+  "  Offset:                      " ^ od_hx mu.mu_offset ^ "\n"
+  ^ "  Version:                     " ^ od_dec_sym mu.mu_version ^ "\n"
+  ^ "  Offset size:                 " ^ show (offset_size mu.mu_dwarf_format) ^ "\n"
+  ^ (match mu.mu_debug_line_offset with Just lo -> "  Offset into .debug_line:     " ^ od_hx_sym lo ^ "\n" | Nothing -> "" end)
+  ^ "\n"
+  ^ String.concat "" (List.map (fun e ->
+      match e with
+      | ME_define l s -> " DW_MACRO_define - lineno : " ^ od_dec_sym l ^ " macro : " ^ string_of_sym_byte_sequence s ^ "\n"
+      | ME_undef l s -> " DW_MACRO_undef - lineno : " ^ od_dec_sym l ^ " macro : " ^ string_of_sym_byte_sequence s ^ "\n"
+      | ME_define_strp l off -> " DW_MACRO_define_strp - lineno : " ^ od_dec_sym l ^ " macro : " ^ strp off ^ "\n"
+      | ME_undef_strp l off -> " DW_MACRO_undef_strp - lineno : " ^ od_dec_sym l ^ " macro : " ^ strp off ^ "\n"
+      | ME_define_strx l i -> " DW_MACRO_define_strx lineno : " ^ od_dec_sym l ^ " macro : " ^ strx i ^ "\n"
+      | ME_undef_strx l i -> " DW_MACRO_undef_strx lineno : " ^ od_dec_sym l ^ " macro : " ^ strx i ^ "\n"
+      | ME_define_sup l off -> " DW_MACRO_define_sup - lineno : " ^ od_dec_sym l ^ " macro offset : " ^ od_hx_sym off ^ "\n"
+      | ME_undef_sup l off -> " DW_MACRO_undef_sup - lineno : " ^ od_dec_sym l ^ " macro offset : " ^ od_hx_sym off ^ "\n"
+      | ME_start_file l fi -> " DW_MACRO_start_file - lineno: " ^ od_dec_sym l ^ " filenum: " ^ od_dec_sym fi ^ filename fi ^ "\n"
+      | ME_end_file -> " DW_MACRO_end_file\n"
+      | ME_import off -> " DW_MACRO_import - offset : " ^ od_hx_sym off ^ "\n"
+      | ME_import_sup off -> " DW_MACRO_import_sup - offset : " ^ od_hx_sym off ^ "\n"
+      | ME_other o avs -> " DW_MACRO_" ^ od_hx o ^ String.concat "" (List.map (fun av -> " " ^ pp_attribute_value_plain av) avs) ^ "\n"
+      end) mu.mu_entries)
+  ^ "\n"
+
+let od_debug_macro_section (d: dwarf) : string =
+  if sym_bs_length d.d_sections.sec_macro = 0 then "" else
+  chop_final_newline ("Contents of the .debug_macro section:\n\n"
+  ^ String.concat "" (List.map (od_macro_unit d) d.d_macro))
+
+(* .debug_names as readelf prints it under --debug-dump=gdb_index *)
+let od_names_attribute (a: sym_natural) (av: attribute_value) : string =
+  let name =
+    let n = sym_natural_offset_part a in
+    if n = vDW_IDX_compile_unit then "DW_IDX_compile_unit"
+    else if n = vDW_IDX_type_unit then "DW_IDX_type_unit"
+    else if n = vDW_IDX_die_offset then "DW_IDX_die_offset"
+    else if n = vDW_IDX_parent then "DW_IDX_parent"
+    else if n = vDW_IDX_type_hash then "DW_IDX_type_hash"
+    else "DW_IDX_" ^ od_hx n in
+  let value =
+    match av with
+    | AV_ref r -> "<" ^ od_hx_sym r ^ ">"
+    | AV_ref_addr r -> "<" ^ od_hx_sym r ^ ">"
+    | AV_flag b -> if b then "1" else "0"
+    | AV_constantN _ bs -> show (natural_of_bytes Little bs)
+    | AV_constant_ULEB128 n -> od_dec_sym n
+    | AV_constant_SLEB128 i -> show (sym_integer_expect_const i)
+    | _ -> pp_attribute_value_plain av
+    end in
+  name ^ "=" ^ value
+
+let od_names_entry (e: names_entry) : string =
+  "<" ^ od_dec_sym e.ne_abbreviation.na_code ^ "> " ^ od_tag_name e.ne_abbreviation.na_tag
+  ^ String.concat "" (List.map (fun (a, av) -> " " ^ od_names_attribute a av) e.ne_values)
+
+let od_names_index (d: dwarf) (ni: names_index) : string =
+  let n (x: sym_natural) : natural = sym_natural_offset_part x in
+  let bc = n ni.ni_bucket_count in
+  let used = List.length (List.filter (fun b -> n b <> 0) ni.ni_buckets) in
+  (* clashes: consecutive hashes in the same bucket, and the longest such run *)
+  let (clashes, longest, _, _) =
+    List.foldl (fun ((clashes: natural), (longest: natural), (run: natural), (prev: maybe natural)) h ->
+        let hb = n h mod bc in
+        match prev with
+        | Just pb -> if pb = hb then (clashes + 1, (if run + 1 > longest then run + 1 else longest), run + 1, Just hb) else (clashes, longest, 0, Just hb)
+        | Nothing -> (clashes, longest, 0, Just hb)
+        end) (0, 0, 0, Nothing) (if bc = 0 then [] else ni.ni_hashes) in
+  let aug = byte_list_of_sym_byte_sequence ni.ni_augmentation in
+  "Version " ^ od_dec_sym ni.ni_version ^ "\n"
+  ^ (if aug = [] then "" else
+       "Augmentation string: " ^ String.concat "" (List.map (fun b -> unsafe_hex_string_of_natural 2 (natural_of_byte b) ^ " ") aug)
+       ^ " (\"" ^ string_of_sym_byte_sequence (null_terminated_bs ni.ni_augmentation) ^ "\")\n")
+  ^ "CU table:\n" ^ String.concat "" (List.map (fun (i, off) -> "[" ^ left_space_padded_to 3 (show i) ^ "] " ^ od_hx_sym off ^ "\n") (index_list 0 ni.ni_comp_units)) ^ "\n"
+  ^ "TU table:\n" ^ String.concat "" (List.map (fun (i, off) -> "[" ^ left_space_padded_to 3 (show i) ^ "] " ^ od_hx_sym off ^ "\n") (index_list 0 ni.ni_local_type_units)) ^ "\n"
+  ^ "Foreign TU table:\n" ^ String.concat "" (List.map (fun (i, sg) -> "[" ^ left_space_padded_to 3 (show i) ^ "] " ^ od_hx_sym sg ^ "\n") (index_list 0 ni.ni_foreign_type_units)) ^ "\n"
+  ^ (if bc = 0 then "" else
+       "Used " ^ show used ^ " of " ^ show bc ^ " bucket" ^ (if bc = 1 then "" else "s") ^ ".\n"
+       ^ "Out of " ^ od_dec_sym ni.ni_name_count ^ " items there are " ^ show clashes ^ " bucket clashes (longest of " ^ show longest ^ " entries).\n\n")
+  ^ "Symbol table:\n"
+  ^ String.concat "" (List.map (fun (i, (off, es)) ->
+      let name = pp_debug_str_entry_bytes d.d_sections.sec_str off in
+      let hash = match nth_maybe i ni.ni_hashes with Just h -> "#" ^ od_hex_width 4 h ^ " " | Nothing -> "" end in
+      "[" ^ left_space_padded_to 3 (show (i + 1)) ^ "] " ^ hash ^ name ^ ":"
+      ^ (match es with
+         | [e] -> " " ^ od_names_entry e ^ "\n"
+         | _ -> "\n" ^ String.concat "" (List.map (fun e -> "\t" ^ od_names_entry e ^ "\n") es)
+         end)) (index_list 0 (List.zip ni.ni_string_offsets ni.ni_entries)))
+
+let od_debug_names_section (d: dwarf) : string =
+  if sym_bs_length d.d_sections.sec_names = 0 then "" else
+  chop_final_newline ("Contents of the .debug_names section:\n\n"
+  ^ String.concat "" (List.map (od_names_index d) d.d_names))
+
 let pp_dwarf_like_objdump abbrev_first regname (d:dwarf) : string =
   (* Claude: objdump prints the two sections in the order of the section
      header table; [abbrev_first] says which that is *)
@@ -5548,6 +5861,197 @@ let pp_dwarf d =
 
 
 (* TODO: don't use lists of bytes here! *)
+(** Claude: parsing of the accelerator and macro sections (see the types above) *)
+
+(* a header for the attribute-form parsers where no unit is involved: the tables'
+   own offset size, an 8-byte address size (no address forms occur there) *)
+let cuh_for_tables (df: dwarf_format) : compilation_unit_header =
+  <| cuh_offset = 0; cuh_dwarf_format = df; cuh_unit_length = 0; cuh_version = 5; cuh_debug_abbrev_offset = 0;
+     cuh_address_size = 8; cuh_unit_type = Nothing; cuh_dwo_id = Nothing |>
+
+(* the parse context just after a contribution that started at [pc] and whose
+   length field said it ends at [end_off] *)
+let pc_after (pc: parse_context) (end_off: natural) : maybe parse_context =
+  match sym_dropbytes (end_off - pc.pc_offset) pc.pc_bytes with
+  | Success bs -> Just <| pc_bytes = bs; pc_offset = end_off |>
+  | Fail _ -> Nothing
+  end
+
+(* .debug_aranges: a set's tuples, ended by a zero tuple or the set's end *)
+let parse_aranges_tuple c (as': sym_natural) (ss: sym_natural) : parser (maybe (sym_natural * sym_natural * sym_natural)) =
+  fun (pc: parse_context) ->
+    if sym_bs_length pc.pc_bytes = 0 then PR_success Nothing pc else
+    pr_bind ((if ss = 0 then pr_return 0 else parse_uint_address_size c ss) pc) (fun seg pc1 ->
+    pr_bind (parse_uint_address_size c as' pc1) (fun a pc2 ->
+    pr_bind (parse_uint_address_size c as' pc2) (fun l pc3 ->
+      if seg = 0 && a = 0 && l = 0 then PR_success Nothing pc3 else PR_success (Just (seg, a, l)) pc3)))
+
+let parse_aranges_set c : parser (maybe aranges_set) =
+  fun (pc: parse_context) ->
+    if sym_bs_length pc.pc_bytes = 0 then PR_success Nothing pc else
+    pr_bind (parse_unit_length c pc) (fun (df, ul) pc1 ->
+    pr_bind (parse_uint16 c pc1) (fun v pc2 ->
+    pr_bind (parse_uintDwarfN c df pc2) (fun dio pc3 ->
+    pr_bind (parse_uint8 pc3) (fun as' pc4 ->
+    pr_bind (parse_uint8 pc4) (fun ss pc5 ->
+      (* the tuples start at a multiple of the tuple size from the set's start, so
+         the header is padded (section 7.21) *)
+      let tuple_size = sym_natural_offset_part ss + 2 * sym_natural_offset_part as' in
+      let header_size = pc5.pc_offset - pc.pc_offset in
+      let pad = if tuple_size = 0 then 0 else (tuple_size - header_size mod tuple_size) mod tuple_size in
+      let end_off = pc1.pc_offset + sym_natural_offset_part ul in
+      pr_bind (parse_n_bytes (sym_natural_const pad) pc5) (fun _ pc6 ->
+        if end_off < pc6.pc_offset then PR_fail "aranges set length too short for its header" pc else
+        pr_bind (parse_restrict_length (sym_natural_const (end_off - pc6.pc_offset)) (parse_list (parse_aranges_tuple c as' ss)) pc6) (fun tuples _ ->
+          match pc_after pc end_off with
+          | Nothing -> PR_fail "aranges set runs past the section" pc
+          | Just pc' ->
+              PR_success (Just <| ar_offset = pc.pc_offset; ar_dwarf_format = df; ar_unit_length = ul; ar_version = v;
+                                  ar_debug_info_offset = dio; ar_address_size = as'; ar_segment_selector_size = ss; ar_ranges = tuples |>) pc'
+          end)))))))
+
+(* .debug_names: abbreviations (ULEB128 code, tag, (attribute, form) pairs ended by
+   (0, 0); the table ends with a 0 code), and the entries of the entry pool *)
+let parse_names_attribute_spec : parser (maybe (sym_natural * sym_natural)) =
+  fun (pc: parse_context) ->
+    pr_bind (parse_pair parse_ULEB128 parse_ULEB128 pc) (fun (a, f) pc' ->
+      if a = 0 && f = 0 then PR_success Nothing pc' else PR_success (Just (a, f)) pc')
+
+let parse_names_abbreviation : parser (maybe names_abbreviation) =
+  fun (pc: parse_context) ->
+    if sym_bs_length pc.pc_bytes = 0 then PR_success Nothing pc else
+    pr_bind (parse_ULEB128 pc) (fun code pc1 ->
+      if code = 0 then PR_success Nothing pc1 else
+      pr_bind (parse_ULEB128 pc1) (fun tag pc2 ->
+      pr_bind (parse_list parse_names_attribute_spec pc2) (fun specs pc3 ->
+        PR_success (Just <| na_code = code; na_tag = tag; na_attributes = specs |>) pc3)))
+
+let parse_names_entry c (df: dwarf_format) (abbrevs: list names_abbreviation) : parser (maybe names_entry) =
+  fun (pc: parse_context) ->
+    pr_bind (parse_ULEB128 pc) (fun code pc1 ->
+      if code = 0 then PR_success Nothing pc1 else
+      match List.find (fun na -> sym_eq na.na_code code) abbrevs with
+      | Nothing -> PR_fail ("abbreviation code " ^ show code ^ " is not in the name index's abbreviation table") pc
+      | Just na ->
+          pr_bind (parse_parser_list (List.map (fun (_, form) -> parser_of_attribute_form c (cuh_for_tables df) form) na.na_attributes) pc1) (fun avs pc2 ->
+            PR_success (Just <| ne_abbreviation = na; ne_values = List.zip (List.map (fun (a, _) -> a) na.na_attributes) avs |>) pc2)
+      end)
+
+let parse_names_index c : parser (maybe names_index) =
+  fun (pc: parse_context) ->
+    if sym_bs_length pc.pc_bytes = 0 then PR_success Nothing pc else
+    let n (x: sym_natural) : natural = sym_natural_offset_part x in
+    pr_bind (parse_unit_length c pc) (fun (df, ul) pc1 ->
+    pr_bind (parse_uint16 c pc1) (fun v pc2 ->
+    pr_bind (parse_uint16 c pc2) (fun pad pc3 ->
+    pr_bind (parse_uint32 c pc3) (fun cuc pc4 ->
+    pr_bind (parse_uint32 c pc4) (fun ltuc pc5 ->
+    pr_bind (parse_uint32 c pc5) (fun ftuc pc6 ->
+    pr_bind (parse_uint32 c pc6) (fun bc pc7 ->
+    pr_bind (parse_uint32 c pc7) (fun nc pc8 ->
+    pr_bind (parse_uint32 c pc8) (fun ats pc9 ->
+    pr_bind (parse_uint32 c pc9) (fun augl pc10 ->
+    pr_bind (parse_n_bytes augl pc10) (fun aug pc11 ->
+    pr_bind (parse_replicate (n cuc) (parse_uintDwarfN c df) pc11) (fun cus pc12 ->
+    pr_bind (parse_replicate (n ltuc) (parse_uintDwarfN c df) pc12) (fun ltus pc13 ->
+    pr_bind (parse_replicate (n ftuc) (parse_uint64 c) pc13) (fun ftus pc14 ->
+    pr_bind (parse_replicate (n bc) (parse_uint32 c) pc14) (fun buckets pc15 ->
+    pr_bind (parse_replicate (if n bc = 0 then 0 else n nc) (parse_uint32 c) pc15) (fun hashes pc16 ->
+    pr_bind (parse_replicate (n nc) (parse_uintDwarfN c df) pc16) (fun stroffs pc17 ->
+    pr_bind (parse_replicate (n nc) (parse_uintDwarfN c df) pc17) (fun entoffs pc18 ->
+    pr_bind (parse_restrict_length ats (parse_list parse_names_abbreviation) pc18) (fun abbrevs _ ->
+      let pool_start = pc18.pc_offset + n ats in
+      let end_off = pc1.pc_offset + n ul in
+      if end_off < pool_start then PR_fail "name index length too short for its tables" pc else
+      match pc_after pc pool_start with
+      | Nothing -> PR_fail "name index abbreviations table runs past the section" pc
+      | Just pcp ->
+          match sym_takebytes (end_off - pool_start) pcp.pc_bytes with
+          | Fail _ -> PR_fail "name index runs past the section" pc
+          | Success pool ->
+              let series (off: sym_natural) : (list names_entry * maybe string) =
+                match sym_dropbytes (n off) pool with
+                | Fail _ -> ([], Just ("entry offset " ^ pphex_sym off ^ " is beyond the entry pool"))
+                | Success bs ->
+                    match parse_list (parse_names_entry c df abbrevs) <| pc_bytes = bs; pc_offset = pool_start + n off |> with
+                    | PR_success es _ -> (es, Nothing)
+                    | PR_fail s pc' -> ([], Just (pp_parse_fail s pc'))
+                    end
+                end in
+              let parsed = List.map series entoffs in
+              match pc_after pc end_off with
+              | Nothing -> PR_fail "name index runs past the section" pc
+              | Just pc' ->
+                  PR_success (Just <|
+                    ni_offset = pc.pc_offset; ni_dwarf_format = df; ni_unit_length = ul; ni_version = v; ni_padding = pad;
+                    ni_comp_unit_count = cuc; ni_local_type_unit_count = ltuc; ni_foreign_type_unit_count = ftuc;
+                    ni_bucket_count = bc; ni_name_count = nc; ni_abbrev_table_size = ats; ni_augmentation = aug;
+                    ni_comp_units = cus; ni_local_type_units = ltus; ni_foreign_type_units = ftus;
+                    ni_buckets = buckets; ni_hashes = hashes; ni_string_offsets = stroffs; ni_entry_offsets = entoffs;
+                    ni_abbreviations = abbrevs;
+                    ni_entries = List.map (fun (es, _) -> es) parsed;
+                    ni_entry_errors = List.mapMaybe (fun (_, e) -> e) parsed |>) pc'
+              end
+          end
+      end)))))))))))))))))))
+
+(* .debug_macro: a unit's header (version, flags, optional line offset and operands
+   table) and its entries up to the 0 opcode *)
+let parse_macro_opcode_operands_table : parser (list (natural * list natural)) =
+  fun (pc: parse_context) ->
+    pr_bind (parse_uint8 pc) (fun count pc1 ->
+      parse_replicate (sym_natural_offset_part count)
+        (fun (pc': parse_context) ->
+          pr_bind (parse_uint8 pc') (fun opc pc2 ->
+          pr_bind (parse_ULEB128 pc2) (fun nops pc3 ->
+          pr_bind (parse_replicate (sym_natural_offset_part nops) parse_uint8 pc3) (fun forms pc4 ->
+            PR_success (sym_natural_offset_part opc, List.map sym_natural_offset_part forms) pc4))))
+        pc1)
+
+let parse_macro_entry c (df: dwarf_format) (table: list (natural * list natural)) : parser (maybe macro_entry) =
+  fun (pc: parse_context) ->
+    pr_bind (parse_uint8 pc) (fun opc pc1 ->
+      let o = sym_natural_offset_part opc in
+      (* the line number, then a string, an offset or an index (separate helpers:
+         a local let is not generalised) *)
+      let line_and_string k = pr_bind (parse_ULEB128 pc1) (fun l pc2 -> pr_bind (parse_string pc2) (fun s pc3 -> PR_success (Just (k l s)) pc3)) in
+      let line_and_offset k = pr_bind (parse_ULEB128 pc1) (fun l pc2 -> pr_bind (parse_uintDwarfN c df pc2) (fun x pc3 -> PR_success (Just (k l x)) pc3)) in
+      let line_and_uleb k = pr_bind (parse_ULEB128 pc1) (fun l pc2 -> pr_bind (parse_ULEB128 pc2) (fun x pc3 -> PR_success (Just (k l x)) pc3)) in
+      let offset_only k = pr_bind (parse_uintDwarfN c df pc1) (fun x pc2 -> PR_success (Just (k x)) pc2) in
+      if o = 0 then PR_success Nothing pc1
+      else if o = 1 then line_and_string (fun l s -> ME_define l s)
+      else if o = 2 then line_and_string (fun l s -> ME_undef l s)
+      else if o = 3 then line_and_uleb (fun l fi -> ME_start_file l fi)
+      else if o = 4 then PR_success (Just ME_end_file) pc1
+      else if o = 5 then line_and_offset (fun l x -> ME_define_strp l x)
+      else if o = 6 then line_and_offset (fun l x -> ME_undef_strp l x)
+      else if o = 7 then offset_only (fun x -> ME_import x)
+      else if o = 8 then line_and_offset (fun l x -> ME_define_sup l x)
+      else if o = 9 then line_and_offset (fun l x -> ME_undef_sup l x)
+      else if o = 10 then offset_only (fun x -> ME_import_sup x)
+      else if o = 11 then line_and_uleb (fun l i -> ME_define_strx l i)
+      else if o = 12 then line_and_uleb (fun l i -> ME_undef_strx l i)
+      else
+        match List.lookup o table with
+        | Just forms ->
+            pr_bind (parse_parser_list (List.map (fun fm -> parser_of_attribute_form c (cuh_for_tables df) (sym_natural_const fm)) forms) pc1) (fun avs pc2 ->
+              PR_success (Just (ME_other o avs)) pc2)
+        | Nothing -> PR_fail ("unknown DW_MACRO opcode " ^ show o) pc
+        end)
+
+let parse_macro_unit c : parser (maybe macro_unit) =
+  fun (pc: parse_context) ->
+    if sym_bs_length pc.pc_bytes = 0 then PR_success Nothing pc else
+    pr_bind (parse_uint16 c pc) (fun v pc1 ->
+    pr_bind (parse_uint8 pc1) (fun flags pc2 ->
+      let f = sym_natural_offset_part flags in
+      let df = if f mod 2 = 1 then Dwarf64 else Dwarf32 in
+      pr_bind ((if (f div 2) mod 2 = 1 then pr_map2 (fun x -> Just x) (parse_uintDwarfN c df) else pr_return Nothing) pc2) (fun mlo pc3 ->
+      pr_bind ((if (f div 4) mod 2 = 1 then parse_macro_opcode_operands_table else pr_return []) pc3) (fun table pc4 ->
+      pr_bind (parse_list (parse_macro_entry c df table) pc4) (fun entries pc5 ->
+        PR_success (Just <| mu_offset = pc.pc_offset; mu_version = v; mu_flags = flags; mu_dwarf_format = df;
+                            mu_debug_line_offset = mlo; mu_opcode_operands = table; mu_entries = entries |>) pc5)))))
+
 let parse_dwarf c (secs: dwarf_sections) : dwarf =
 
   let debug_info_section_body = secs.sec_info in
@@ -5598,6 +6102,9 @@ let parse_dwarf c (secs: dwarf_sections) : dwarf =
         d_ranges = ranges;
         d_frame_info = fi;
         d_line_info = [];
+        d_aranges = [];
+        d_names = [];
+        d_macro = [];
         d_diagnostics = [];
         |> in
       let li = parse_line_number_infos c d0 compilation_units in
@@ -5605,6 +6112,11 @@ let parse_dwarf c (secs: dwarf_sections) : dwarf =
        diag "parse_compilation_units: " cu_diag ++ diag "parse_location_list: " loc_diag
        ++ diag "parse_range_list: " ranges_diag ++ diag "parse_frame_info: " frame_diag)
     end in
+
+  (* Claude: the accelerator and macro sections, each parsed as far as it goes *)
+  let (aranges, aranges_diag) = parse_list_tolerant (parse_aranges_set c) <| pc_bytes = secs.sec_aranges; pc_offset = 0 |> in
+  let (names, names_diag) = parse_list_tolerant (parse_names_index c) <| pc_bytes = secs.sec_names; pc_offset = 0 |> in
+  let (macro, macro_diag) = parse_list_tolerant (parse_macro_unit c) <| pc_bytes = secs.sec_macro; pc_offset = 0 |> in
 
    <|
    d_endianness = c.endianness;
@@ -5616,7 +6128,10 @@ let parse_dwarf c (secs: dwarf_sections) : dwarf =
    d_ranges = ranges;
    d_frame_info = fi;
    d_line_info = li;
-   d_diagnostics = diags;
+   d_aranges = aranges;
+   d_names = names;
+   d_macro = macro;
+   d_diagnostics = diags ++ diag ".debug_aranges: " aranges_diag ++ diag ".debug_names: " names_diag ++ diag ".debug_macro: " macro_diag;
   |>
 
 val extract_section_body : elf_file -> relocation_interpreter reloc_target_data -> string -> bool -> p_context * sym_natural * sym_byte_sequence
@@ -5712,6 +6227,9 @@ let extract_dwarf f ri =
   let (c, _, debug_line_str_section_body) = extract_section_body f ri ".debug_line_str" false in
   let (c, _, debug_loclists_section_body) = extract_section_body f ri ".debug_loclists" false in
   let (c, _, debug_rnglists_section_body) = extract_section_body f ri ".debug_rnglists" false in
+  let (c, _, debug_aranges_section_body)  = extract_section_body f ri ".debug_aranges"  false in
+  let (c, _, debug_names_section_body)    = extract_section_body f ri ".debug_names"    false in
+  let (c, _, debug_macro_section_body)    = extract_section_body f ri ".debug_macro"    false in
 
   let secs =
     <|
@@ -5725,6 +6243,9 @@ let extract_dwarf f ri =
     sec_ranges = debug_ranges_section_body;
     sec_loclists = debug_loclists_section_body;
     sec_rnglists = debug_rnglists_section_body;
+    sec_aranges = debug_aranges_section_body;
+    sec_names = debug_names_section_body;
+    sec_macro = debug_macro_section_body;
     sec_frame = debug_frame_section_body;
     sec_line = debug_line_section_body;
     |> in
@@ -7075,6 +7596,234 @@ end
 let range_of_die_d (d:dwarf) cu (die: die) : maybe (list (sym_natural * sym_natural)) =
   let c = p_context_of_d d in
   range_of_die c (unit_context_of_cu d cu) die
+
+(** Claude: content checks of the accelerator and macro sections against the DIE
+    tree and the line tables.  Each returns a list of complaints, empty when
+    everything checks; they are what `linksem readelf --debug-dump=check` prints. *)
+
+let cu_at_offset (d: dwarf) (off: sym_natural) : maybe compilation_unit =
+  List.find (fun cu -> sym_eq cu.cu_header.cuh_offset off) d.d_compilation_units
+
+(* whether [a, a+l) lies within [lo, hi): the values may be symbolic (section plus
+   offset in a relocatable file), so the sections are compared first *)
+let sym_base (x: sym_natural) : sym_natural = sym_natural_sub x (sym_natural_const (sym_natural_offset_part x))
+let sym_same_section (x: sym_natural) (y: sym_natural) : bool = sym_natural_compare_lexicographic (sym_base x) (sym_base y) = EQ
+let sym_range_within (lo: sym_natural) (hi: sym_natural) (a: sym_natural) (l: sym_natural) : bool =
+  sym_same_section lo a && sym_same_section hi a
+  && sym_natural_offset_part lo <= sym_natural_offset_part a
+  && sym_natural_offset_part a + sym_natural_offset_part l <= sym_natural_offset_part hi
+
+let check_aranges (d: dwarf) : list string =
+  let c = p_context_of_d d in
+  List.concat (List.map (fun ar ->
+    let pre = ".debug_aranges set at " ^ pphex ar.ar_offset ^ ": " in
+    let version_msgs = if ar.ar_version <> 2 then [pre ^ "version " ^ show ar.ar_version ^ " (2 expected)"] else [] in
+    match cu_at_offset d ar.ar_debug_info_offset with
+    | Nothing -> version_msgs ++ [pre ^ "debug_info_offset " ^ pphex_sym ar.ar_debug_info_offset ^ " is not the offset of a compilation unit"]
+    | Just cu ->
+        let str = unit_context_of_cu d cu in
+        (if ar.ar_address_size <> cu.cu_header.cuh_address_size then [pre ^ "address size " ^ show ar.ar_address_size ^ " differs from the unit's " ^ show cu.cu_header.cuh_address_size] else [])
+        ++ version_msgs
+        ++ (match range_of_die c str cu.cu_die with
+            | Nothing -> if ar.ar_ranges = [] then [] else [pre ^ "the unit has no pc range (DW_AT_low_pc/high_pc/ranges) to check its " ^ show (List.length ar.ar_ranges) ^ " address ranges against"]
+            | Just nns ->
+                List.mapMaybe (fun (_, a, l) ->
+                  if List.any (fun (lo, hi) -> sym_range_within lo hi a l) nns then Nothing
+                  else Just (pre ^ "address range " ^ pphex_sym a ^ " length " ^ pphex_sym l ^ " lies outside the unit's ranges " ^ String.concat " " (List.map (fun (lo, hi) -> "[" ^ pphex_sym lo ^ "," ^ pphex_sym hi ^ ")") nns))) ar.ar_ranges
+            end)
+    end) d.d_aranges)
+
+(* the DJB hash of a name (section 7.33), on the name folded to lower case (6.1.1.4.5;
+   ASCII folding only here) *)
+let rec djb_hash' (h: natural) (bs: list byte) : natural =
+  match bs with
+  | [] -> h
+  | b :: bs' ->
+      let n = natural_of_byte b in
+      let n' = if n >= 65 && n <= 90 then n + 32 else n in
+      djb_hash' ((h * 33 + n') mod 4294967296) bs'
+  end
+let djb_hash (s: sym_byte_sequence) : natural = djb_hash' 5381 (byte_list_of_sym_byte_sequence s)
+
+
+let names_entry_value (e: names_entry) (idx: natural) : maybe attribute_value =
+  match List.find (fun (a, _) -> sym_natural_offset_part a = idx) e.ne_values with
+  | Just (_, av) -> Just av
+  | Nothing -> Nothing
+  end
+
+
+let check_names (d: dwarf) : list string =
+  let c = p_context_of_d d in
+  let n (x: sym_natural) : natural = sym_natural_offset_part x in
+  List.concat (List.map (fun ni ->
+    let pre = ".debug_names index at " ^ pphex ni.ni_offset ^ ": " in
+    let header_msgs =
+      (if ni.ni_version <> 5 then [pre ^ "version " ^ show ni.ni_version ^ " (5 expected)"] else [])
+      ++ (if ni.ni_padding <> 0 then [pre ^ "padding " ^ show ni.ni_padding ^ " (0 expected)"] else [])
+      ++ (if ni.ni_comp_unit_count = 0 then [pre ^ "no compilation units (at least one expected)"] else [])
+      ++ List.map (fun e -> pre ^ e) ni.ni_entry_errors in
+    let cu_msgs = List.mapMaybe (fun (i, off) ->
+        match cu_at_offset d off with
+        | Just _ -> Nothing
+        | Nothing -> Just (pre ^ "CU " ^ show i ^ " at " ^ pphex_sym off ^ " is not the offset of a compilation unit")
+        end) (index_list 0 ni.ni_comp_units) in
+    let tu_msgs = List.mapMaybe (fun (i, off) ->
+        if List.any (fun tu -> sym_eq tu.tu_header.tuh_cuh.cuh_offset off) d.d_type_units then Nothing
+        else Just (pre ^ "local TU " ^ show i ^ " at " ^ pphex_sym off ^ " is not the offset of a type unit")) (index_list 0 ni.ni_local_type_units) in
+    let bc = n ni.ni_bucket_count in
+    let names = List.map (fun off -> pp_debug_str_entry_bytes d.d_sections.sec_str off) ni.ni_string_offsets in
+    let name_bytes = List.map (fun off -> section_string_bytes d.d_sections.sec_str off) ni.ni_string_offsets in
+    (* the hash table: the recorded hash of each name, and its bucket *)
+    let hash_msgs =
+      if bc = 0 then [] else
+      List.concat (List.map (fun (i, (s, h)) ->
+        let computed = djb_hash s in
+        (if n h <> computed then [pre ^ "name " ^ show (i + 1) ^ " \"" ^ string_of_sym_byte_sequence s ^ "\": recorded hash " ^ pphex_sym h ^ ", computed " ^ pphex computed] else [])
+        ++ (match nth_maybe (computed mod bc) ni.ni_buckets with
+            | Nothing -> [pre ^ "name " ^ show (i + 1) ^ ": no bucket " ^ show (computed mod bc)]
+            | Just b ->
+                if n b = 0 then [pre ^ "name " ^ show (i + 1) ^ " \"" ^ string_of_sym_byte_sequence s ^ "\": its bucket " ^ show (computed mod bc) ^ " is empty"]
+                else
+                  (* the bucket's first name has the same bucket, and this name follows it with no intervening bucket change *)
+                  match nth_maybe (n b - 1) ni.ni_hashes with
+                  | Nothing -> [pre ^ "bucket " ^ show (computed mod bc) ^ " points to name " ^ show (n b) ^ ", beyond the " ^ show (List.length ni.ni_hashes) ^ " hashes"]
+                  | Just h0 -> if n h0 mod bc <> computed mod bc then [pre ^ "bucket " ^ show (computed mod bc) ^ " points to name " ^ show (n b) ^ " whose hash " ^ pphex_sym h0 ^ " is in bucket " ^ show (n h0 mod bc)] else []
+                  end
+            end)) (index_list 0 (List.zip name_bytes ni.ni_hashes))) in
+    (* the entries: each names a DIE of the tag and name recorded *)
+    let entry_msgs =
+      List.concat (List.map (fun (i, (s, es)) ->
+        let name = string_of_sym_byte_sequence s in
+        let pre' = pre ^ "name " ^ show (i + 1) ^ " \"" ^ name ^ "\": " in
+        List.concat (List.map (fun e ->
+          let cu_index =
+            match names_entry_value e vDW_IDX_compile_unit with
+            | Just av -> (match maybe_natural_of_constant_attribute_value () c av with Just k -> Just (n k) | Nothing -> Nothing end)
+            | Nothing -> if List.length ni.ni_comp_units = 1 then Just 0 else Nothing
+            end in
+          let is_tu = names_entry_value e vDW_IDX_type_unit <> Nothing in
+          if is_tu then [] else   (* type unit entries: their DIEs are in the type units; not checked here *)
+          match cu_index with
+          | Nothing -> [pre' ^ "entry without a DW_IDX_compile_unit in an index of several units"]
+          | Just k ->
+              match nth_maybe k ni.ni_comp_units with
+              | Nothing -> [pre' ^ "entry names CU " ^ show k ^ ", beyond the CU list"]
+              | Just cuoff ->
+                  match cu_at_offset d cuoff with
+                  | Nothing -> []   (* reported by cu_msgs *)
+                  | Just cu ->
+                      match names_entry_value e vDW_IDX_die_offset with
+                      | Nothing -> [pre' ^ "entry without a DW_IDX_die_offset"]
+                      | Just av ->
+                          let dieoff =
+                            match av with
+                            | AV_ref r -> Just r
+                            | AV_ref_addr r -> Just (r - cu.cu_header.cuh_offset)
+                            | _ -> (match maybe_natural_of_constant_attribute_value () c av with Just r -> Just r | Nothing -> Nothing end)
+                            end in
+                          match dieoff with
+                          | Nothing -> [pre' ^ "DW_IDX_die_offset of an unexpected form"]
+                          | Just r ->
+                              match find_die_by_offset_in_cu (r + cu.cu_header.cuh_offset) cu with
+                              | Nothing -> [pre' ^ "DW_IDX_die_offset " ^ pphex_sym r ^ " is not a DIE of CU " ^ show k]
+                              | Just (_, _, die) ->
+                                  let str = unit_context_of_cu d cu in
+                                  (if not (sym_eq die.die_abbreviation_declaration.ad_tag e.ne_abbreviation.na_tag)
+                                   then [pre' ^ "the DIE at " ^ pphex_sym r ^ " is a " ^ pp_tag_encoding die.die_abbreviation_declaration.ad_tag ^ ", the index says " ^ pp_tag_encoding e.ne_abbreviation.na_tag] else [])
+                                  ++ (let own = List.mapMaybe (fun an -> find_string_attribute_value_of_die an str die) ["DW_AT_name"; "DW_AT_linkage_name"; "DW_AT_MIPS_linkage_name"] in
+                                      (* an inlined or concrete instance names its abstract origin's (or specification's) name *)
+                                      let via_origin = List.mapMaybe (fun an ->
+                                          match find_attribute_value_using_abstract_origin c d cu str an die with
+                                          | Just (_, av) -> (match av with AV_string bs -> Just (string_of_sym_byte_sequence bs) | AV_strp _ -> Just (string_of_string_attribute_value str av) | AV_strx _ -> Just (string_of_string_attribute_value str av) | AV_line_strp _ -> Just (string_of_string_attribute_value str av) | _ -> Nothing end)
+                                          | Nothing -> Nothing
+                                          end) ["DW_AT_name"; "DW_AT_linkage_name"] in
+                                      let die_names = own ++ via_origin in
+                                      if List.elem name die_names then []
+                                      else [pre' ^ "the DIE at " ^ pphex_sym r ^ " is named " ^ (match die_names with [] -> "nothing" | _ -> String.concat " / " (List.map (fun s -> "\"" ^ s ^ "\"") die_names) end)])
+                              end
+                          end
+                      end
+                  end
+              end
+          end) es)) (index_list 0 (List.zip name_bytes ni.ni_entries))) in
+    let count_msgs =
+      (if List.length ni.ni_entries <> List.length names then [pre ^ "entry count differs from name count"] else []) in
+    header_msgs ++ cu_msgs ++ tu_msgs ++ hash_msgs ++ count_msgs ++ entry_msgs) d.d_names)
+
+
+(* a macro definition string is a name, then either a parameter list starting
+   with '(' or a space, then the definition (6.3.2.2); an undefinition is a name *)
+let macro_define_string_ok (s: string) : bool =
+  match String.toCharList s with
+  | [] -> false
+  | c0 :: _ -> c0 <> #' ' && c0 <> #'(' && (String.stringLength s > 0)
+  end
+let macro_undef_string_ok (s: string) : bool =
+  match String.toCharList s with
+  | [] -> false
+  | cs -> not (List.elem #' ' cs) && not (List.elem #'(' cs)
+  end
+
+let check_macro (d: dwarf) : list string =
+  let c = p_context_of_d d in
+  let str_len = sym_bs_length d.d_sections.sec_str in
+  let unit_offsets = List.map (fun mu -> mu.mu_offset) d.d_macro in
+  List.concat (List.map (fun mu ->
+    let pre = ".debug_macro unit at " ^ pphex mu.mu_offset ^ ": " in
+    let mcu = cu_of_macro_unit d mu in
+    let mstr = match mcu with Just cu -> Just (unit_context_of_cu d cu) | Nothing -> Nothing end in
+    let mlnp = match mcu with
+      | Just cu -> (match line_number_offset_of_compilation_unit c cu with
+                    | Just off -> List.find (fun lnp -> sym_eq lnp.lnp_header.lnh_offset off) d.d_line_info
+                    | Nothing -> Nothing end)
+      | Nothing -> Nothing end in
+    let header_msgs =
+      (if mu.mu_version <> 5 && mu.mu_version <> 4 then [pre ^ "version " ^ show mu.mu_version ^ " (5 expected)"] else [])
+      ++ (match mu.mu_debug_line_offset with
+          | Just lo -> if List.any (fun lnp -> sym_natural_offset_part lnp.lnp_header.lnh_offset = sym_natural_offset_part lo) d.d_line_info then [] else [pre ^ "debug_line_offset " ^ pphex_sym lo ^ " is not the offset of a line table"]
+          | Nothing -> []
+          end) in
+    let strp (off: sym_natural) = if sym_natural_offset_part off >= str_len then Nothing else Just (pp_debug_str_entry_bytes d.d_sections.sec_str off) in
+    let strx (i: sym_natural) = match mstr with Just str -> (match strx_offset str i with Just off -> strp off | Nothing -> Nothing end) | Nothing -> Nothing end in
+    let define_msg what (ms: maybe string) ok =
+      match ms with
+      | Nothing -> [pre ^ what ^ ": its string cannot be found"]
+      | Just s -> if ok s then [] else [pre ^ what ^ ": malformed macro string \"" ^ s ^ "\""]
+      end in
+    let (depth, entry_msgs) =
+      List.foldl (fun ((depth: natural), (msgs: list string)) e ->
+        match e with
+        | ME_define l s -> (depth, msgs ++ define_msg "DW_MACRO_define" (Just (string_of_sym_byte_sequence s)) macro_define_string_ok)
+        | ME_undef l s -> (depth, msgs ++ define_msg "DW_MACRO_undef" (Just (string_of_sym_byte_sequence s)) macro_undef_string_ok)
+        | ME_define_strp l off -> (depth, msgs ++ define_msg ("DW_MACRO_define_strp " ^ pphex_sym off) (strp off) macro_define_string_ok)
+        | ME_undef_strp l off -> (depth, msgs ++ define_msg ("DW_MACRO_undef_strp " ^ pphex_sym off) (strp off) macro_undef_string_ok)
+        | ME_define_strx l i -> (depth, msgs ++ define_msg ("DW_MACRO_define_strx " ^ show i) (strx i) macro_define_string_ok)
+        | ME_undef_strx l i -> (depth, msgs ++ define_msg ("DW_MACRO_undef_strx " ^ show i) (strx i) macro_undef_string_ok)
+        | ME_define_sup _ _ -> (depth, msgs)   (* supplementary files are not read *)
+        | ME_undef_sup _ _ -> (depth, msgs)
+        | ME_start_file l fi ->
+            (depth + 1,
+             msgs ++ (match mlnp with
+                      | Nothing -> if depth = 0 && mcu = Nothing then [pre ^ "no compilation unit refers to this unit, so its file indices cannot be checked"] else []
+                      | Just lnp -> (match lnh_file lnp.lnp_header fi with Just _ -> [] | Nothing -> [pre ^ "DW_MACRO_start_file file index " ^ show fi ^ " is not in the unit's line table"] end)
+                      end))
+        | ME_end_file -> if depth = 0 then (0, msgs ++ [pre ^ "DW_MACRO_end_file without a DW_MACRO_start_file"]) else (depth - 1, msgs)
+        | ME_import off -> (depth, msgs ++ (if List.elem (sym_natural_offset_part off) unit_offsets then [] else [pre ^ "DW_MACRO_import " ^ pphex_sym off ^ " is not the offset of a macro unit"]))
+        | ME_import_sup _ -> (depth, msgs)
+        | ME_other _ _ -> (depth, msgs)
+        end) (0, []) mu.mu_entries in
+    header_msgs ++ entry_msgs ++ (if depth <> 0 then [pre ^ show depth ^ " DW_MACRO_start_file without DW_MACRO_end_file"] else [])) d.d_macro)
+
+let check_accelerator_and_macro_sections (d: dwarf) : list string =
+  check_aranges d ++ check_names d ++ check_macro d
+
+let pp_checks (d: dwarf) : string =
+  let msgs = check_accelerator_and_macro_sections d in
+  let counts =
+    ".debug_aranges: " ^ show (List.length d.d_aranges) ^ " set(s); .debug_names: " ^ show (List.length d.d_names) ^ " index(es); .debug_macro: "
+    ^ show (List.length d.d_macro) ^ " unit(s)\n" in
+  counts ^ (match msgs with [] -> "no problems found\n" | _ -> String.concat "" (List.map (fun m -> m ^ "\n") msgs) end)
 
 (* Claude: DW_AT_entry_pc, or failing that DW_AT_low_pc; in DWARF 5 either may be
    an address index (DW_FORM_addrx), or DW_AT_entry_pc a constant offset from
@@ -8722,6 +9471,22 @@ let {ocaml} harness_string_of_elf64_debug_info_like_readelf f1 ri regname =
   match extract_dwarf (ELF_File_64 f1) ri with   (* Claude: the dumps need no analysis *)
   | Nothing -> "<no dwarf information extracted>"
   | Just d -> od_debug_info_section regname d
+  end
+
+(* Claude: readelf --debug-dump=aranges, addr, str-offsets, macro and gdb_index
+   (.debug_names), and the content checks of the accelerator and macro sections *)
+val harness_string_of_elf64_debug_section_like_readelf : string -> elf64_file -> relocation_interpreter reloc_target_data -> string
+let {ocaml} harness_string_of_elf64_debug_section_like_readelf which f1 ri =
+  match extract_dwarf (ELF_File_64 f1) ri with
+  | Nothing -> "<no dwarf information extracted>"
+  | Just d ->
+      if which = "aranges" then od_debug_aranges_section d
+      else if which = "addr" then od_debug_addr_section d
+      else if which = "str-offsets" then od_debug_str_offsets_section d
+      else if which = "macro" then od_debug_macro_section d
+      else if which = "gdb_index" then od_debug_names_section d
+      else if which = "check" then pp_checks d
+      else "<unknown dump " ^ which ^ ">"
   end
 
 val harness_string_of_elf32_like_objdump : elf32_file -> relocation_interpreter reloc_target_data -> (natural -> string) -> string

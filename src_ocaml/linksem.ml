@@ -16,6 +16,7 @@ let ( >>= ) = Error.bind
 (*** the dumps ******************************************************************)
 
 type debug_dump_style = Abbrev | Info_readelf | Raw | Resolved | Objdump | Analysis
+  | Section of string   (* Claude: readelf's aranges, addr, str-offsets, macro and gdb_index (.debug_names) dumps, and "check" (content checks) *)
 
 type dump =
   | File_header
@@ -249,7 +250,8 @@ let dump_elf64 ~with_header file bs0 dump =
              let little = (Elf_header.get_elf64_header_endianness f1.elf64_file_header = Endianness.Little) in
              "\n" ^ file ^ ":     file format " ^ Dwarf.objdump_target_name_64 mach little ^ "\n\n"
              ^ Dwarf.harness_string_of_elf64_like_objdump f1 interp regname
-         | Analysis -> Dwarf.harness_string_of_elf64_debug_info_section f1 interp)
+         | Analysis -> Dwarf.harness_string_of_elf64_debug_info_section f1 interp
+         | Section which -> Dwarf.harness_string_of_elf64_debug_section_like_readelf which f1 interp)
 
 (* the -x and -p dumps: the library resolves the section names or numbers,
    orders the dumps as readelf does and reports the sections that do not exist *)
@@ -317,7 +319,11 @@ let readelf (dumps : dump list) (hex_specs : string list) (string_specs : string
 
 let debug_dump_styles =
   [ ("abbrev", Abbrev); ("info", Resolved); ("info<readelf>", Info_readelf); ("info<resolved>", Resolved)
-  ; ("info<raw>", Raw); ("info<objdump>", Objdump); ("info<analysis>", Analysis) ]
+  ; ("info<raw>", Raw); ("info<objdump>", Objdump); ("info<analysis>", Analysis)
+  (* Claude: the other readelf section dumps, in readelf's formats (gdb_index prints .debug_names,
+     as readelf does), and the content checks of .debug_aranges, .debug_names and .debug_macro *)
+  ; ("aranges", Section "aranges"); ("addr", Section "addr"); ("str-offsets", Section "str-offsets")
+  ; ("macro", Section "macro"); ("gdb_index", Section "gdb_index"); ("check", Section "check") ]
 
 let readelf_cmd =
   let flag names doc = Arg.(value & flag & info names ~doc) in
