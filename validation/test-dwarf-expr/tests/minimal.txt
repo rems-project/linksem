@@ -75,3 +75,9 @@ t_mod_neg_second: DW_OP_const1s -7; DW_OP_lit2; DW_OP_mod              # unsigne
 t_div_neg_both: DW_OP_const1s -7; DW_OP_const1s -2; DW_OP_div          # 3
 t_mul_signed: DW_OP_const1s -3; DW_OP_lit2; DW_OP_mul                  # -6
 t_deref_then_neg: DW_OP_addr dw_mem+8; DW_OP_deref_size 1; DW_OP_neg   # -0x33
+# DW_OP_mul with a product that does not fit in 64 bits (found by the 8000-expression run of 30 September 2026)
+m_mul_ovf_pos: DW_OP_const8u 0x100000001; DW_OP_const8u 0x100000001; DW_OP_mul            # 2^33+1 = 0x200000001
+m_mul_ovf_neg: DW_OP_const8u 0x100000001; DW_OP_const8u 0xfffffffeffffffff; DW_OP_mul     # -(2^33+1) = 0xfffffffdffffffff; gdb 15.1 gives the magnitude
+m_mul_ovf_neg_s: DW_OP_const8u 0x100000001; DW_OP_const8s -0x100000001; DW_OP_mul         # the same with a signed constant
+m_mul_ovf_neg_neg: DW_OP_const8s -0x100000001; DW_OP_const8s -0x100000001; DW_OP_mul      # 0x200000001
+m_mul_small_neg: DW_OP_const1s -5; DW_OP_lit3; DW_OP_mul                                   # -15, no overflow, correct everywhere

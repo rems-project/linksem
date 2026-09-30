@@ -79,7 +79,7 @@ These are what an upstream report should contain.
 ## Regression sets and expected results
 
 `tests/basic.txt` (76 expressions) exercises every operation at least once;
-`tests/minimal.txt` (73) holds one-line reproducers of every difference found so
+`tests/minimal.txt` (78) holds one-line reproducers of every difference found so
 far, with the expected result per the DWARF 4 text in comments;
 `random-seed1` is 1000 expressions from `dwexpr_gen` with seed 1 and at most 8
 operations (deterministic).  `expected/<arch>-<set>/` holds the committed
@@ -92,11 +92,16 @@ changed, and `make accept` adopts the new results.
 Results of the reference runs (30 September 2026; gdb 15.1, lldb 18.1.3,
 binutils 2.42, qemu 8.2.2, on an x86_64 host):
 
-| set          | expressions | agree | lldb-differs | gdb-crash | incomparable |
-|--------------|-------------|-------|--------------|-----------|--------------|
-| basic        |          76 |    67 |            8 |         0 |            1 |
-| minimal      |          73 |    47 |           22 |         3 |            1 |
-| random-seed1 |        1000 |   958 |           28 |        14 |            0 |
+| set          | expressions | agree | lldb-differs | gdb-differs | gdb-crash | incomparable |
+|--------------|-------------|-------|--------------|-------------|-----------|--------------|
+| basic        |          76 |    67 |            8 |           0 |         0 |            1 |
+| minimal      |          78 |    50 |           22 |           2 |         3 |            1 |
+| random-seed1 |        1000 |   958 |           28 |           0 |        14 |            0 |
+
+A larger run (`make validate SEED=11 N=8000 MAXOPS=12`, 50 seconds) gave 7308
+agree, 456 lldb-differs, 228 gdb-crash, 6 gdb-differs (all the `DW_OP_mul`
+overflow bug of gdb, see the gdb report) and 2 others explained by the same
+two debugger defects combining; no linksem defect.
 
 The aarch64 results (under qemu) are identical, as expected for
 architecture-neutral expressions.  There are no `linksem-differs` left: where

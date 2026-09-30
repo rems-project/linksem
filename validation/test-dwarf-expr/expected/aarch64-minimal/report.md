@@ -2,26 +2,29 @@
 
 Run directory: `/home/pes20/linksem/validation/test-dwarf-expr/output/aarch64-minimal`; evaluators: linksem, gdb, lldb.
 
+Tools: aarch64-linux-gnu-as: GNU assembler (GNU Binutils for Ubuntu) 2.42; gdb-multiarch: GNU gdb (Ubuntu 15.1-1ubuntu1~24.04.1) 15.1; lldb: lldb version 18.1.3; qemu-aarch64: qemu-aarch64 version 8.2.2 (Debian 1:8.2.2+ds-0ubuntu1.18).
+
 ## Summary
 
 | class               | count |
 |---------------------|-------|
-| agree               |    47 |
+| agree               |    50 |
 | linksem-unsupported |     0 |
 | linksem-differs     |     0 |
-| gdb-differs         |     0 |
+| gdb-differs         |     2 |
 | lldb-differs        |    22 |
 | all-differ          |     0 |
 | gdb-crash           |     3 |
 | incomparable        |     1 |
 | not-run             |     0 |
 
-gdb and lldb differ from each other on 25 expression(s) (see the last section).
+gdb and lldb differ from each other on 27 expression(s) (see the last section).
 
 ## Operations involved in disagreements
 
-- **lldb-differs**: DW_OP_const1s (11), DW_OP_shra (8), DW_OP_lit2 (5), DW_OP_mod (5), DW_OP_lit1 (4), DW_OP_lt (4), DW_OP_lit4 (4), DW_OP_constu (4), DW_OP_stack_value (3), DW_OP_lit0 (3), DW_OP_eq (2), DW_OP_not (2), DW_OP_neg (2), DW_OP_const1u (2), DW_OP_lit7 (2), DW_OP_abs (2), DW_OP_breg2 (2), DW_OP_lit20 (1), DW_OP_breg14 (1), DW_OP_const2s (1)
-- **gdb-crash**: DW_OP_not (3), DW_OP_bra (3), DW_OP_lit1 (3), DW_OP_nop (2), DW_OP_lit5 (1), DW_OP_lit0 (1)
+- **lldb-differs**: DW_OP_const1s (11), DW_OP_shra (8), DW_OP_lit2 (5), DW_OP_mod (5), DW_OP_lit1 (4), DW_OP_lt (4), DW_OP_lit4 (4), DW_OP_constu (4), DW_OP_stack_value (3), DW_OP_lit0 (3), DW_OP_not (2), DW_OP_eq (2), DW_OP_neg (2), DW_OP_const1u (2), DW_OP_lit7 (2), DW_OP_breg2 (2), DW_OP_abs (2), DW_OP_lit20 (1), DW_OP_breg14 (1), DW_OP_const2s (1)
+- **gdb-crash**: DW_OP_lit1 (3), DW_OP_not (3), DW_OP_bra (3), DW_OP_nop (2), DW_OP_lit5 (1), DW_OP_lit0 (1)
+- **gdb-differs**: DW_OP_mul (2), DW_OP_const8u (2), DW_OP_const8s (1)
 
 ## Disagreements
 
@@ -53,6 +56,8 @@ gdb and lldb differ from each other on 25 expression(s) (see the last section).
 | t_lt_neg_addr | lldb-differs | `DW_OP_lit1; DW_OP_lit2; DW_OP_lt; DW_OP_neg` | addr 0xffffffffffffffff | addr 0xffffffffffffffff | error: invalid load address |
 | t_mod_signed_top | lldb-differs | `DW_OP_lit7; DW_OP_const1s -2; DW_OP_mod` | addr 0x7 | addr 0x7 | addr 0x1 |
 | t_mod_neg_second | lldb-differs | `DW_OP_const1s -7; DW_OP_lit2; DW_OP_mod` | addr 0x1 | addr 0x1 | error: invalid load address |
+| m_mul_ovf_neg | gdb-differs | `DW_OP_const8u 0x100000001; DW_OP_const8u 0xfffffffeffffffff; DW_OP_mul` | addr 0xfffffffdffffffff | addr 0x200000001 | addr 0xfffffffdffffffff |
+| m_mul_ovf_neg_s | gdb-differs | `DW_OP_const8u 0x100000001; DW_OP_const8s -0x100000001; DW_OP_mul` | addr 0xfffffffdffffffff | addr 0x200000001 | addr 0xfffffffdffffffff |
 
 ## gdb versus lldb
 
@@ -83,4 +88,6 @@ gdb and lldb differ from each other on 25 expression(s) (see the last section).
 | t_lt_neg_addr | `DW_OP_lit1; DW_OP_lit2; DW_OP_lt; DW_OP_neg` | addr 0xffffffffffffffff | error: invalid load address | addr 0xffffffffffffffff |
 | t_mod_signed_top | `DW_OP_lit7; DW_OP_const1s -2; DW_OP_mod` | addr 0x7 | addr 0x1 | addr 0x7 |
 | t_mod_neg_second | `DW_OP_const1s -7; DW_OP_lit2; DW_OP_mod` | addr 0x1 | error: invalid load address | addr 0x1 |
+| m_mul_ovf_neg | `DW_OP_const8u 0x100000001; DW_OP_const8u 0xfffffffeffffffff; DW_OP_mul` | addr 0x200000001 | addr 0xfffffffdffffffff | addr 0xfffffffdffffffff |
+| m_mul_ovf_neg_s | `DW_OP_const8u 0x100000001; DW_OP_const8s -0x100000001; DW_OP_mul` | addr 0x200000001 | addr 0xfffffffdffffffff | addr 0xfffffffdffffffff |
 

@@ -73,11 +73,19 @@ let () =
             | Dwarf.CLP_piece (n, s) -> Printf.sprintf "piece(%s,%s)" (Z.to_string (z_of_sym n)) (render_simple s)
             | Dwarf.CLP_bit_piece (n, o, s) -> Printf.sprintf "bit_piece(%s,%s,%s)" (Z.to_string (z_of_sym n)) (Z.to_string (z_of_sym o)) (render_simple s)) ps) in
     let named = Expr.read_file exprs_path in
+    (* Claude: the variables' DIEs, indexed by name once (a search per variable was
+       quadratic in the number of expressions) *)
+    let by_name = Hashtbl.create 1024 in
+    List.iter (fun ((_, _, die) as cupdie) ->
+        match Dwarf.find_name_of_die d.d_str die with
+        | Some name -> if not (Hashtbl.mem by_name name) then Hashtbl.add by_name name cupdie
+        | None -> ())
+      (Dwarf.find_dies (fun die -> Dwarf.find_attribute_value "DW_AT_location" die <> None) d);
     List.iter (fun (n : Expr.named) ->
         let result =
-          match Dwarf.find_dies (fun die -> Dwarf.find_name_of_die d.d_str die = Some n.var) d with
-          | [] -> "error: no DIE named " ^ n.var
-          | (cu, parents, die) :: _ ->
+          match Hashtbl.find_opt by_name n.var with
+          | None -> "error: no DIE named " ^ n.var
+          | Some (cu, parents, die) ->
             let ac = Dwarf.arithmetic_context_of_cuh cu.cu_header in
             let mfbloc = Dwarf.closest_enclosing_frame_base d.d_loc (Dwarf.cu_base_address cu) parents in
             match Dwarf.find_attribute_value "DW_AT_location" die with
