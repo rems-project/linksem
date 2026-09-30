@@ -1289,7 +1289,7 @@ let operation_encodings = [
 ("DW_OP_or",                  sym_natural_of_hex "0x21", []                         , OpSem_binary (fun ac v1 v2 -> Just (sym_natural_lor v1 v2))); (*0*)
 ("DW_OP_plus",                sym_natural_of_hex "0x22", []                         , OpSem_binary (fun ac v1 v2 -> Just ((v1 + v2) mod ac.ac_all))); (*0*)
 ("DW_OP_plus_uconst",         sym_natural_of_hex "0x23", [OAT_ULEB128]              , OpSem_stack (fun ac vs args -> match args with [OAV_natural n] -> match vs with v::vs' -> let v' = (v+n) mod ac.ac_all in Just (v'::vs)  | [] -> Nothing end  | _ -> Nothing end)); (*1*) (* ULEB128 addend *)
-("DW_OP_shl",                 sym_natural_of_hex "0x24", []                         , OpSem_binary (fun ac v1 v2 -> if v2 >= ac.ac_bitwidth then Just 0 else Just (sym_natural_nat_shift_left v1 (natFromSymNatural v2)))); (*0*)
+("DW_OP_shl",                 sym_natural_of_hex "0x24", []                         , OpSem_binary (fun ac v1 v2 -> if v2 >= ac.ac_bitwidth then Just 0 else Just ((sym_natural_nat_shift_left v1 (natFromSymNatural v2)) mod ac.ac_all))); (*0*)
 ("DW_OP_shr",                 sym_natural_of_hex "0x25", []                         , OpSem_binary (fun ac v1 v2 -> if v2 >= ac.ac_bitwidth then Just 0 else Just (sym_natural_nat_shift_right v1 (natFromSymNatural v2)))); (*0*)
 ("DW_OP_shra",                sym_natural_of_hex "0x26", []                         , OpSem_binary (fun ac v1 v2 -> if v1 < ac.ac_half then (if v2 >= ac.ac_bitwidth then Just 0 else Just (sym_natural_nat_shift_right v1 (natFromSymNatural v2))) else (if v2 >= ac.ac_bitwidth then Just ac.ac_max  else Just (ac.ac_max - (sym_natural_nat_shift_right (ac.ac_max - v1) (natFromSymNatural v2)))))); (*0*)
 ("DW_OP_xor",                 sym_natural_of_hex "0x27", []                         , OpSem_binary (fun ac v1 v2 -> Just (sym_natural_lxor v1 v2))); (*0*)
@@ -5003,8 +5003,10 @@ let rec evaluate_operation_list (c:p_context) (dloc: location_list_list) (evalua
         | (OpSem_not_supported, []) ->
             Fail ("OpSem_not_supported: " ^ pp_operation op)
         | (OpSem_binary f, []) ->
+            (* Claude: DWARF 4 section 2.5.1.4: the binary operations apply to (former
+               second entry, former top entry), so [f] takes the second entry first *)
             match s.s_stack with
-            | v1::v2::vs' -> push_memory_address_maybe (f ac v1 v2) vs' "OpSem_binary error: " op
+            | top::second::vs' -> push_memory_address_maybe (f ac second top) vs' "OpSem_binary error: " op
             | _ -> Fail "OpSem binary not given two elements on stack"
             end
         | (OpSem_unary f, []) ->
