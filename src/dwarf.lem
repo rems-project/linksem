@@ -212,12 +212,16 @@ let construct_sym_byte_sequence bs rel =
 type dwarf_attribute_classes =
   | DWA_7_5_3
   | DWA_address
+  | DWA_addrptr        (* Claude: DWARF 5 classes *)
   | DWA_block
   | DWA_constant
   | DWA_dash
   | DWA_exprloc
   | DWA_flag
   | DWA_lineptr
+  | DWA_loclist
+  | DWA_rnglist
+  | DWA_stroffsetsptr
   | DWA_loclistptr
   | DWA_macptr
   | DWA_rangelistptr
@@ -341,12 +345,22 @@ type dwarf_format =
 
 (* .debug_abbrev section *)
 
+(* Claude: an attribute specification of an abbreviation declaration: the attribute,
+   its form and, for DWARF 5's DW_FORM_implicit_const, the value, which lives in
+   the abbreviation rather than in the DIE *)
+type attribute_specification =
+    <|
+    as_attribute: sym_natural;
+    as_form: sym_natural;
+    as_implicit_const: maybe sym_integer;
+  |>
+
 type abbreviation_declaration =
     <|
     ad_abbreviation_code: sym_natural;
     ad_tag: sym_natural;
     ad_has_children: bool;
-    ad_attribute_specifications: list (sym_natural * sym_natural);
+    ad_attribute_specifications: list attribute_specification;
   |>
 
 type abbreviations_table =
@@ -371,6 +385,18 @@ type attribute_value =  (* following Figure 3 *)
   | AV_sec_offset of sym_natural
   | AV_string of sym_byte_sequence (* not including terminating null *)
   | AV_strp of sym_natural (* dwarf_format dependent *)
+  (* Claude: the DWARF 5 forms, recorded as read; the indices are resolved through
+     the unit's base attributes by the accessors (see [unit_context]) *)
+  | AV_strx of sym_natural          (* index into the unit's string offsets *)
+  | AV_addrx of sym_natural         (* index into the unit's address table *)
+  | AV_line_strp of sym_natural     (* offset into .debug_line_str *)
+  | AV_data16 of sym_byte_sequence
+  | AV_implicit_const of sym_integer
+  | AV_loclistx of sym_natural      (* index into the unit's location list offsets *)
+  | AV_rnglistx of sym_natural      (* index into the unit's range list offsets *)
+  | AV_ref_sup4 of sym_natural      (* offsets in a supplementary object file *)
+  | AV_ref_sup8 of sym_natural
+  | AV_strp_sup of sym_natural
 
 
 type die =
@@ -393,14 +419,31 @@ type compilation_unit_header =
     cuh_version: sym_natural;
     cuh_debug_abbrev_offset: sym_natural;
     cuh_address_size: sym_natural;
+    cuh_unit_type: maybe sym_natural;  (** Claude: DWARF 5's DW_UT_*; Nothing before DWARF 5 *)
+    cuh_dwo_id: maybe sym_natural;     (** Claude: of a skeleton or split unit *)
   |>
+
+(* Claude: a unit's DWARF 5 index tables, read once when the unit is parsed: its
+   contribution to .debug_str_offsets (index -> .debug_str offset, section 7.26)
+   and to .debug_addr (index -> address, symbolic in a relocatable file, section
+   7.27).  The indexed forms (DW_FORM_strx1..4, DW_FORM_addrx1..4) are resolved through
+   these by the accessors; the tables are maps because reading each entry from the
+   section on demand costs time linear in the section's relocations. *)
+type unit_tables =
+    <|
+    ut_str_offsets: Map.map natural sym_natural;
+    ut_addrs: Map.map natural sym_natural;
+  |>
+
+let empty_unit_tables = <| ut_str_offsets = Map.empty; ut_addrs = Map.empty |>
 
 type compilation_unit =
     <|
     cu_header: compilation_unit_header;
     cu_abbreviations_table: abbreviations_table;
     cu_die: die;
-    cu_index: die_index
+    cu_index: die_index;
+    cu_tables: unit_tables;
   |>
 
 type compilation_units = list compilation_unit
@@ -419,9 +462,15 @@ type type_unit =
     tu_header: type_unit_header;
     tu_abbreviations_table: abbreviations_table;
     tu_die: die;
+    tu_tables: unit_tables;
   |>
 
 type type_units = list type_unit
+
+(* Claude: a unit of .debug_info, which in DWARF 5 may be a type unit *)
+type dwarf_unit =
+  | Unit_compilation of compilation_unit
+  | Unit_type of type_unit
 
 (* .debug_loc section *)
 
@@ -462,6 +511,29 @@ type range_list_item =
 type range_list = sym_natural (*offset (of range_list from start of .debug_ranges section?) *) * list range_list_item
 
 type range_list_list = list range_list
+
+(* Claude: .debug_loclists and .debug_rnglists (DWARF 5, sections 2.6.2 and 2.17.3):
+   kind-tagged entries; the x kinds are indices into the unit's address table *)
+type loclist_entry =
+  | LLE_end_of_list
+  | LLE_base_addressx of sym_natural
+  | LLE_startx_endx of sym_natural * sym_natural * single_location_description
+  | LLE_startx_length of sym_natural * sym_natural * single_location_description
+  | LLE_offset_pair of sym_natural * sym_natural * single_location_description
+  | LLE_default_location of single_location_description
+  | LLE_base_address of sym_natural
+  | LLE_start_end of sym_natural * sym_natural * single_location_description
+  | LLE_start_length of sym_natural * sym_natural * single_location_description
+
+type rnglist_entry =
+  | RLE_end_of_list
+  | RLE_base_addressx of sym_natural
+  | RLE_startx_endx of sym_natural * sym_natural
+  | RLE_startx_length of sym_natural * sym_natural
+  | RLE_offset_pair of sym_natural * sym_natural
+  | RLE_base_address of sym_natural
+  | RLE_start_end of sym_natural * sym_natural
+  | RLE_start_length of sym_natural * sym_natural
 
 (* .debug_frame section: call frame instructions *)
 
@@ -647,6 +719,7 @@ type line_number_file_entry =
     lnfe_directory_index: sym_natural;
     lnfe_last_modification: sym_natural;
     lnfe_length: sym_natural;
+    lnfe_md5: maybe sym_byte_sequence;   (* Claude: DWARF 5 DW_LNCT_MD5, if present *)
   |>
 
 type line_number_header =
@@ -663,6 +736,17 @@ type line_number_header =
     lnh_line_range: sym_natural;
     lnh_opcode_base: sym_natural;
     lnh_standard_opcode_lengths: list sym_natural;
+    (* Claude: DWARF 5 (section 6.2.4) adds address_size and segment_selector_size
+       to the header, and describes its directory and file tables by entry formats
+       (lists of (DW_LNCT content type, DW_FORM form) pairs); the tables are
+       0-based there, with entry 0 the compilation directory / primary source
+       file, whereas in DWARF 2-4 they are 1-based with index 0 meaning those.
+       The entries below are the resolved paths; lnh_directory and lnh_file look
+       them up by a version-appropriate index. *)
+    lnh_address_size: maybe sym_natural;
+    lnh_segment_selector_size: maybe sym_natural;
+    lnh_directory_entry_format: list (sym_natural * sym_natural);
+    lnh_file_name_entry_format: list (sym_natural * sym_natural);
     lnh_include_directories: list (sym_byte_sequence);
     lnh_file_entries: list line_number_file_entry;
     lnh_comp_dir: maybe string; (* passed down from cu DW_AT_comp_dir *)
@@ -697,11 +781,30 @@ type unpacked_file_entry = (maybe string (*comp_dir*)) * (maybe string (*dir*)) 
 type unpacked_decl = unpacked_file_entry * nat(*line*) * string(*subprogram name*)
 
 
+(* Claude: the raw debugging sections of a file, as read by [extract_dwarf]; a
+   section that is absent is empty *)
+type dwarf_sections =
+    <|
+    sec_info: sym_byte_sequence;
+    sec_abbrev: sym_byte_sequence;
+    sec_str: sym_byte_sequence;
+    sec_str_offsets: sym_byte_sequence;  (* DWARF 5 *)
+    sec_addr: sym_byte_sequence;         (* DWARF 5 *)
+    sec_line_str: sym_byte_sequence;     (* DWARF 5 *)
+    sec_loc: sym_byte_sequence;
+    sec_ranges: sym_byte_sequence;
+    sec_loclists: sym_byte_sequence;     (* DWARF 5 *)
+    sec_rnglists: sym_byte_sequence;     (* DWARF 5 *)
+    sec_frame: sym_byte_sequence;
+    sec_line: sym_byte_sequence;
+  |>
+
 (* top-level collection of dwarf data *)
 
 type dwarf =
     <|
     d_endianness: Endianness.endianness; (* from the ELF *)
+    d_sections: dwarf_sections;          (** Claude: the raw sections; [d_str] is [d_sections.sec_str] *)
     d_str: sym_byte_sequence;
     d_compilation_units: compilation_units;
     d_type_units: type_units;
@@ -740,6 +843,27 @@ type dwarf_dynamic_at_pc = analysed_location_data_at_pc
 type p_context =
     <|
     endianness: Endianness.endianness;
+  |>
+
+(* Claude: what is needed to interpret the attribute values, expressions,
+   location lists and range lists of one unit: the sections, the DWARF 4 parsed
+   .debug_loc and .debug_ranges lists, the unit's header, and its DWARF 5 base
+   attributes (DW_AT_str_offsets_base and friends).  Built by [unit_context_of_cu];
+   the parameter named [str] of the printers and accessors is one of these (it
+   was the .debug_str section before DWARF 5 support). *)
+type unit_context =
+    <|
+    uc_c: p_context;
+    uc_sections: dwarf_sections;
+    uc_loc: location_list_list;
+    uc_ranges: range_list_list;
+    uc_cuh: compilation_unit_header;
+  uc_tables: unit_tables;
+    uc_str_offsets_base: maybe sym_natural;
+    uc_addr_base: maybe sym_natural;
+    uc_rnglists_base: maybe sym_natural;
+    uc_loclists_base: maybe sym_natural;
+    uc_base_address: sym_natural;        (* the unit's DW_AT_low_pc, or 0 *)
   |>
 
 
@@ -1256,8 +1380,47 @@ let attribute_form_encodings = [
   ("DW_FORM_sec_offset"  , sym_natural_of_hex "0x17", [DWA_lineptr; DWA_loclistptr; DWA_macptr; DWA_rangelistptr]) ;
   ("DW_FORM_exprloc"     , sym_natural_of_hex "0x18", [DWA_exprloc])  ;
   ("DW_FORM_flag_present", sym_natural_of_hex "0x19", [DWA_flag])     ;
-  ("DW_FORM_ref_sig8"    , sym_natural_of_hex "0x20", [DWA_reference])
+  ("DW_FORM_ref_sig8"    , sym_natural_of_hex "0x20", [DWA_reference]);
+  (* Claude: DWARF 5 (table 7.6) *)
+  ("DW_FORM_strx"        , sym_natural_of_hex "0x1a", [DWA_string])   ;
+  ("DW_FORM_addrx"       , sym_natural_of_hex "0x1b", [DWA_address])  ;
+  ("DW_FORM_ref_sup4"    , sym_natural_of_hex "0x1c", [DWA_reference]);
+  ("DW_FORM_strp_sup"    , sym_natural_of_hex "0x1d", [DWA_string])   ;
+  ("DW_FORM_data16"      , sym_natural_of_hex "0x1e", [DWA_constant]) ;
+  ("DW_FORM_line_strp"   , sym_natural_of_hex "0x1f", [DWA_string])   ;
+  ("DW_FORM_implicit_const", sym_natural_of_hex "0x21", [DWA_constant]);
+  ("DW_FORM_loclistx"    , sym_natural_of_hex "0x22", [DWA_loclist])  ;
+  ("DW_FORM_rnglistx"    , sym_natural_of_hex "0x23", [DWA_rnglist])  ;
+  ("DW_FORM_ref_sup8"    , sym_natural_of_hex "0x24", [DWA_reference]);
+  ("DW_FORM_strx1"       , sym_natural_of_hex "0x25", [DWA_string])   ;
+  ("DW_FORM_strx2"       , sym_natural_of_hex "0x26", [DWA_string])   ;
+  ("DW_FORM_strx3"       , sym_natural_of_hex "0x27", [DWA_string])   ;
+  ("DW_FORM_strx4"       , sym_natural_of_hex "0x28", [DWA_string])   ;
+  ("DW_FORM_addrx1"      , sym_natural_of_hex "0x29", [DWA_address])  ;
+  ("DW_FORM_addrx2"      , sym_natural_of_hex "0x2a", [DWA_address])  ;
+  ("DW_FORM_addrx3"      , sym_natural_of_hex "0x2b", [DWA_address])  ;
+  ("DW_FORM_addrx4"      , sym_natural_of_hex "0x2c", [DWA_address])
 ]
+
+(* Claude: DWARF 5 unit types (table 7.2) *)
+let unit_type_encodings : list (string * sym_natural) = [
+  ("DW_UT_compile",       sym_natural_of_hex "0x01");
+  ("DW_UT_type",          sym_natural_of_hex "0x02");
+  ("DW_UT_partial",       sym_natural_of_hex "0x03");
+  ("DW_UT_skeleton",      sym_natural_of_hex "0x04");
+  ("DW_UT_split_compile", sym_natural_of_hex "0x05");
+  ("DW_UT_split_type",    sym_natural_of_hex "0x06")
+]
+let vDW_UT_type = sym_natural_of_hex "0x02"
+let vDW_UT_skeleton = sym_natural_of_hex "0x04"
+let vDW_UT_split_compile = sym_natural_of_hex "0x05"
+let vDW_UT_split_type = sym_natural_of_hex "0x06"
+
+let pp_unit_type_encoding (ut: sym_natural) : string =
+  match List.find (fun (_, n) -> n = ut) unit_type_encodings with
+  | Just (s, _) -> s
+  | Nothing -> "unknown unit type " ^ show ut
+  end
 
 
 (* operation encoding *)
@@ -1725,6 +1888,11 @@ let natural_of_bytes en bs =
 
 let sym_natural_of_bytes en bs = sym_natural_const (natural_of_bytes en bs)
 
+(* Claude: a byte sequence as two hex digits per byte, in order (for MD5s and
+   DW_FORM_data16 values) *)
+let hex_string_of_bytes (bs: sym_byte_sequence) : string =
+  String.concat "" (List.map (fun b -> unsafe_hex_string_of_natural 2 (natural_of_byte b)) (byte_list_of_sym_byte_sequence bs))
+
 
 (* TODO: generalise *)
 (*
@@ -2005,6 +2173,12 @@ let pr_post_map p f = fun (pc: parse_context) -> pr_map f (p pc)
 
 val pr_with_pos : forall 'a. (parser 'a) -> (parser (sym_natural * 'a))
 let pr_with_pos p = fun pc -> pr_map (fun x -> (sym_natural_const pc.pc_offset,x)) (p pc)
+
+(* Claude: n successive instances of a parser *)
+let rec parse_replicate (n: natural) (p: parser 'a) : parser (list 'a) =
+  fun (pc: parse_context) ->
+    if n = 0 then PR_success [] pc
+    else pr_bind (p pc) (fun x pc' -> pr_map (fun xs -> x :: xs) (parse_replicate (n - 1) p pc'))
 
 
 val parse_pair : forall 'a 'b. (parser 'a) -> (parser 'b) -> (parser ('a * 'b))
@@ -2307,12 +2481,53 @@ let parse_uintDwarfN c (df: dwarf_format) : parser sym_natural =
    | Dwarf64 -> (parse_uint64 c)
    end
 
+(* Claude: a 3-byte unsigned integer (DW_FORM_strx3, DW_FORM_addrx3) *)
+let parse_uint24 c : parser sym_natural =
+  pr_map2 (fun bs -> sym_natural_const (natural_of_bytes c.endianness bs)) (parse_n_bytes 3)
+
 let parse_uint_address_size c (as': sym_natural) : parser sym_natural =
     match sym_natural_expect_const as' (**"parse_uint_address_size"*) with
     | 4 -> (parse_uint32 c)
     | 8 -> (parse_uint64 c)
     | _ -> Assert_extra.failwith ("cuh_address_size not 4 or 8: " ^ show as')
     end
+
+(* Claude: byte reads at a position of a section, for the DWARF 5 tables *)
+let read_uintDwarfN_at c (df: dwarf_format) (bs: sym_byte_sequence) (pos: natural) : maybe sym_natural =
+  match sym_dropbytes pos bs with
+  | Fail _ -> Nothing
+  | Success bs' ->
+      match parse_uintDwarfN c df <| pc_bytes = bs'; pc_offset = pos |> with
+      | PR_success n _ -> Just n
+      | PR_fail _ _ -> Nothing
+      end
+  end
+
+let read_address_at c (as': sym_natural) (bs: sym_byte_sequence) (pos: natural) : maybe sym_natural =
+  match sym_dropbytes pos bs with
+  | Fail _ -> Nothing
+  | Success bs' ->
+      match parse_uint_address_size c as' <| pc_bytes = bs'; pc_offset = pos |> with
+      | PR_success n _ -> Just n
+      | PR_fail _ _ -> Nothing
+      end
+  end
+
+let offset_size (df: dwarf_format) : natural = match df with Dwarf32 -> 4 | Dwarf64 -> 8 end
+
+(* Claude: an attribute specification (DWARF 5 section 7.5.3, errata 221114.1): the
+   attribute and form as ULEB128s, then for DW_FORM_implicit_const the value as a
+   SLEB128; (0, 0) ends the list *)
+let parse_attribute_specification : parser (maybe attribute_specification) =
+  fun (pc: parse_context) ->
+    pr_bind (parse_ULEB128 pc) (fun at pc1 ->
+    pr_bind (parse_ULEB128 pc1) (fun af pc2 ->
+      if at = 0 && af = 0 then PR_success Nothing pc2
+      else if af = attribute_form_encode "DW_FORM_implicit_const" then
+        pr_bind (parse_SLEB128 pc2) (fun i pc3 ->
+          PR_success (Just <| as_attribute = at; as_form = af; as_implicit_const = Just i |>) pc3)
+      else
+        PR_success (Just <| as_attribute = at; as_form = af; as_implicit_const = Nothing |>) pc2))
 
 let parse_uint_segment_selector_size c (ss: sym_natural) : parser (maybe sym_natural) =
     match sym_natural_expect_const ss (*"parse_uint_segment_selector_size_size"*) with
@@ -2342,8 +2557,9 @@ let pp_abbreviation_declaration (x:abbreviation_declaration) =
 (*  ^ " "^show (List.length x.ad_attribute_specifications) ^ " attributes\n"*)
   ^ String.concat ""
       (List.map
-         (fun (n1,n2) ->
-           "    " ^ right_space_padded_to 18 (pp_attribute_encoding n1) ^ " " ^ pp_attribute_form_encoding n2 ^ "\n")
+         (fun (sp: attribute_specification) ->
+           "    " ^ right_space_padded_to 18 (pp_attribute_encoding sp.as_attribute) ^ " " ^ pp_attribute_form_encoding sp.as_form
+           ^ (match sp.as_implicit_const with Just i -> ": " ^ show i | Nothing -> "" end) ^ "\n")
          x.ad_attribute_specifications)
   ^ "    DW_AT value: 0     DW_FORM value: 0\n"
 
@@ -2383,7 +2599,7 @@ let parse_abbreviation_declaration c : parser (maybe abbreviation_declaration) =
           pr_bind (parse_ULEB128 pc') (fun n2 pc'' ->
             pr_bind (parse_uint8 pc'') (fun c pc''' ->
               pr_post_map1
-                (parse_zero_terminated_ULEB128_pair_list pc''')
+                (parse_list parse_attribute_specification pc''')
                 (fun l ->
                   Just ( let ad =
                     <|
@@ -2410,7 +2626,7 @@ let rec null_terminated_bs (bs: sym_byte_sequence) : sym_byte_sequence =
   | Nothing -> bs
   end
 
-let pp_debug_str_entry (str: sym_byte_sequence) (n: sym_natural) : string =
+let pp_debug_str_entry_bytes (str: sym_byte_sequence) (n: sym_natural) : string =
   (* Claude: in a relocatable file a DW_FORM_strp value may be a relocation
      against an undefined symbol (a string-table label defined elsewhere);
      readelf and objdump use the addend, as the offset part here *)
@@ -2419,6 +2635,68 @@ let pp_debug_str_entry (str: sym_byte_sequence) (n: sym_natural) : string =
   | Fail _ -> "strp beyond .debug_str extent"
   | Success bs -> string_of_sym_byte_sequence (null_terminated_bs bs)
   end
+
+let pp_debug_str_entry (str: unit_context) (n: sym_natural) : string =
+  pp_debug_str_entry_bytes str.uc_sections.sec_str n
+
+(* Claude: DWARF 5 indirections through the unit's base attributes *)
+
+(* the .debug_line_str string at offset n *)
+let line_strp_string (str: unit_context) (n: sym_natural) : string =
+  if sym_bs_length str.uc_sections.sec_line_str = 0 then "<no .debug_line_str section>" else
+  match sym_dropbytes (sym_natural_offset_part n) str.uc_sections.sec_line_str with
+  | Fail _ -> "line_strp beyond .debug_line_str extent"
+  | Success bs -> string_of_sym_byte_sequence (null_terminated_bs bs)
+  end
+
+(* the .debug_str offset of the unit's string index i: entry i of the string
+   offsets table at DW_AT_str_offsets_base (section 7.26); in a relocatable file the
+   entry is a relocation against .debug_str, whose offset part is the offset *)
+let strx_offset (str: unit_context) (i: sym_natural) : maybe sym_natural =
+  Map.lookup (sym_natural_offset_part i) str.uc_tables.ut_str_offsets
+
+let strx_string (str: unit_context) (i: sym_natural) : string =
+  match strx_offset str i with
+  | Just off -> pp_debug_str_entry_bytes str.uc_sections.sec_str off
+  | Nothing -> "<indexed string " ^ pphex_sym i ^ ": no string offsets table>"
+  end
+
+(* the address at the unit's address index i: entry i of the address table at
+   DW_AT_addr_base (section 7.27); symbolic in a relocatable file, as DW_FORM_addr
+   values are *)
+let addrx_address (str: unit_context) (i: sym_natural) : maybe sym_natural =
+  Map.lookup (sym_natural_offset_part i) str.uc_tables.ut_addrs
+
+(* the section offset of list index i of a location or range list table: the base
+   (DW_AT_loclists_base / DW_AT_rnglists_base, which points at the offset array) plus
+   the ith entry of that array (sections 7.28 and 7.29) *)
+let listx_offset (str: unit_context) (base: maybe sym_natural) (sec: sym_byte_sequence) (i: sym_natural) : maybe sym_natural =
+  match base with
+  | Nothing -> Nothing
+  | Just b ->
+      let df = str.uc_cuh.cuh_dwarf_format in
+      let pos = sym_natural_offset_part b + sym_natural_offset_part i * offset_size df in
+      match read_uintDwarfN_at str.uc_c df sec pos with
+      | Just off -> Just (sym_natural_const (sym_natural_offset_part b + sym_natural_offset_part off))
+      | Nothing -> Nothing
+      end
+  end
+
+let loclistx_offset (str: unit_context) (i: sym_natural) : maybe sym_natural =
+  listx_offset str str.uc_loclists_base str.uc_sections.sec_loclists i
+
+let rnglistx_offset (str: unit_context) (i: sym_natural) : maybe sym_natural =
+  listx_offset str str.uc_rnglists_base str.uc_sections.sec_rnglists i
+
+(* an address-valued attribute: DW_FORM_addr, or DWARF 5's indexed forms *)
+let address_of_attribute_value (str: unit_context) (av: attribute_value) : maybe sym_natural =
+  match av with
+  | AV_addr n -> Just n
+  | AV_addrx i -> addrx_address str i
+  | _ -> Nothing
+  end
+
+let unit_version (str: unit_context) : natural = sym_natural_offset_part str.uc_cuh.cuh_version
 
 (** operations: pp and parsing *)
 
@@ -2550,10 +2828,20 @@ let pp_attribute_value_plain av =
   | AV_sec_offset n -> "AV_sec_offset " ^ pphex_sym  n
   | AV_string bs -> string_of_sym_byte_sequence bs
   | AV_strp n -> "AV_sec_offset " ^ pphex_sym n ^ " "
+  | AV_strx n -> "AV_strx " ^ pphex_sym n
+  | AV_addrx n -> "AV_addrx " ^ pphex_sym n
+  | AV_line_strp n -> "AV_line_strp " ^ pphex_sym n
+  | AV_data16 bs -> "AV_data16 " ^ ppbytes bs
+  | AV_implicit_const i -> "AV_implicit_const " ^ show i
+  | AV_loclistx n -> "AV_loclistx " ^ pphex_sym n
+  | AV_rnglistx n -> "AV_rnglistx " ^ pphex_sym n
+  | AV_ref_sup4 n -> "AV_ref_sup4 " ^ pphex_sym n
+  | AV_ref_sup8 n -> "AV_ref_sup8 " ^ pphex_sym n
+  | AV_strp_sup n -> "AV_strp_sup " ^ pphex_sym n
   end
 
    
-val pp_attribute_value : p_context -> compilation_unit_header -> sym_byte_sequence -> sym_natural (*attribute tag*) -> attribute_value -> string
+val pp_attribute_value : p_context -> compilation_unit_header -> unit_context -> sym_natural (*attribute tag*) -> attribute_value -> string
 let pp_attribute_value c cuh str at av =
   match av with
   | AV_addr x -> "AV_addr " ^ pphex_sym x
@@ -2572,6 +2860,16 @@ let pp_attribute_value c cuh str at av =
   | AV_string bs -> string_of_sym_byte_sequence bs
   | AV_strp n -> "AV_sec_offset " ^ pphex_sym n ^ " "
       ^ pp_debug_str_entry str n
+  | AV_strx n -> "AV_strx " ^ pphex_sym n ^ " " ^ strx_string str n
+  | AV_addrx n -> "AV_addrx " ^ pphex_sym n ^ (match addrx_address str n with Just a -> " " ^ pphex_sym a | Nothing -> "" end)
+  | AV_line_strp n -> "AV_line_strp " ^ pphex_sym n ^ " " ^ line_strp_string str n
+  | AV_data16 bs -> "AV_data16 " ^ ppbytes bs
+  | AV_implicit_const i -> "AV_implicit_const " ^ show i
+  | AV_loclistx n -> "AV_loclistx " ^ pphex_sym n
+  | AV_rnglistx n -> "AV_rnglistx " ^ pphex_sym n
+  | AV_ref_sup4 n -> "AV_ref_sup4 " ^ pphex_sym n
+  | AV_ref_sup8 n -> "AV_ref_sup8 " ^ pphex_sym n
+  | AV_strp_sup n -> "AV_strp_sup " ^ pphex_sym n
   end
 
 val parser_of_attribute_form_non_indirect : p_context -> compilation_unit_header -> sym_natural -> parser attribute_value
@@ -2639,18 +2937,40 @@ let parser_of_attribute_form_non_indirect c cuh n =
     pr_map2 (fun bs -> AV_string bs) parse_string
   else if n = attribute_form_encode "DW_FORM_strp"         then
     pr_map2 (fun n -> AV_strp n) (parse_uintDwarfN c cuh.cuh_dwarf_format)
-(* indirect (cycle detection) *)
+(* Claude: DWARF 5 forms *)
+  else if n = attribute_form_encode "DW_FORM_strx"         then pr_map2 (fun n -> AV_strx n) parse_ULEB128
+  else if n = attribute_form_encode "DW_FORM_strx1"        then pr_map2 (fun n -> AV_strx n) parse_uint8
+  else if n = attribute_form_encode "DW_FORM_strx2"        then pr_map2 (fun n -> AV_strx n) (parse_uint16 c)
+  else if n = attribute_form_encode "DW_FORM_strx3"        then pr_map2 (fun n -> AV_strx n) (parse_uint24 c)
+  else if n = attribute_form_encode "DW_FORM_strx4"        then pr_map2 (fun n -> AV_strx n) (parse_uint32 c)
+  else if n = attribute_form_encode "DW_FORM_addrx"        then pr_map2 (fun n -> AV_addrx n) parse_ULEB128
+  else if n = attribute_form_encode "DW_FORM_addrx1"       then pr_map2 (fun n -> AV_addrx n) parse_uint8
+  else if n = attribute_form_encode "DW_FORM_addrx2"       then pr_map2 (fun n -> AV_addrx n) (parse_uint16 c)
+  else if n = attribute_form_encode "DW_FORM_addrx3"       then pr_map2 (fun n -> AV_addrx n) (parse_uint24 c)
+  else if n = attribute_form_encode "DW_FORM_addrx4"       then pr_map2 (fun n -> AV_addrx n) (parse_uint32 c)
+  else if n = attribute_form_encode "DW_FORM_line_strp"    then pr_map2 (fun n -> AV_line_strp n) (parse_uintDwarfN c cuh.cuh_dwarf_format)
+  else if n = attribute_form_encode "DW_FORM_data16"       then pr_map2 (fun bs -> AV_data16 bs) (parse_n_bytes 16)
+  else if n = attribute_form_encode "DW_FORM_implicit_const" then
+    (* only reached through DW_FORM_indirect: the value then follows in the DIE (errata 221114.1) *)
+    pr_map2 (fun i -> AV_implicit_const i) parse_SLEB128
+  else if n = attribute_form_encode "DW_FORM_loclistx"     then pr_map2 (fun n -> AV_loclistx n) parse_ULEB128
+  else if n = attribute_form_encode "DW_FORM_rnglistx"     then pr_map2 (fun n -> AV_rnglistx n) parse_ULEB128
+  else if n = attribute_form_encode "DW_FORM_ref_sup4"     then pr_map2 (fun n -> AV_ref_sup4 n) (parse_uint32 c)
+  else if n = attribute_form_encode "DW_FORM_ref_sup8"     then pr_map2 (fun n -> AV_ref_sup8 n) (parse_uint64 c)
+  else if n = attribute_form_encode "DW_FORM_strp_sup"     then pr_map2 (fun n -> AV_strp_sup n) (parse_uintDwarfN c cuh.cuh_dwarf_format)
+(* indirect: handled by parser_of_attribute_form *)
   else if n = attribute_form_encode "DW_FORM_indirect"     then
     Assert_extra.failwith "DW_FORM_INDIRECT cycle"
 (* unknown *)
   else
-    Assert_extra.failwith "parser_of_attribute_form_non_indirect: unknown attribute form"
+    Assert_extra.failwith ("parser_of_attribute_form_non_indirect: unknown attribute form " ^ pphex_sym n)
 
 
-let parser_of_attribute_form c cuh n =
+(* Claude: DW_FORM_indirect may repeat (errata 221114.1) *)
+let rec parser_of_attribute_form c cuh n =
   if n = attribute_form_encode "DW_FORM_indirect" then
-    (fun pc -> pr_bind (parse_ULEB128 pc) (fun n ->
-      parser_of_attribute_form_non_indirect c cuh n) )
+    (fun pc -> pr_bind (parse_ULEB128 pc) (fun n' ->
+      parser_of_attribute_form c cuh n') )
   else
     parser_of_attribute_form_non_indirect c cuh n
 
@@ -2704,10 +3024,12 @@ let find_dies (p:die->bool) (d: dwarf) : list cupdie =
 (** convert attribute values to usable Lem types *)
 
 
-let string_of_string_attribute_value str av : string =
+let string_of_string_attribute_value (str: unit_context) av : string =
   match av with
   | AV_string bs -> string_of_sym_byte_sequence bs
   | AV_strp n -> pp_debug_str_entry str n
+  | AV_strx i -> strx_string str i           (* Claude: DWARF 5 *)
+  | AV_line_strp n -> line_strp_string str n
   | _ -> "find_string_attribute_value_of_die AV not understood"
   end
 
@@ -2716,6 +3038,7 @@ let maybe_natural_of_constant_attribute_value die1 c av : maybe sym_natural =
   | AV_constantN n bs -> Just n
   | AV_constant_ULEB128 n -> Just n
   | AV_block n bs -> Just (sym_natural_of_bytes c.endianness bs)
+  | AV_implicit_const i -> if i >= 0 then Just (partialSymNaturalFromInteger i) else Nothing   (* Claude: DWARF 5 *)
   | _ -> Nothing
   end
 
@@ -2731,6 +3054,7 @@ let integer_of_constant_attribute_value c av : sym_integer =
   | AV_constant_ULEB128 n -> symIntegerFromNatural n
   | AV_constant_SLEB128 n -> n
   | AV_block n bs -> symIntegerFromNatural (sym_natural_of_bytes c.endianness bs)
+  | AV_implicit_const i -> i   (* Claude: DWARF 5 *)
   | _ -> Assert_extra.failwith ("integer_of_constant_attribute_value fail")
   end
 
@@ -2768,9 +3092,126 @@ let find_attribute_value (an: string) (die:die) : maybe attribute_value =
       die.die_abbreviation_declaration.ad_attribute_specifications
       die.die_attribute_values in
   myfindmaybe
-    (fun  (((at': sym_natural), (af: sym_natural)), ((pos: sym_natural),(av:attribute_value))) ->
-      if at' = at then Just av else Nothing)
+    (fun  ((sp: attribute_specification), ((pos: sym_natural),(av:attribute_value))) ->
+      if sp.as_attribute = at then Just av else Nothing)
     ats
+
+(* Claude: the context for interpreting one unit's attribute values (see [unit_context]) *)
+let sec_offset_attribute_of_die (an: string) (die: die) : maybe sym_natural =
+  match find_attribute_value an die with
+  | Just (AV_sec_offset n) -> Just n
+  | _ -> Nothing
+  end
+
+(* Claude: the entries of a unit's contribution to .debug_str_offsets or
+   .debug_addr, given the base attribute's offset.  A contribution has a header
+   (an initial length, a 2-byte version, and 2 more bytes) and the base points just
+   after it, so the length gives the entry count; without a readable header (as in
+   pre-standard uses of these tables) the entries run to the end of the section. *)
+let rec index_list (i: natural) (xs: list 'a) : list (natural * 'a) =
+  match xs with
+  | [] -> []
+  | x :: xs' -> (i, x) :: index_list (i + 1) xs'
+  end
+
+let read_index_table (c: p_context) (df: dwarf_format) (entry_size: natural) (p: parser sym_natural) (sec: sym_byte_sequence) (base: sym_natural) : Map.map natural sym_natural =
+  let b = sym_natural_offset_part base in
+  let header_size = match df with Dwarf32 -> 8 | Dwarf64 -> 16 end in
+  let length_pos = match df with Dwarf32 -> b - 8 | Dwarf64 -> b - 12 end in
+  let count_from_header =
+    if b < header_size then Nothing else
+    match read_uintDwarfN_at c df sec length_pos with
+    | Just len -> let l = sym_natural_offset_part len in if l >= 4 then Just ((l - 4) div entry_size) else Nothing
+    | Nothing -> Nothing
+    end in
+  let count =
+    match count_from_header with
+    | Just n -> n
+    | Nothing -> if sym_bs_length sec > b then (sym_bs_length sec - b) div entry_size else 0
+    end in
+  match sym_dropbytes b sec with
+  | Fail _ -> Map.empty
+  | Success bs ->
+      match parse_replicate count p <| pc_bytes = bs; pc_offset = b |> with
+      | PR_success es _ -> Map.fromList (index_list 0 es)
+      | PR_fail _ _ -> Map.empty
+      end
+  end
+
+let unit_tables_of_die (c: p_context) (secs: dwarf_sections) (cuh: compilation_unit_header) (die: die) : unit_tables =
+  let df = cuh.cuh_dwarf_format in
+  let str_offsets =
+    match sec_offset_attribute_of_die "DW_AT_str_offsets_base" die with
+    | Just base ->
+        (* in a relocatable file each entry is a relocation against .debug_str,
+           whose offset part is the string's offset *)
+        read_index_table c df (offset_size df) (pr_map2 (fun n -> sym_natural_const (sym_natural_offset_part n)) (parse_uintDwarfN c df)) secs.sec_str_offsets base
+    | Nothing -> Map.empty
+    end in
+  let addrs =
+    match sec_offset_attribute_of_die "DW_AT_addr_base" die with
+    | Just base -> read_index_table c df (sym_natural_offset_part cuh.cuh_address_size) (parse_uint_address_size c cuh.cuh_address_size) secs.sec_addr base
+    | Nothing -> Map.empty
+    end in
+  <| ut_str_offsets = str_offsets; ut_addrs = addrs |>
+
+let unit_context_of_sections (c: p_context) (secs: dwarf_sections) (loc: location_list_list) (ranges: range_list_list) (cuh: compilation_unit_header) : unit_context =
+  <|
+  uc_c = c;
+  uc_sections = secs;
+  uc_loc = loc;
+  uc_ranges = ranges;
+  uc_cuh = cuh;
+  uc_tables = empty_unit_tables;
+  uc_str_offsets_base = Nothing;
+  uc_addr_base = Nothing;
+  uc_rnglists_base = Nothing;
+  uc_loclists_base = Nothing;
+  uc_base_address = 0;
+  |>
+
+let unit_context_of_die_tables (d: dwarf) (cuh: compilation_unit_header) (tables: unit_tables) (die: die) : unit_context =
+  let c = <| endianness = d.d_endianness |> in
+  let str0 =
+    <|
+    uc_c = c;
+    uc_sections = d.d_sections;
+    uc_loc = d.d_loc;
+    uc_ranges = d.d_ranges;
+    uc_cuh = cuh;
+    uc_tables = tables;
+    uc_str_offsets_base = sec_offset_attribute_of_die "DW_AT_str_offsets_base" die;
+    uc_addr_base = sec_offset_attribute_of_die "DW_AT_addr_base" die;
+    uc_rnglists_base = sec_offset_attribute_of_die "DW_AT_rnglists_base" die;
+    uc_loclists_base = sec_offset_attribute_of_die "DW_AT_loclists_base" die;
+    uc_base_address = 0;
+    |> in
+  let base =
+    match find_attribute_value "DW_AT_low_pc" die with
+    | Just av -> (match address_of_attribute_value str0 av with Just a -> a | Nothing -> 0 end)
+    | Nothing -> 0
+    end in
+  <| str0 with uc_base_address = base |>
+
+(* for a DIE without its parsed unit to hand: the tables are read afresh *)
+let unit_context_of_die (d: dwarf) (cuh: compilation_unit_header) (die: die) : unit_context =
+  unit_context_of_die_tables d cuh (unit_tables_of_die <| endianness = d.d_endianness |> d.d_sections cuh die) die
+
+let unit_context_of_cu (d: dwarf) (cu: compilation_unit) : unit_context =
+  unit_context_of_die_tables d cu.cu_header cu.cu_tables cu.cu_die
+
+let unit_context_of_tu (d: dwarf) (tu: type_unit) : unit_context =
+  unit_context_of_die_tables d tu.tu_header.tuh_cuh tu.tu_tables tu.tu_die
+
+(* Claude: for the few places that print without a unit to hand: the first unit's
+   context *)
+let unit_context_of_d (d: dwarf) : unit_context =
+  match d.d_compilation_units with
+  | cu :: _ -> unit_context_of_cu d cu
+  | [] -> unit_context_of_sections <| endianness = d.d_endianness |> d.d_sections d.d_loc d.d_ranges
+            <| cuh_offset = 0; cuh_dwarf_format = Dwarf32; cuh_unit_length = 0; cuh_version = 4; cuh_debug_abbrev_offset = 0;
+               cuh_address_size = 8; cuh_unit_type = Nothing; cuh_dwo_id = Nothing |>
+  end
 
   
 let find_string_attribute_value_of_die (an: string) str (die:die) : maybe string =  
@@ -2877,7 +3318,7 @@ let find_DW_AT_type_of_die_using_abstract_origin c d cu str die : maybe (compila
 
 let find_flag_attribute_value_of_die_using_abstract_origin d (an: string) ((cu,parents,die):cupdie) : maybe bool =  
   let c = p_context_of_d d in
-  match find_attribute_value_using_abstract_origin c d cu d.d_str an die with
+  match find_attribute_value_using_abstract_origin c d cu (unit_context_of_cu d cu) an die with
   | Nothing -> Nothing
   | Just (cu',av) ->
      Just (bool_of_flag_attribute_value av)
@@ -2909,18 +3350,16 @@ let parse_unit_length c : parser (dwarf_format * sym_natural) =
             PR_success (Dwarf64, x') pc''))   (* Claude: was pc', re-reading the 8-byte length as the following fields *)
 
 
+(* Claude: DWARF 2 to 4: unit_length, version, debug_abbrev_offset, address_size;
+   DWARF 5 (section 7.5.1): unit_length, version, unit_type, address_size,
+   debug_abbrev_offset, then a dwo_id for skeleton and split units (the type
+   signature and offset of a type unit are read by the caller, as for .debug_types) *)
 let parse_compilation_unit_header c : parser compilation_unit_header =
-    pr_post_map
-      (pr_with_pos
-         (parse_dependent_pair
-            (parse_unit_length c)
-            (fun (df,ul) ->
-              parse_triple
-                (parse_uint16 c) (* version *)
-                (parse_uintDwarfN c df) (* debug abbrev offset *)
-                (parse_uint8) (* address_size *))))
-      (fun (offset,((df,ul), (v, (dao, as')))) ->
-        (*let _ = my_debug4 ("dao " ^ pphex dao) in *)
+  fun (pc: parse_context) ->
+    let offset = sym_natural_const pc.pc_offset in
+    pr_bind (parse_unit_length c pc) (fun (df, ul) pc1 ->
+    pr_bind (parse_uint16 c pc1) (fun v pc2 ->
+      let mk dao as' ut dwo =
         <|
         cuh_offset = offset;
         cuh_dwarf_format = df;
@@ -2928,7 +3367,21 @@ let parse_compilation_unit_header c : parser compilation_unit_header =
         cuh_version = v;
         cuh_debug_abbrev_offset = dao;
         cuh_address_size = as';
-      |>)
+        cuh_unit_type = ut;
+        cuh_dwo_id = dwo;
+        |> in
+      if v >= 5 then
+        pr_bind (parse_uint8 pc2) (fun ut pc3 ->
+        pr_bind (parse_uint8 pc3) (fun as' pc4 ->
+        pr_bind (parse_uintDwarfN c df pc4) (fun dao pc5 ->
+          if ut = vDW_UT_skeleton || ut = vDW_UT_split_compile then
+            pr_bind (parse_uint64 c pc5) (fun dwo pc6 -> PR_success (mk dao as' (Just ut) (Just dwo)) pc6)
+          else
+            PR_success (mk dao as' (Just ut) Nothing) pc5)))
+      else
+        pr_bind (parse_uintDwarfN c df pc2) (fun dao pc3 ->
+        pr_bind (parse_uint8 pc3) (fun as' pc4 ->
+          PR_success (mk dao as' Nothing Nothing) pc4))))
 
 
 (** type unit header: pp and parsing *)
@@ -2997,7 +3450,7 @@ let indent_level_plus_one indent level =
   *)
 type die_style =
   <| ds_die_line   : natural -> die -> string
-   ; ds_attribute  : compilation_unit_header -> natural -> die -> ((sym_natural * sym_natural) * (sym_natural * attribute_value)) -> string
+   ; ds_attribute  : compilation_unit_header -> natural -> die -> (attribute_specification * (sym_natural * attribute_value)) -> string
    ; ds_terminator : natural -> die -> string
   |>
 
@@ -3012,18 +3465,18 @@ let rec pp_die_tree (st:die_style) (cuh:compilation_unit_header) (descend:bool) 
      else "")
 
 (** linksem's own view: each attribute with its form and the parsed value *)
-val style_info : p_context -> sym_byte_sequence -> bool -> die_style
-let style_info c (str:sym_byte_sequence) (indent:bool) : die_style =
+val style_info : p_context -> unit_context -> bool -> die_style
+let style_info c (str:unit_context) (indent:bool) : die_style =
   <| ds_die_line = (fun level die ->
        indent_level indent level ^ "<" ^ show level ^ ">"
        ^ pp_pos die.die_offset
        ^ ": Abbrev Number: " ^ show die.die_abbreviation_code
        ^ " (" ^ pp_tag_encoding die.die_abbreviation_declaration.ad_tag ^")\n")
-   ; ds_attribute = (fun cuh level die ((at, af), (pos, av)) ->
+   ; ds_attribute = (fun cuh level die (sp, (pos, av)) ->
        indent_level_plus_one indent level ^ pp_pos pos  ^ "   "
-       ^ right_space_padded_to 18 (pp_attribute_encoding at) ^ ": "
-       ^ "(" ^ pp_attribute_form_encoding af ^ ") "
-       ^ pp_attribute_value c cuh str at av
+       ^ right_space_padded_to 18 (pp_attribute_encoding sp.as_attribute) ^ ": "
+       ^ "(" ^ pp_attribute_form_encoding sp.as_form ^ ") "
+       ^ pp_attribute_value c cuh str sp.as_attribute av
        ^ "\n")
    ; ds_terminator = (fun _ _ -> "")
   |>
@@ -3031,14 +3484,14 @@ let style_info c (str:sym_byte_sequence) (indent:bool) : die_style =
 (* Claude: the original entry points, kept with their signatures.  [indent]
    now only controls indentation: the unindented variant used to be a rough
    imitation of objdump, superseded by [pp_dwarf_like_objdump]. *)
-let pp_die_attribute c (cuh:compilation_unit_header) (str : sym_byte_sequence) (indent:bool) (level: natural) (die:die) (spec_and_value : (sym_natural * sym_natural) * (sym_natural * attribute_value)) : string =
+let pp_die_attribute c (cuh:compilation_unit_header) (str : unit_context) (indent:bool) (level: natural) (die:die) (spec_and_value : attribute_specification * (sym_natural * attribute_value)) : string =
   (style_info c str indent).ds_attribute cuh level die spec_and_value
 
-val pp_die : p_context -> compilation_unit_header -> sym_byte_sequence -> bool -> natural -> bool -> die -> string
+val pp_die : p_context -> compilation_unit_header -> unit_context -> bool -> natural -> bool -> die -> string
 let pp_die c cuh str indent level (pp_children:bool) die =
   pp_die_tree (style_info c str indent) cuh pp_children level die
 
-val pp_die_abbrev : p_context -> compilation_unit_header -> sym_byte_sequence -> natural -> bool -> (list die) -> die -> string
+val pp_die_abbrev : p_context -> compilation_unit_header -> unit_context -> natural -> bool -> (list die) -> die -> string
 let rec pp_die_abbrev c cuh str level (pp_children:bool) parents die =
   indent_level true level
   ^ pp_tag_encoding die.die_abbreviation_declaration.ad_tag
@@ -3054,7 +3507,7 @@ let rec pp_die_abbrev c cuh str level (pp_children:bool) parents die =
 
 
 (* condensed pp for variables *)
-val pp_die_abbrev_var : p_context -> dwarf -> compilation_unit -> sym_byte_sequence -> bool -> (list die) -> die -> (string (*name*) * string (*offset*) * string (*kind*))
+val pp_die_abbrev_var : p_context -> dwarf -> compilation_unit -> unit_context -> bool -> (list die) -> die -> (string (*name*) * string (*offset*) * string (*kind*))
 let rec pp_die_abbrev_var c d cu str (pp_children:bool) parents die =
   (*   (indent_level true level*)
   (*  ^ pp_tag_encoding die.die_abbreviation_declaration.ad_tag*)
@@ -3071,7 +3524,7 @@ let rec pp_die_abbrev_var c d cu str (pp_children:bool) parents die =
   )
 
 (* condensed pp for variable parents *)
-val pp_die_abbrev_var_parent : p_context -> dwarf -> compilation_unit -> sym_byte_sequence -> die -> string
+val pp_die_abbrev_var_parent : p_context -> dwarf -> compilation_unit -> unit_context -> die -> string
 let pp_die_abbrev_var_parent c d cu str die =
   (*   (indent_level true level*)
   (*  ^ pp_tag_encoding die.die_abbreviation_declaration.ad_tag*)
@@ -3086,7 +3539,7 @@ let pp_die_abbrev_var_parent c d cu str die =
   
   
 
-val pp_die_abbrev_var_parents : p_context -> dwarf -> compilation_unit -> sym_byte_sequence -> list die -> string
+val pp_die_abbrev_var_parents : p_context -> dwarf -> compilation_unit -> unit_context -> list die -> string
 let pp_die_abbrev_var_parents c d cu str parents =
     String.concat ":" (List.map (fun die -> pp_die_abbrev_var_parent c d cu str die) parents)
 
@@ -3100,7 +3553,7 @@ let pp_die_abbrev_var_parents c d cu str parents =
     
 
 
-val parse_die : p_context -> sym_byte_sequence -> compilation_unit_header -> (sym_natural -> maybe abbreviation_declaration) -> parser (maybe die)
+val parse_die : p_context -> unit_context -> compilation_unit_header -> (sym_natural -> maybe abbreviation_declaration) -> parser (maybe die)
 let rec parse_die c str cuh find_abbreviation_declaration =
   fun (pc: parse_context) ->
     let _ = my_debug3 ("parse_die called at " ^ pp_parse_context pc ^ "\n") in
@@ -3111,7 +3564,13 @@ let rec parse_die c str cuh find_abbreviation_declaration =
         match find_abbreviation_declaration abbreviation_code with
         | Nothing -> PR_fail ("abbreviation code " ^ pphex_sym abbreviation_code ^ " not in the abbreviation table") pc'   (* Claude *)
         | Just ad ->
-        let attribute_value_parsers = List.map (fun (at,af) -> pr_with_pos (parser_of_attribute_form c cuh af)) ad.ad_attribute_specifications in
+        let attribute_value_parsers =
+          List.map (fun (sp: attribute_specification) ->
+              pr_with_pos (match sp.as_implicit_const with
+                           | Just i -> pr_return (AV_implicit_const i)   (* Claude: no bytes in the DIE *)
+                           | Nothing -> parser_of_attribute_form c cuh sp.as_form
+                           end))
+            ad.ad_attribute_specifications in
         pr_bind (parse_parser_list attribute_value_parsers pc') (fun avs pc'' ->
 
 (*
@@ -3142,12 +3601,12 @@ let rec parse_die c str cuh find_abbreviation_declaration =
 let has_attribute (an: string) (die: die) : bool =
   List.elem
     (attribute_encode an)
-    (List.map Tuple.fst die.die_abbreviation_declaration.ad_attribute_specifications)
+    (List.map (fun (sp: attribute_specification) -> sp.as_attribute) die.die_abbreviation_declaration.ad_attribute_specifications)
 
 
 (** compilation units: pp and parsing *)
 
-let pp_compilation_unit c (indent:bool) (debug_str_section_body: sym_byte_sequence) cu =
+let pp_compilation_unit c (indent:bool) (str: unit_context) cu =
   ""
 (*  "*** compilation unit header               ***\n"*)
   ^ pp_compilation_unit_header cu.cu_header
@@ -3155,28 +3614,32 @@ let pp_compilation_unit c (indent:bool) (debug_str_section_body: sym_byte_sequen
   ^ pp_abbreviations_table cu.cu_abbreviations_table
   ^ "\n"
   ^ "*** compilation unit die tree\n"
-  ^ pp_die c cu.cu_header debug_str_section_body indent 0 true cu.cu_die
+  ^ pp_die c cu.cu_header str indent 0 true cu.cu_die
   ^ "\n"
 
-let pp_compilation_units c (indent:bool) debug_string_section_body (compilation_units: list compilation_unit) : string =
-  String.concat "" (List.map (pp_compilation_unit c indent debug_string_section_body) compilation_units)
+let pp_compilation_units c (indent:bool) (d: dwarf) (compilation_units: list compilation_unit) : string =
+  String.concat "" (List.map (fun cu -> pp_compilation_unit c indent (unit_context_of_cu d cu) cu) compilation_units)
 
 
-let pp_compilation_unit_abbrev c (debug_str_section_body: sym_byte_sequence) cu =
+let pp_compilation_unit_abbrev c (str: unit_context) cu =
   pp_compilation_unit_header cu.cu_header
 (*  ^ pp_abbreviations_table cu.cu_abbreviations_table*)
-  ^ pp_die_abbrev c cu.cu_header debug_str_section_body 0 true [] cu.cu_die
+  ^ pp_die_abbrev c cu.cu_header str 0 true [] cu.cu_die
 
-let pp_compilation_units_abbrev c debug_string_section_body (compilation_units: list compilation_unit) : string =
-  String.concat "" (List.map (pp_compilation_unit_abbrev c debug_string_section_body) compilation_units)
+let pp_compilation_units_abbrev c (d: dwarf) (compilation_units: list compilation_unit) : string =
+  String.concat "" (List.map (fun cu -> pp_compilation_unit_abbrev c (unit_context_of_cu d cu) cu) compilation_units)
 
 val add_die_to_index : die_index -> list die -> die -> die_index
 let rec add_die_to_index acc parents die =
   let nacc : die_index = Map.insert die.die_offset (parents,die) acc in
   List.foldl (fun acc ndie -> add_die_to_index acc (die::parents) ndie) nacc die.die_children
 
-let parse_compilation_unit c (debug_str_section_body: sym_byte_sequence) (debug_abbrev_section_body: sym_byte_sequence) : parser (maybe compilation_unit) =
+(* Claude: one unit of .debug_info: a compilation unit, or in DWARF 5 a type unit
+   (DW_UT_type / DW_UT_split_type, whose header continues with the type signature
+   and the offset of the type's DIE) *)
+let parse_unit c (secs: dwarf_sections) : parser (maybe dwarf_unit) =
     fun (pc:parse_context) ->
+      let debug_abbrev_section_body = secs.sec_abbrev in
 
       if sym_bs_length pc.pc_bytes = 0 then PR_success Nothing pc else
 
@@ -3190,6 +3653,15 @@ let parse_compilation_unit c (debug_str_section_body: sym_byte_sequence) (debug_
       let _ = my_debug4 (pp_compilation_unit_header cuh) in
 
       if cuh.cuh_unit_length = 0 then PR_success Nothing pc' else
+
+      let is_type_unit = match cuh.cuh_unit_type with Just ut -> ut = vDW_UT_type || ut = vDW_UT_split_type | Nothing -> false end in
+      match (if is_type_unit then
+               pr_bind (parse_uint64 c pc') (fun sg pca -> pr_bind (parse_uintDwarfN c cuh.cuh_dwarf_format pca) (fun to' pcb -> PR_success (Just (sg, to')) pcb))
+             else PR_success Nothing pc') with
+      | PR_fail s pc'' -> PR_fail ("type unit header fail: " ^ s) pc''
+      | PR_success mtype_fields pc' ->
+
+      let str = unit_context_of_sections c secs [] [] cuh in
 
       let abbrev_offset = sym_natural_expect_const cuh.cuh_debug_abbrev_offset in
       match sym_dropbytes abbrev_offset debug_abbrev_section_body with
@@ -3212,17 +3684,28 @@ let parse_compilation_unit c (debug_str_section_body: sym_byte_sequence) (debug_
 
       let _ = my_debug3 (pp_abbreviations_table abbreviations_table) in
 
-      match parse_die c debug_str_section_body cuh find_abbreviation_declaration pc' with
+      match parse_die c str cuh find_abbreviation_declaration pc' with
       | PR_fail s pc'' -> PR_fail ("parse_die fail: " ^ s) pc''
       | PR_success (Nothing) pc'' -> PR_fail "parse_die returned Nothing (an end-of-siblings marker as the unit's first DIE)" pc''
       | PR_success (Just die) pc'' ->
-          let cu =
-            <|
-            cu_header = cuh;
-            cu_abbreviations_table = abbreviations_table;
-            cu_die = die;
-            cu_index = add_die_to_index Map.empty [] die
-          |> in
+          let u =
+            match mtype_fields with
+            | Nothing ->
+                Unit_compilation <|
+                  cu_header = cuh;
+                  cu_abbreviations_table = abbreviations_table;
+                  cu_die = die;
+                  cu_index = add_die_to_index Map.empty [] die;
+                  cu_tables = unit_tables_of_die c secs cuh die;
+                |>
+            | Just (sg, to') ->
+                Unit_type <|
+                  tu_header = <| tuh_cuh = cuh; tuh_type_signature = sg; tuh_type_offset = to' |>;
+                  tu_abbreviations_table = abbreviations_table;
+                  tu_die = die;
+                  tu_tables = unit_tables_of_die c secs cuh die;
+                |>
+            end in
           (* Claude: the next unit starts where this unit's header says this one
              ends, not where its DIE tree ended: some producers pad after the
              last DIE, and some emit several level-0 DIEs (which readelf and
@@ -3237,30 +3720,45 @@ let parse_compilation_unit c (debug_str_section_body: sym_byte_sequence) (debug_
               | Fail _ -> pc''
               end
             else pc'' in
-          PR_success (Just cu) pc_next
+          PR_success (Just u) pc_next
+      end
       end
       end
       end
       end
 
-let parse_compilation_units c (debug_str_section_body: sym_byte_sequence) (debug_abbrev_section_body: sym_byte_sequence): parser (list compilation_unit)
-    =
-  parse_list (parse_compilation_unit c debug_str_section_body debug_abbrev_section_body)
+let compilation_units_of_units (us: list dwarf_unit) : list compilation_unit =
+  List.mapMaybe (fun u -> match u with Unit_compilation cu -> Just cu | Unit_type _ -> Nothing end) us
+
+let type_units_of_units (us: list dwarf_unit) : list type_unit =
+  List.mapMaybe (fun u -> match u with Unit_type tu -> Just tu | Unit_compilation _ -> Nothing end) us
+
+(* Claude: a type unit viewed as a compilation unit, for the DIE accessors *)
+let compilation_unit_of_type_unit (tu: type_unit) : compilation_unit =
+  <|
+  cu_header = tu.tu_header.tuh_cuh;
+  cu_abbreviations_table = tu.tu_abbreviations_table;
+  cu_die = tu.tu_die;
+  cu_tables = tu.tu_tables;
+  cu_index = add_die_to_index Map.empty [] tu.tu_die
+  |>
 
 
 (** type units: pp and parsing *)
 
-let pp_type_unit c (debug_str_section_body: sym_byte_sequence) tu =
+let pp_type_unit c (d: dwarf) tu =
   pp_type_unit_header tu.tu_header
   ^ pp_abbreviations_table tu.tu_abbreviations_table
-  ^ pp_die c tu.tu_header.tuh_cuh debug_str_section_body true 0 true tu.tu_die
+  ^ pp_die c tu.tu_header.tuh_cuh (unit_context_of_tu d tu) true 0 true tu.tu_die
 
-let pp_type_units c debug_string_section_body (type_units: list type_unit) : string =
-  String.concat "" (List.map (pp_type_unit c debug_string_section_body) type_units)
+let pp_type_units c (d: dwarf) (type_units: list type_unit) : string =
+  String.concat "" (List.map (pp_type_unit c d) type_units)
 
 
-let parse_type_unit c (debug_str_section_body: sym_byte_sequence) (debug_abbrev_section_body: sym_byte_sequence) : parser (maybe type_unit) =
+(* the DWARF 4 .debug_types form; DWARF 5 type units are read by [parse_unit] *)
+let parse_type_unit c (secs: dwarf_sections) : parser (maybe type_unit) =
     fun (pc:parse_context) ->
+      let debug_abbrev_section_body = secs.sec_abbrev in
 
       if sym_bs_length pc.pc_bytes = 0 then PR_success Nothing pc else
 
@@ -3287,7 +3785,7 @@ let parse_type_unit c (debug_str_section_body: sym_byte_sequence) (debug_abbrev_
 
       (* let _ = my_debug3 (pp_abbreviations_table abbreviations_table) in *)
 
-      match parse_die c debug_str_section_body tuh.tuh_cuh find_abbreviation_declaration pc' with
+      match parse_die c (unit_context_of_sections c secs [] [] tuh.tuh_cuh) tuh.tuh_cuh find_abbreviation_declaration pc' with
       | PR_fail s pc'' -> Assert_extra.failwith ("parse_die fail: " ^ pp_parse_fail s pc'')
       | PR_success (Nothing) pc'' -> Assert_extra.failwith ("parse_die returned Nothing: " ^ pp_parse_context pc'')
       | PR_success (Just die) pc'' ->
@@ -3296,13 +3794,14 @@ let parse_type_unit c (debug_str_section_body: sym_byte_sequence) (debug_abbrev_
             tu_header = tuh;
             tu_abbreviations_table = abbreviations_table;
             tu_die = die;
+            tu_tables = unit_tables_of_die c secs tuh.tuh_cuh die;
           |> in
           PR_success (Just tu) pc''
       end
 
-let parse_type_units c (debug_str_section_body: sym_byte_sequence) (debug_abbrev_section_body: sym_byte_sequence): parser (list type_unit)
+let parse_type_units c (secs: dwarf_sections) : parser (list type_unit)
       =
-    parse_list (parse_type_unit c debug_str_section_body debug_abbrev_section_body)
+    parse_list (parse_type_unit c secs)
 
 (** location lists, pp and parsing *)
 
@@ -3511,6 +4010,154 @@ let rec interpret_range_list (base_address: sym_natural) (rlis: list range_list_
   | [] -> []
   | RLI_base base::rlis' -> interpret_range_list base.base_address rlis'
   | RLI_rle rle :: rlis' -> (base_address+rle.rle_beginning_address_offset, base_address+rle.rle_ending_address_offset) :: interpret_range_list base_address rlis'
+  end
+
+(** Claude: DWARF 5 location and range lists (.debug_loclists and .debug_rnglists,
+    sections 2.6.2, 2.17.3, 7.28 and 7.29): kind-tagged entries, parsed from a
+    section offset and interpreted to the same (lo, hi[, description]) lists as the
+    DWARF 4 .debug_loc and .debug_ranges ones, resolving the address indices through
+    the unit's address table *)
+
+(* a counted location description: a ULEB128 length and that many bytes *)
+let parse_counted_location_description : parser single_location_description =
+  fun (pc: parse_context) -> pr_bind (parse_ULEB128 pc) (fun n pc' -> parse_n_bytes n pc')
+
+let parse_loclist_entry c (cuh: compilation_unit_header) : parser (maybe loclist_entry) =
+  fun (pc: parse_context) ->
+    pr_bind (parse_uint8 pc) (fun kind pc1 ->
+      let addr = parse_uint_address_size c cuh.cuh_address_size in
+      let k = sym_natural_offset_part kind in
+      if k = 0 then PR_success Nothing pc1     (* DW_LLE_end_of_list ends the list *)
+      else if k = 1 then pr_map (fun i -> Just (LLE_base_addressx i)) (parse_ULEB128 pc1)
+      else if k = 2 then pr_map (fun (i,(j,bs)) -> Just (LLE_startx_endx i j bs)) (parse_triple parse_ULEB128 parse_ULEB128 parse_counted_location_description pc1)
+      else if k = 3 then pr_map (fun (i,(n,bs)) -> Just (LLE_startx_length i n bs)) (parse_triple parse_ULEB128 parse_ULEB128 parse_counted_location_description pc1)
+      else if k = 4 then pr_map (fun (a,(b,bs)) -> Just (LLE_offset_pair a b bs)) (parse_triple parse_ULEB128 parse_ULEB128 parse_counted_location_description pc1)
+      else if k = 5 then pr_map (fun bs -> Just (LLE_default_location bs)) (parse_counted_location_description pc1)
+      else if k = 6 then pr_map (fun a -> Just (LLE_base_address a)) (addr pc1)
+      else if k = 7 then pr_map (fun (a,(b,bs)) -> Just (LLE_start_end a b bs)) (parse_triple addr addr parse_counted_location_description pc1)
+      else if k = 8 then pr_map (fun (a,(n,bs)) -> Just (LLE_start_length a n bs)) (parse_triple addr parse_ULEB128 parse_counted_location_description pc1)
+      else PR_fail ("unknown DW_LLE kind " ^ show k) pc)
+
+let parse_rnglist_entry c (cuh: compilation_unit_header) : parser (maybe rnglist_entry) =
+  fun (pc: parse_context) ->
+    pr_bind (parse_uint8 pc) (fun kind pc1 ->
+      let addr = parse_uint_address_size c cuh.cuh_address_size in
+      let k = sym_natural_offset_part kind in
+      if k = 0 then PR_success Nothing pc1     (* DW_RLE_end_of_list ends the list *)
+      else if k = 1 then pr_map (fun i -> Just (RLE_base_addressx i)) (parse_ULEB128 pc1)
+      else if k = 2 then pr_map (fun (i,j) -> Just (RLE_startx_endx i j)) (parse_pair parse_ULEB128 parse_ULEB128 pc1)
+      else if k = 3 then pr_map (fun (i,n) -> Just (RLE_startx_length i n)) (parse_pair parse_ULEB128 parse_ULEB128 pc1)
+      else if k = 4 then pr_map (fun (a,b) -> Just (RLE_offset_pair a b)) (parse_pair parse_ULEB128 parse_ULEB128 pc1)
+      else if k = 5 then pr_map (fun a -> Just (RLE_base_address a)) (addr pc1)
+      else if k = 6 then pr_map (fun (a,b) -> Just (RLE_start_end a b)) (parse_pair addr addr pc1)
+      else if k = 7 then pr_map (fun (a,n) -> Just (RLE_start_length a n)) (parse_pair addr parse_ULEB128 pc1)
+      else PR_fail ("unknown DW_RLE kind " ^ show k) pc)
+
+(* the list starting at a section offset (the entries up to its end-of-list) *)
+let loclist_at (str: unit_context) (offset: sym_natural) : maybe (list loclist_entry) =
+  match sym_dropbytes (sym_natural_offset_part offset) str.uc_sections.sec_loclists with
+  | Fail _ -> Nothing
+  | Success bs ->
+      match parse_list (parse_loclist_entry str.uc_c str.uc_cuh) <| pc_bytes = bs; pc_offset = sym_natural_offset_part offset |> with
+      | PR_success es _ -> Just es
+      | PR_fail _ _ -> Nothing
+      end
+  end
+
+let rnglist_at (str: unit_context) (offset: sym_natural) : maybe (list rnglist_entry) =
+  match sym_dropbytes (sym_natural_offset_part offset) str.uc_sections.sec_rnglists with
+  | Fail _ -> Nothing
+  | Success bs ->
+      match parse_list (parse_rnglist_entry str.uc_c str.uc_cuh) <| pc_bytes = bs; pc_offset = sym_natural_offset_part offset |> with
+      | PR_success es _ -> Just es
+      | PR_fail _ _ -> Nothing
+      end
+  end
+
+let addrx_or_zero (str: unit_context) (i: sym_natural) : sym_natural =
+  match addrx_address str i with Just a -> a | Nothing -> 0 end
+
+(* the default location entry, if any, comes last, so that a bounded entry that
+   covers the pc wins *)
+let rec interpret_loclist (str: unit_context) (base: sym_natural) (es: list loclist_entry) : list (sym_natural * sym_natural * single_location_description) =
+  match es with
+  | [] -> []
+  | LLE_end_of_list :: _ -> []
+  | LLE_base_addressx i :: es' -> interpret_loclist str (addrx_or_zero str i) es'
+  | LLE_base_address a :: es' -> interpret_loclist str a es'
+  | LLE_offset_pair lo hi bs :: es' -> (base + lo, base + hi, bs) :: interpret_loclist str base es'
+  | LLE_startx_endx i j bs :: es' -> (addrx_or_zero str i, addrx_or_zero str j, bs) :: interpret_loclist str base es'
+  | LLE_startx_length i n bs :: es' -> let a = addrx_or_zero str i in (a, a + n, bs) :: interpret_loclist str base es'
+  | LLE_start_end a b bs :: es' -> (a, b, bs) :: interpret_loclist str base es'
+  | LLE_start_length a n bs :: es' -> (a, a + n, bs) :: interpret_loclist str base es'
+  | LLE_default_location bs :: es' -> interpret_loclist str base es' ++ [(0, max_address str.uc_cuh.cuh_address_size, bs)]
+  end
+
+let rec interpret_rnglist (str: unit_context) (base: sym_natural) (es: list rnglist_entry) : list (sym_natural * sym_natural) =
+  match es with
+  | [] -> []
+  | RLE_end_of_list :: _ -> []
+  | RLE_base_addressx i :: es' -> interpret_rnglist str (addrx_or_zero str i) es'
+  | RLE_base_address a :: es' -> interpret_rnglist str a es'
+  | RLE_offset_pair lo hi :: es' -> (base + lo, base + hi) :: interpret_rnglist str base es'
+  | RLE_startx_endx i j :: es' -> (addrx_or_zero str i, addrx_or_zero str j) :: interpret_rnglist str base es'
+  | RLE_startx_length i n :: es' -> let a = addrx_or_zero str i in (a, a + n) :: interpret_rnglist str base es'
+  | RLE_start_end a b :: es' -> (a, b) :: interpret_rnglist str base es'
+  | RLE_start_length a n :: es' -> (a, a + n) :: interpret_rnglist str base es'
+  end
+
+(* the interpreted location list an attribute value denotes: a DWARF 4 .debug_loc
+   offset (a unit of version < 5), or a DWARF 5 .debug_loclists offset or index;
+   the offsets are relative to the unit's base address unless the list selects
+   another *)
+let location_list_of_attribute_value (str: unit_context) (av: attribute_value) : maybe (list (sym_natural * sym_natural * single_location_description)) =
+  match av with
+  | AV_sec_offset n ->
+      if unit_version str < 5 then
+        match List.find (fun (n', _) -> sym_eq n' n) str.uc_loc with
+        | Just (_, llis) -> Just (interpret_location_list str.uc_base_address llis)
+        | Nothing -> Nothing
+        end
+      else
+        match loclist_at str n with
+        | Just es -> Just (interpret_loclist str str.uc_base_address es)
+        | Nothing -> Nothing
+        end
+  | AV_loclistx i ->
+      match loclistx_offset str i with
+      | Just off ->
+          match loclist_at str off with
+          | Just es -> Just (interpret_loclist str str.uc_base_address es)
+          | Nothing -> Nothing
+          end
+      | Nothing -> Nothing
+      end
+  | _ -> Nothing
+  end
+
+let ranges_of_attribute_value (str: unit_context) (av: attribute_value) : maybe (list (sym_natural * sym_natural)) =
+  match av with
+  | AV_sec_offset n ->
+      if unit_version str < 5 then
+        match find_range_list str.uc_ranges n with
+        | Just (_, rlis) -> Just (interpret_range_list str.uc_base_address rlis)
+        | Nothing -> Nothing
+        end
+      else
+        match rnglist_at str n with
+        | Just es -> Just (interpret_rnglist str str.uc_base_address es)
+        | Nothing -> Nothing
+        end
+  | AV_rnglistx i ->
+      match rnglistx_offset str i with
+      | Just off ->
+          match rnglist_at str off with
+          | Just es -> Just (interpret_rnglist str str.uc_base_address es)
+          | Nothing -> Nothing
+          end
+      | Nothing -> Nothing
+      end
+  | _ -> Nothing
   end
 
 (** frame information, pp and parsing *)
@@ -3874,6 +4521,7 @@ let pp_line_number_file_entry lnfe =
 ^ "lnfe_directory_index " ^ show lnfe.lnfe_directory_index ^ "\n"
 ^ "lnfe_last_modification = " ^ show lnfe.lnfe_last_modification ^ "\n"
 ^ "lnfe_length = " ^ show lnfe.lnfe_length ^ "\n"
+^ (match lnfe.lnfe_md5 with Just bs -> "lnfe_md5 = " ^ hex_string_of_bytes bs ^ "\n" | Nothing -> "" end)
 
 
 let pp_line_number_header lnh =
@@ -3943,83 +4591,134 @@ let parse_line_number_file_entry : parser (maybe line_number_file_entry)
                 lnfe_directory_index = n1;
                 lnfe_last_modification = n2;
                 lnfe_length = n3;
+                lnfe_md5 = Nothing;
               |> )
               )
          end
       )
 
-let parse_line_number_header c (comp_dir:maybe string) : parser line_number_header =
-  (parse_dependent
-     ((pr_with_pos
-         (parse_unit_length c) ))
-     (fun (pos,(df,ul)) ->
-       (*
-         parse_dependent_pair
-           (parse_pair
-              (parse_triple
-                 (parse_uint16 c)        (* version *)
-                 (parse_uintDwarfN c df) (* header_length *)
-                 (parse_uint8)           (* minimum_instruction_length *)
-              (*    (parse_uint8)           (* maximum_operations_per_instruction  NOT IN DWARF 2*)*)
-              )
-              (parse_quadruple
-                 (parse_uint8)           (* default_is_stmt *)
-                 (parse_sint8)           (* line_base *)
-                 (parse_uint8)           (* line_range *)
-                 (parse_uint8)           (* opcode_base *)
-           ))
-           (fun ((v,(hl,(minil(*,maxopi*)))),(dis,(lb,(lr,ob)))) ->
+(* Claude: the DWARF 5 line number header (section 6.2.4).  The directory and
+   file name tables are described by entry formats: a ubyte count of (content
+   type, form) ULEB128 pairs, then a ULEB128 count of entries each with one value
+   per pair, read with the ordinary attribute form parsers.  Path strings may be
+   inline, or offsets into .debug_line_str or .debug_str, so the unit context is
+   needed to resolve them. *)
 
-        *)
-       (parse_dependent
-          (parse_dependent_pair
-	     (parse_uint16 c)        (* version *)
-             (fun v -> 
-               (parse_pair
-                  (parse_triple
-                     (parse_uintDwarfN c df) (* header_length *)
-                     (parse_uint8)           (* minimum_instruction_length *)
-                     (if v<sym_natural_const 4 then     (* maximum_operations_per_instruction*)(*  NOT IN DWARF 2 or 3; in DWARF 4*)
-                        (parse_uint8_constant (sym_natural_const 1))
-                      else
-                        (parse_uint8)           
-                     ))
-                  (parse_quadruple
-                     (parse_uint8)           (* default_is_stmt *)
-                     (parse_sint8)           (* line_base *)
-                     (parse_uint8)           (* line_range *)
-                     (parse_uint8)           (* opcode_base *)
-          ))))
-          (fun ((v,(((hl,(minil,maxopi))),(dis,(lb,(lr,ob)))))) ->
-            pr_post_map
-              (parse_triple
-                 (pr_post_map (parse_n_bytes (ob-sym_natural_const 1)) (fun bs -> List.map sym_natural_of_byte (byte_list_of_sym_byte_sequence bs)))  (* standard_opcode_lengths *)
-                 ((*pr_return [[]]*) parse_list parse_non_empty_string) (* include_directories *)
-                 (parse_list parse_line_number_file_entry) (* file names *)
-              )
-              (fun (sols, (ids, fns)) ->
-                <|
-                lnh_offset = pos;
-                lnh_dwarf_format = df;
-                lnh_unit_length = ul;
-                lnh_version = v;
-                lnh_header_length = hl;
-                lnh_minimum_instruction_length = minil;
-                lnh_maximum_operations_per_instruction = maxopi;
-                lnh_default_is_stmt = (dis<>0);
-                lnh_line_base = lb;
-                lnh_line_range = lr;
-                lnh_opcode_base = ob;
-                lnh_standard_opcode_lengths = sols;
-                lnh_include_directories = ids;
-                lnh_file_entries = fns;
-                lnh_comp_dir = comp_dir;
-                |>
-              )
-          )
-       )
-     )
-  )  
+
+let parse_lnct_entry_format : parser (list (sym_natural * sym_natural)) =
+  fun (pc: parse_context) ->
+    pr_bind (parse_uint8 pc) (fun n pc' ->
+      parse_replicate (sym_natural_offset_part n) (parse_pair parse_ULEB128 parse_ULEB128) pc')
+
+let rec parse_lnct_entry c (str: unit_context) (formats: list (sym_natural * sym_natural)) : parser (list (sym_natural * attribute_value)) =
+  fun (pc: parse_context) ->
+    match formats with
+    | [] -> PR_success [] pc
+    | (ct, form) :: formats' ->
+        pr_bind (parser_of_attribute_form c str.uc_cuh form pc) (fun av pc' ->
+          pr_map (fun avs -> (ct, av) :: avs) (parse_lnct_entry c str formats' pc'))
+    end
+
+(* the null-terminated string at offset n of a string section, as bytes *)
+let section_string_bytes (sec: sym_byte_sequence) (n: sym_natural) : sym_byte_sequence =
+  match sym_dropbytes (sym_natural_offset_part n) sec with
+  | Fail _ -> sym_bs_empty
+  | Success bs -> null_terminated_bs bs
+  end
+
+let lnct_string_bytes (str: unit_context) (av: attribute_value) : sym_byte_sequence =
+  match av with
+  | AV_string bs -> bs
+  | AV_line_strp n -> section_string_bytes str.uc_sections.sec_line_str n
+  | AV_strp n -> section_string_bytes str.uc_sections.sec_str n
+  | AV_strx i -> (match strx_offset str i with Just off -> section_string_bytes str.uc_sections.sec_str off | Nothing -> sym_bs_empty end)
+  | _ -> sym_bs_empty
+  end
+
+(* DW_LNCT_path = 1, DW_LNCT_directory_index = 2, DW_LNCT_timestamp = 3,
+   DW_LNCT_size = 4, DW_LNCT_MD5 = 5 *)
+let lnct_value (ct: natural) (avs: list (sym_natural * attribute_value)) : maybe attribute_value =
+  match List.find (fun (ct', _) -> sym_natural_offset_part ct' = ct) avs with
+  | Just (_, av) -> Just av
+  | Nothing -> Nothing
+  end
+
+let lnct_natural c (avs: list (sym_natural * attribute_value)) (ct: natural) : sym_natural =
+  match lnct_value ct avs with
+  | Just (AV_constantN n _) -> n
+  | Just (AV_constant_ULEB128 n) -> n
+  | Just (AV_block _ bs) -> sym_natural_of_bytes c.endianness bs
+  | _ -> 0
+  end
+
+let lnct_path (str: unit_context) (avs: list (sym_natural * attribute_value)) : sym_byte_sequence =
+  match lnct_value 1 avs with Just av -> lnct_string_bytes str av | Nothing -> sym_bs_empty end
+
+let line_number_file_entry_of_lnct c (str: unit_context) (avs: list (sym_natural * attribute_value)) : line_number_file_entry =
+  <|
+  lnfe_path = lnct_path str avs;
+  lnfe_directory_index = lnct_natural c avs 2;
+  lnfe_last_modification = lnct_natural c avs 3;
+  lnfe_length = lnct_natural c avs 4;
+  lnfe_md5 = (match lnct_value 5 avs with Just (AV_data16 bs) -> Just bs | _ -> Nothing end);
+  |>
+
+(* the entry formats, directories and file names of a header: DWARF 5 tables, or
+   the DWARF 2-4 null-terminated lists (with empty formats) *)
+type line_number_tables = list (sym_natural * sym_natural) * list sym_byte_sequence * list (sym_natural * sym_natural) * list line_number_file_entry
+
+let parse_line_number_tables_v5 c (str: unit_context) : parser line_number_tables =
+  fun (pc: parse_context) ->
+    pr_bind (parse_lnct_entry_format pc) (fun dfmt pc1 ->
+    pr_bind (parse_ULEB128 pc1) (fun dcount pc2 ->
+    pr_bind (parse_replicate (sym_natural_offset_part dcount) (parse_lnct_entry c str dfmt) pc2) (fun dirs pc3 ->
+    pr_bind (parse_lnct_entry_format pc3) (fun ffmt pc4 ->
+    pr_bind (parse_ULEB128 pc4) (fun fcount pc5 ->
+    pr_bind (parse_replicate (sym_natural_offset_part fcount) (parse_lnct_entry c str ffmt) pc5) (fun files pc6 ->
+      PR_success (dfmt, List.map (lnct_path str) dirs, ffmt, List.map (line_number_file_entry_of_lnct c str) files) pc6))))))
+
+let parse_line_number_tables_v4 : parser line_number_tables =
+  fun (pc: parse_context) ->
+    pr_map (fun (ids, fns) -> ([], ids, [], fns))
+      (parse_pair (parse_list parse_non_empty_string) (parse_list parse_line_number_file_entry) pc)
+
+let parse_line_number_header c (str: unit_context) (comp_dir:maybe string) : parser line_number_header =
+  fun (pc: parse_context) ->
+    pr_bind (pr_with_pos (parse_unit_length c) pc) (fun (pos,(df,ul)) pc1 ->
+    pr_bind (parse_uint16 c pc1) (fun v pc2 ->
+    let v5 = v >= sym_natural_const 5 in
+    pr_bind ((if v5 then pr_map2 (fun (a,s) -> (Just a, Just s)) (parse_pair parse_uint8 parse_uint8) else pr_return (Nothing, Nothing)) pc2) (fun (mas, mss) pc3 ->
+    pr_bind (parse_uintDwarfN c df pc3) (fun hl pc4 ->
+    pr_bind (parse_uint8 pc4) (fun minil pc5 ->
+    (* maximum_operations_per_instruction is not in DWARF 2 or 3 *)
+    pr_bind ((if v < sym_natural_const 4 then parse_uint8_constant (sym_natural_const 1) else parse_uint8) pc5) (fun maxopi pc6 ->
+    pr_bind (parse_quadruple parse_uint8 parse_sint8 parse_uint8 parse_uint8 pc6) (fun (dis,(lb,(lr,ob))) pc7 ->
+    pr_bind (parse_n_bytes (ob - sym_natural_const 1) pc7) (fun solbs pc8 ->
+    let sols = List.map sym_natural_of_byte (byte_list_of_sym_byte_sequence solbs) in
+    pr_bind ((if v5 then parse_line_number_tables_v5 c str else parse_line_number_tables_v4) pc8) (fun (dfmt, ids, ffmt, fns) pc9 ->
+      PR_success
+        <|
+        lnh_offset = pos;
+        lnh_dwarf_format = df;
+        lnh_unit_length = ul;
+        lnh_version = v;
+        lnh_header_length = hl;
+        lnh_minimum_instruction_length = minil;
+        lnh_maximum_operations_per_instruction = maxopi;
+        lnh_default_is_stmt = (dis<>0);
+        lnh_line_base = lb;
+        lnh_line_range = lr;
+        lnh_opcode_base = ob;
+        lnh_standard_opcode_lengths = sols;
+        lnh_address_size = mas;
+        lnh_segment_selector_size = mss;
+        lnh_directory_entry_format = dfmt;
+        lnh_file_name_entry_format = ffmt;
+        lnh_include_directories = ids;
+        lnh_file_entries = fns;
+        lnh_comp_dir = comp_dir;
+        |> pc9)))))))))
+
 let parser_of_line_number_argument_type c (cuh: compilation_unit_header) (lnat: line_number_argument_type) : parser line_number_argument_value =
     match lnat with
     | LNAT_address -> pr_map2 (fun n -> LNAV_address n) (parse_uint_address_size c cuh.cuh_address_size)
@@ -4077,12 +4776,15 @@ let parse_line_number_operations c (cuh:compilation_unit_header) (lnh:line_numbe
         (* assume operations start immediately after the header - not completely clear in DWARF whether the header_length is just an optimisation or whether it's intended to allow the operations to start later *)
         (* line number operations have no no-op and no termination operation, so we have to cut down the available bytes to the right length *)
 
-let parse_line_number_program c (cuh:compilation_unit_header) (comp_dir:maybe string) : parser line_number_program =
+let parse_line_number_program c (cuh:compilation_unit_header) (str: unit_context) (comp_dir:maybe string) : parser line_number_program =
     parse_dependent
-      (parse_line_number_header c comp_dir)
+      (parse_line_number_header c str comp_dir)
       (fun lnh ->
+        (* Claude: the header_length counts from after that field to the first
+           opcode; before it come the version and, in DWARF 5, the address_size and
+           segment_selector_size bytes *)
         let byte_count_of_operations =
-          lnh.lnh_unit_length - (lnh.lnh_header_length + 2 + (match lnh.lnh_dwarf_format with Dwarf32 -> 4 | Dwarf64 -> 8 end)) in
+          lnh.lnh_unit_length - (lnh.lnh_header_length + 2 + (if lnh.lnh_version >= sym_natural_const 5 then 2 else 0) + (match lnh.lnh_dwarf_format with Dwarf32 -> 4 | Dwarf64 -> 8 end)) in
        pr_post_map
          (parse_restrict_length
            byte_count_of_operations
@@ -4127,10 +4829,25 @@ let line_number_program_of_compilation_unit d cu =
     end
   end
 
+(* Claude: version-appropriate lookups in the directory and file tables: 0-based in
+   DWARF 5, 1-based before, with index 0 in either case standing for the
+   compilation directory (so no directory) / the primary source file; DWARF 5's
+   entry 0 of the directory table is the compilation directory itself, which is
+   already known from DW_AT_comp_dir *)
+let lnh_directory (lnh: line_number_header) (i: sym_natural) : maybe sym_byte_sequence =
+  if i = 0 then Nothing
+  else if lnh.lnh_version >= sym_natural_const 5 then mynth i lnh.lnh_include_directories
+  else mynth (i - 1) lnh.lnh_include_directories
+
+let lnh_file (lnh: line_number_header) (i: sym_natural) : maybe line_number_file_entry =
+  if lnh.lnh_version >= sym_natural_const 5 then mynth i lnh.lnh_file_entries
+  else if i = 0 then Nothing
+  else mynth (i - 1) lnh.lnh_file_entries
+
 let filename d cu n =
   let lnp = line_number_program_of_compilation_unit d cu in
-  if n=0 then Nothing else
-    match mynth (n - 1) lnp.lnp_header.lnh_file_entries with
+  if n=0 && lnp.lnp_header.lnh_version < sym_natural_const 5 then Nothing else
+    match lnh_file lnp.lnp_header n with
     | Just lnfe ->
        Just (string_of_sym_byte_sequence lnfe.lnfe_path)
     | Nothing ->
@@ -4138,13 +4855,13 @@ let filename d cu n =
     end
 
 let unpack_file_entry lnh file : unpacked_file_entry = 
-  match mynth (file - 1) lnh.lnh_file_entries with
+  match lnh_file lnh file with
   | Just lnfe ->
      let directory =
        if lnfe.lnfe_directory_index = 0 then
          Nothing 
        else
-         match mynth (lnfe.lnfe_directory_index - 1) lnh.lnh_include_directories with
+         match lnh_directory lnh lnfe.lnfe_directory_index with
          | Just d -> Just (string_of_sym_byte_sequence d)
          | Nothing -> Just "<unpack_file_entry: directory entry not found>"
          end
@@ -4184,7 +4901,7 @@ let parse_line_number_info c str (d_line: sym_byte_sequence) (cu: compilation_un
     | Fail _ -> Nothing
     | Success d_line' ->
       let pc = <| pc_bytes = d_line'; pc_offset = n|> in
-      match parse_line_number_program c cu.cu_header comp_dir pc with
+      match parse_line_number_program c cu.cu_header str comp_dir pc with
       | PR_success lnp pc' -> Just lnp
       | PR_fail s pc' -> Nothing
       end
@@ -4194,9 +4911,11 @@ let parse_line_number_info c str (d_line: sym_byte_sequence) (cu: compilation_un
   | Just offset -> f (sym_natural_expect_const offset (*"parse_line_number_info"*))
   end
 
-let parse_line_number_infos c str debug_line_section_body compilation_units
+(* Claude: each unit's line table is read with that unit's context (its comp_dir
+   may be an indexed string) *)
+let parse_line_number_infos c (d: dwarf) compilation_units
     =
-  List.mapMaybe (parse_line_number_info c str debug_line_section_body) compilation_units
+  List.mapMaybe (fun cu -> parse_line_number_info c (unit_context_of_cu d cu) d.d_sections.sec_line cu) compilation_units
 
 let pp_line_info li
     =
@@ -4279,6 +4998,7 @@ let od_value_of_bytes (c:p_context) (bs:sym_byte_sequence) : natural =
 
 let od_block (c:p_context) (n:sym_natural) (bs:sym_byte_sequence) : string =
   od_dec_sym n ^ " byte block: " ^ String.concat "" (List.map (fun b -> pphexplain b ^ " ") (od_concrete_bytes c bs))
+
 
 (* location expressions *)
 let od_arg_nat (args: list operation_argument_value) (i:nat) : natural =
@@ -4401,6 +5121,25 @@ let od_form_data4 = attribute_form_encode "DW_FORM_data4"
 let od_form_data8 = attribute_form_encode "DW_FORM_data8"
 let od_form_sec_offset = attribute_form_encode "DW_FORM_sec_offset"
 let od_form_exprloc = attribute_form_encode "DW_FORM_exprloc"
+let od_form_loclistx = attribute_form_encode "DW_FORM_loclistx"
+let od_form_block = attribute_form_encode "DW_FORM_block"
+let od_form_block1 = attribute_form_encode "DW_FORM_block1"
+let od_form_block2 = attribute_form_encode "DW_FORM_block2"
+let od_form_block4 = attribute_form_encode "DW_FORM_block4"
+
+(* Claude: readelf omits the block display (and the delimiter before it) for a
+   block or exprloc whose first byte is DW_OP_addrx (0xa1), printing just the
+   decoded expression that follows *)
+let od_addrx_block (c:p_context) (af:sym_natural) (av:attribute_value) : bool =
+  let block_form = af = od_form_exprloc || af = od_form_block || af = od_form_block1 || af = od_form_block2 || af = od_form_block4 in
+  match av with
+  | AV_exprloc _ bs -> block_form && (match od_concrete_bytes c bs with b :: _ -> b = 161 | [] -> false end)
+  | AV_block _ bs -> block_form && (match od_concrete_bytes c bs with b :: _ -> b = 161 | [] -> false end)
+  | _ -> false
+  end
+
+(* Claude: 16 bytes as hex digits, for a DW_FORM_data16 value *)
+let od_hex_bytes (bs: sym_byte_sequence) : string = hex_string_of_bytes bs
 
 let od_location_attrs = ["DW_AT_frame_base"; "DW_AT_location"; "DW_AT_string_length";   (* Claude: not DW_AT_GNU_locviews, which objdump prints without "(location list)" *)
   "DW_AT_return_addr"; "DW_AT_data_member_location"; "DW_AT_vtable_elem_location"; "DW_AT_segment";
@@ -4500,10 +5239,15 @@ let od_uvalue (c:p_context) (small_data:bool) (wide_data:bool) (av:attribute_val
   | AV_flag b -> if b then 1 else 0
   | AV_addr x -> sym_natural_offset_part x
   | AV_sec_offset x -> sym_natural_offset_part x
+  | AV_implicit_const i -> let i = sym_integer_expect_const i in if i < 0 then 0 else naturalFromInteger i   (* Claude: DWARF 5 *)
+  | AV_addrx x -> sym_natural_offset_part x
+  | AV_strx x -> sym_natural_offset_part x
+  | AV_loclistx x -> sym_natural_offset_part x
+  | AV_rnglistx x -> sym_natural_offset_part x
   | _ -> 0
   end
 
-val od_attribute_value : p_context -> compilation_unit_header -> sym_byte_sequence -> (natural -> string) -> bool ->
+val od_attribute_value : p_context -> compilation_unit_header -> unit_context -> (natural -> string) -> bool ->
   sym_natural -> sym_natural -> attribute_value -> string
 let od_attribute_value c cuh str regname have_frame_base (at:sym_natural) (af:sym_natural) (av:attribute_value) : string =
   let cu_off = sym_natural_offset_part cuh.cuh_offset in
@@ -4515,12 +5259,13 @@ let od_attribute_value c cuh str regname have_frame_base (at:sym_natural) (af:sy
     | AV_block n bs ->
         if small_data then show (od_value_of_bytes c bs)
         else if wide_data then od_hx (od_value_of_bytes c bs)
+        else if od_addrx_block c af av then ""
         else od_block c n bs
     | AV_constantN n bs ->
         if wide_data then od_hx (od_value_of_bytes c bs) else show (od_value_of_bytes c bs)
     | AV_constant_SLEB128 i -> show (sym_integer_expect_const i)
     | AV_constant_ULEB128 n -> od_dec_sym n
-    | AV_exprloc n bs -> od_block c n bs
+    | AV_exprloc n bs -> if od_addrx_block c af av then "" else od_block c n bs
     | AV_flag b -> if b then "1" else "0"
     | AV_ref n -> "<" ^ od_hx (sym_natural_offset_part n + cu_off) ^ ">"
     | AV_ref_addr n -> "<" ^ od_hx_sym n ^ ">"
@@ -4528,6 +5273,20 @@ let od_attribute_value c cuh str regname have_frame_base (at:sym_natural) (af:sy
     | AV_sec_offset n -> od_hx_sym n
     | AV_string bs -> string_of_sym_byte_sequence bs
     | AV_strp n -> "(indirect string, offset: " ^ od_hx_sym n ^ "): " ^ pp_debug_str_entry str n
+    (* Claude: DWARF 5, as readelf prints them *)
+    | AV_strx i -> "(indexed string: " ^ od_hx_sym i ^ "): " ^ strx_string str i
+    | AV_addrx i -> "(index: " ^ od_hx_sym i ^ "): "
+        ^ (match addrx_address str i with Just a -> od_hx_sym a | Nothing -> "<no DW_AT_addr_base>" end)
+    | AV_line_strp n -> "(indirect line string, offset: " ^ od_hx_sym n ^ "): " ^ line_strp_string str n
+    | AV_data16 bs -> od_hex_bytes bs
+    | AV_implicit_const i -> show (sym_integer_expect_const i)
+    | AV_loclistx i -> "(index: " ^ od_hx_sym i ^ "): "
+        ^ (match loclistx_offset str i with Just o -> od_hx_sym o | Nothing -> "<no DW_AT_loclists_base>" end)
+    | AV_rnglistx i -> "(index: " ^ od_hx_sym i ^ "): "
+        ^ (match rnglistx_offset str i with Just o -> od_hx_sym o | Nothing -> "<no DW_AT_rnglists_base>" end)
+    | AV_ref_sup4 n -> "<alt " ^ od_hx_sym n ^ ">"
+    | AV_ref_sup8 n -> "<alt " ^ od_hx_sym n ^ ">"
+    | AV_strp_sup n -> "(alt indirect string, offset: " ^ od_hx_sym n ^ ")"
     end
   in
   let block =
@@ -4543,7 +5302,7 @@ let od_attribute_value c cuh str regname have_frame_base (at:sym_natural) (af:sy
   let version = sym_natural_offset_part cuh.cuh_version in
   let loclist =
     if (is_loc || is_base)
-       && (af = od_form_sec_offset || (version < 4 && wide_data))
+       && (af = od_form_sec_offset || af = od_form_loclistx || (version < 4 && wide_data))
        && not (od_at_in at od_nonloclist_base_codes)
     then " (location list)" else ""
   in
@@ -4571,14 +5330,16 @@ let od_tag_name (t:sym_natural) : string =
   end
 
 (** byte-identical to `objdump --dwarf=info`: see [pp_die_tree] *)
-val style_objdump : p_context -> sym_byte_sequence -> (natural -> string) -> bool -> die_style
-let style_objdump c (str:sym_byte_sequence) (regname: natural -> string) (have_frame_base:bool) : die_style =
+val style_objdump : p_context -> unit_context -> (natural -> string) -> bool -> die_style
+let style_objdump c (str:unit_context) (regname: natural -> string) (have_frame_base:bool) : die_style =
   <| ds_die_line = (fun level die ->
        " <" ^ show level ^ "><" ^ od_x_sym die.die_offset ^ ">: Abbrev Number: " ^ od_dec_sym die.die_abbreviation_code
        ^ " (" ^ od_tag_name die.die_abbreviation_declaration.ad_tag ^ ")\n")
-   ; ds_attribute = (fun cuh level die ((at, af), (pos, av)) ->
-       "    <" ^ od_x_sym pos ^ ">   " ^ right_space_padded_to 18 (pp_attribute_encoding at) ^ ": "
-       ^ od_attribute_value c cuh str regname have_frame_base at af av ^ "\n")
+   ; ds_attribute = (fun cuh level die (sp, (pos, av)) ->
+       (* Claude: the space after the colon is the value's delimiter, absent when
+          readelf prints no value text (a DW_OP_addrx block) *)
+       "    <" ^ od_x_sym pos ^ ">   " ^ right_space_padded_to 18 (pp_attribute_encoding sp.as_attribute) ^ (if od_addrx_block c sp.as_form av then ":" else ": ")
+       ^ od_attribute_value c cuh str regname have_frame_base sp.as_attribute sp.as_form av ^ "\n")
    ; ds_terminator = (fun level die ->
        " <" ^ show (level + 1) ^ "><" ^ pphexplain (sym_natural_offset_part die.die_end - 1) ^ ">: Abbrev Number: 0\n")
   |>
@@ -4588,6 +5349,10 @@ let od_compilation_unit c str regname have_frame_base (cu:compilation_unit) : st
   "  Compilation Unit @ offset " ^ od_hx_sym h.cuh_offset ^ ":\n"
   ^ "   Length:        " ^ od_hx_sym h.cuh_unit_length ^ " " ^ pp_dwarf_format h.cuh_dwarf_format ^ "\n"
   ^ "   Version:       " ^ od_dec_sym h.cuh_version ^ "\n"
+  ^ (match h.cuh_unit_type with   (* Claude: DWARF 5 *)
+     | Just ut -> "   Unit Type:     " ^ pp_unit_type_encoding ut ^ " (" ^ od_dec_sym ut ^ ")\n"
+     | Nothing -> ""
+     end)
   ^ "   Abbrev Offset: " ^ od_hx_sym h.cuh_debug_abbrev_offset ^ "\n"
   ^ "   Pointer Size:  " ^ od_dec_sym h.cuh_address_size ^ "\n"
   ^ pp_die_tree (style_objdump c str regname have_frame_base) h true 0 cu.cu_die
@@ -4597,7 +5362,9 @@ let od_abbreviation_declaration (x:abbreviation_declaration) : string =
   ^ (if x.ad_has_children then "[has children]" else "[no children]") ^ "\n"
   ^ String.concat ""
       (List.map
-        (fun (n1, n2) -> "    " ^ right_space_padded_to 18 (pp_attribute_encoding n1) ^ " " ^ pp_attribute_form_encoding n2 ^ "\n")
+        (fun (sp: attribute_specification) ->
+          "    " ^ right_space_padded_to 18 (pp_attribute_encoding sp.as_attribute) ^ " " ^ pp_attribute_form_encoding sp.as_form
+          ^ (match sp.as_implicit_const with Just i -> ": " ^ show (sym_integer_expect_const i) | Nothing -> "" end) ^ "\n")
         x.ad_attribute_specifications)
   ^ "    DW_AT value: 0     DW_FORM value: 0\n"
 
@@ -4615,7 +5382,7 @@ let od_abbreviations_tables (d:dwarf) : string =
    its initial pass over the whole section and never reset, so "[without
    DW_AT_frame_base]" only ever appears in files with no frame base at all *)
 let rec od_die_has_attribute (at:sym_natural) (die:die) : bool =
-  List.any (fun (a, _) -> a = at) die.die_abbreviation_declaration.ad_attribute_specifications
+  List.any (fun (sp: attribute_specification) -> sp.as_attribute = at) die.die_abbreviation_declaration.ad_attribute_specifications
   || List.any (od_die_has_attribute at) die.die_children
 
 let od_file_has_frame_base (d:dwarf) : bool =
@@ -4636,7 +5403,7 @@ let od_debug_info_section regname (d:dwarf) : string =
   let c = p_context_of_d d in
   let have_frame_base = od_file_has_frame_base d in
   "Contents of the .debug_info section:\n\n"
-  ^ String.concat "" (List.map (od_compilation_unit c d.d_str regname have_frame_base) d.d_compilation_units)
+  ^ String.concat "" (List.map (fun cu -> od_compilation_unit c (unit_context_of_cu d cu) regname have_frame_base cu) d.d_compilation_units)
 
 let pp_dwarf_like_objdump abbrev_first regname (d:dwarf) : string =
   (* Claude: objdump prints the two sections in the order of the section
@@ -4651,9 +5418,9 @@ let pp_dwarf d =
   let c = p_context_of_d d in
 
 (*  "\n************** .debug_info section - abbreviated *****************\n"
-  ^ pp_compilation_units_abbrev c d.d_str d.d_compilation_units
+  ^ pp_compilation_units_abbrev c d d.d_compilation_units
   ^*) "\n************** .debug_info section - full ************************\n"
-  ^ pp_compilation_units c true d.d_str d.d_compilation_units
+  ^ pp_compilation_units c true d d.d_compilation_units
   ^ (match d.d_compilation_units with
      | [] -> "\n(no compilation units: the .debug_loc, .debug_ranges and .debug_frame sections are not shown)\n"   (* Claude *)
      | cu :: _ ->
@@ -4670,15 +5437,12 @@ let pp_dwarf d =
 
 
 (* TODO: don't use lists of bytes here! *)
-let parse_dwarf c
-    (debug_info_section_body: sym_byte_sequence)
-    (debug_abbrev_section_body: sym_byte_sequence)
-    (debug_str_section_body: sym_byte_sequence)
-    (debug_loc_section_body: sym_byte_sequence)
-    (debug_ranges_section_body: sym_byte_sequence)
-    (debug_frame_section_body: sym_byte_sequence)
-    (debug_line_section_body: sym_byte_sequence)
-    : dwarf =
+let parse_dwarf c (secs: dwarf_sections) : dwarf =
+
+  let debug_info_section_body = secs.sec_info in
+  let debug_loc_section_body = secs.sec_loc in
+  let debug_ranges_section_body = secs.sec_ranges in
+  let debug_frame_section_body = secs.sec_frame in
 
   let pc_info = <|pc_bytes = debug_info_section_body; pc_offset = 0  |> in
 
@@ -4688,10 +5452,10 @@ let parse_dwarf c
      compilation unit at all there is no address size to parse the location,
      range and frame sections with, so they are left empty. *)
   let diag prefix m = match m with Nothing -> [] | Just msg -> [prefix ^ msg] end in
-  let (compilation_units, cu_diag) =
-    parse_list_tolerant (parse_compilation_unit c debug_str_section_body debug_abbrev_section_body) pc_info in
-
-  let _ = my_debug5 (pp_compilation_units c false debug_str_section_body compilation_units) in
+  let (units, cu_diag) =
+    parse_list_tolerant (parse_unit c secs) pc_info in
+  let compilation_units = compilation_units_of_units units in
+  let type_units = type_units_of_units units in
 
   let (loc, ranges, fi, li, diags) =
     match compilation_units with
@@ -4710,7 +5474,22 @@ let parse_dwarf c
         | PR_fail s pc' -> ([], Just (pp_parse_fail s pc'))
         | PR_success fi pc' -> (fi, Nothing)
         end in
-      let li = parse_line_number_infos c debug_str_section_body debug_line_section_body compilation_units in
+      (* Claude: the line tables need each unit's context, so a dwarf record
+         without them first *)
+      let d0 =
+        <|
+        d_endianness = c.endianness;
+        d_sections = secs;
+        d_str = secs.sec_str;
+        d_compilation_units = compilation_units;
+        d_type_units = type_units;
+        d_loc = loc;
+        d_ranges = ranges;
+        d_frame_info = fi;
+        d_line_info = [];
+        d_diagnostics = [];
+        |> in
+      let li = parse_line_number_infos c d0 compilation_units in
       (loc, ranges, fi, li,
        diag "parse_compilation_units: " cu_diag ++ diag "parse_location_list: " loc_diag
        ++ diag "parse_range_list: " ranges_diag ++ diag "parse_frame_info: " frame_diag)
@@ -4718,9 +5497,10 @@ let parse_dwarf c
 
    <|
    d_endianness = c.endianness;
-   d_str = debug_str_section_body;
+   d_sections = secs;
+   d_str = secs.sec_str;
    d_compilation_units = compilation_units;
-   d_type_units = [];
+   d_type_units = type_units;
    d_loc = loc;
    d_ranges = ranges;
    d_frame_info = fi;
@@ -4815,8 +5595,29 @@ let extract_dwarf f ri =
   let (c, _, debug_ranges_section_body) = extract_section_body f ri ".debug_ranges" false in
   let (c, _, debug_frame_section_body)  = extract_section_body f ri ".debug_frame" false in
   let (c, _, debug_line_section_body)   = extract_section_body f ri ".debug_line" false in
+  (* Claude: the DWARF 5 sections *)
+  let (c, _, debug_str_offsets_section_body) = extract_section_body f ri ".debug_str_offsets" false in
+  let (c, _, debug_addr_section_body)     = extract_section_body f ri ".debug_addr"     false in
+  let (c, _, debug_line_str_section_body) = extract_section_body f ri ".debug_line_str" false in
+  let (c, _, debug_loclists_section_body) = extract_section_body f ri ".debug_loclists" false in
+  let (c, _, debug_rnglists_section_body) = extract_section_body f ri ".debug_rnglists" false in
 
-  let d = parse_dwarf c debug_info_section_body debug_abbrev_section_body debug_str_section_body debug_loc_section_body debug_ranges_section_body debug_frame_section_body debug_line_section_body in
+  let secs =
+    <|
+    sec_info = debug_info_section_body;
+    sec_abbrev = debug_abbrev_section_body;
+    sec_str = debug_str_section_body;
+    sec_str_offsets = debug_str_offsets_section_body;
+    sec_addr = debug_addr_section_body;
+    sec_line_str = debug_line_str_section_body;
+    sec_loc = debug_loc_section_body;
+    sec_ranges = debug_ranges_section_body;
+    sec_loclists = debug_loclists_section_body;
+    sec_rnglists = debug_rnglists_section_body;
+    sec_frame = debug_frame_section_body;
+    sec_line = debug_line_section_body;
+    |> in
+  let d = parse_dwarf c secs in
 
   Just d
 
@@ -4981,7 +5782,7 @@ let find_cfa_table_row_for_pc (evaluated_frame_info: evaluated_frame_info) (pc: 
   end
 
 
-let rec evaluate_operation_list (c:p_context) (dloc: location_list_list) (base_address: sym_natural) (evaluated_frame_info: evaluated_frame_info) (cuh: compilation_unit_header) (ac: arithmetic_context) (ev: evaluation_context) (mfbloc: maybe attribute_value) (pc: sym_natural) (all_ops: list operation) (fuel: nat) (s: state) (ops: list operation) : error single_location =
+let rec evaluate_operation_list (c:p_context) (str: unit_context) (evaluated_frame_info: evaluated_frame_info) (cuh: compilation_unit_header) (ac: arithmetic_context) (ev: evaluation_context) (mfbloc: maybe attribute_value) (pc: sym_natural) (all_ops: list operation) (fuel: nat) (s: state) (ops: list operation) : error single_location =
   (* Claude: [all_ops] is the whole expression and [ops] the operations still to run,
      a suffix of it; the branch operations continue from another suffix.  [fuel]
      bounds the number of operations executed. *)
@@ -5015,7 +5816,7 @@ let rec evaluate_operation_list (c:p_context) (dloc: location_list_list) (base_a
   let expression_end : natural = List.foldl (fun acc o -> o.op_end) 0 all_ops in
 
   let continue_with (s': state) (ops'': list operation) : error single_location =
-    evaluate_operation_list c dloc base_address evaluated_frame_info cuh ac ev mfbloc pc all_ops (fuel - 1) s' ops'' in
+    evaluate_operation_list c str evaluated_frame_info cuh ac ev mfbloc pc all_ops (fuel - 1) s' ops'' in
 
   match ops with
   | [] ->
@@ -5117,7 +5918,7 @@ let rec evaluate_operation_list (c:p_context) (dloc: location_list_list) (base_a
             match mfbloc with
             | Just fbloc ->
                 (*let _ = my_debug5 ("OpSem_fbreg (" ^ show i ^ ")\n") in*)
-                match evaluate_location_description c dloc base_address evaluated_frame_info  cuh ac ev (*mfbloc*)Nothing pc fbloc with
+                match evaluate_location_description c str evaluated_frame_info  cuh ac ev (*mfbloc*)Nothing pc fbloc with
                 (* what to do if the recursive call also uses fbreg?  for now assume that's not allowed *)
                 | Success l ->
                     (* Claude: the frame base is "the address specified by the location
@@ -5192,7 +5993,7 @@ let rec evaluate_operation_list (c:p_context) (dloc: location_list_list) (base_a
                 bregxi r i  (* same behaviour as an OpSem_bregx *)
             | CR_expression bs ->
                 Assert_extra.failwith "CR_expression"
-                (*TODO: fix result type - not this evaluate_location_description_bytes c dloc base_address evaluated_frame_info cuh ac ev mfbloc pc bs*)
+                (*TODO: fix result type - not this evaluate_location_description_bytes c str evaluated_frame_info cuh ac ev mfbloc pc bs*)
                   (* TODO: restrict allowed OpSem_* in that recursive call *)
             end
         | (_, _) ->
@@ -5206,7 +6007,7 @@ let rec evaluate_operation_list (c:p_context) (dloc: location_list_list) (base_a
       end
   end
 
-and evaluate_location_description_bytes (c:p_context) (dloc: location_list_list) (base_address: sym_natural) (evaluated_frame_info: evaluated_frame_info) (cuh: compilation_unit_header) (ac: arithmetic_context) (ev: evaluation_context) (mfbloc: maybe attribute_value) (pc: sym_natural) (bs: sym_byte_sequence) : error single_location =
+and evaluate_location_description_bytes (c:p_context) (str: unit_context) (evaluated_frame_info: evaluated_frame_info) (cuh: compilation_unit_header) (ac: arithmetic_context) (ev: evaluation_context) (mfbloc: maybe attribute_value) (pc: sym_natural) (bs: sym_byte_sequence) : error single_location =
   let parse_context = <|pc_bytes = bs; pc_offset = 0  |> in
   match parse_operations c cuh parse_context with
   | PR_fail s pc' -> Fail ("evaluate_location_description_bytes: parse_operations fail: " ^ pp_parse_fail s pc')
@@ -5214,28 +6015,40 @@ and evaluate_location_description_bytes (c:p_context) (dloc: location_list_list)
       if sym_bs_length pc'.pc_bytes <> 0 then
         Fail "evaluate_location_description_bytes: extra non-parsed bytes"
       else
-        evaluate_operation_list c dloc base_address evaluated_frame_info  cuh ac ev mfbloc pc ops evaluation_fuel initial_state ops
+        evaluate_operation_list c str evaluated_frame_info  cuh ac ev mfbloc pc ops evaluation_fuel initial_state ops
   end
 
-and evaluate_location_description (c:p_context) (dloc: location_list_list) (base_address: sym_natural) (evaluated_frame_info: evaluated_frame_info) (cuh: compilation_unit_header) (ac: arithmetic_context) (ev: evaluation_context) (mfbloc: maybe attribute_value) (pc: sym_natural) (loc:attribute_value) : error single_location =
+and evaluate_location_description (c:p_context) (str: unit_context) (evaluated_frame_info: evaluated_frame_info) (cuh: compilation_unit_header) (ac: arithmetic_context) (ev: evaluation_context) (mfbloc: maybe attribute_value) (pc: sym_natural) (loc:attribute_value) : error single_location =
   match loc with
   | AV_exprloc n bs ->
-      evaluate_location_description_bytes c dloc base_address evaluated_frame_info  cuh ac ev mfbloc pc bs
+      evaluate_location_description_bytes c str evaluated_frame_info  cuh ac ev mfbloc pc bs
   | AV_block n bs ->
-      evaluate_location_description_bytes c dloc base_address evaluated_frame_info  cuh ac ev mfbloc pc bs
+      evaluate_location_description_bytes c str evaluated_frame_info  cuh ac ev mfbloc pc bs
   | AV_sec_offset n ->
-      (* Claude: the entries' offsets are relative to the compilation unit's base
-         address (DW_AT_low_pc), or to the address of the last base address selection
-         entry; interpret_location_list applies them *)
-      let location_list = find_location_list dloc n in
-      let (offset,(llis:list location_list_item)) = location_list in
-      let ranges = interpret_location_list base_address llis in
-        match myfind (fun (lo,hi,_) -> pc >= lo && pc < hi) ranges with
-        | Just (_,_,bs) ->
-            evaluate_location_description_bytes c dloc base_address evaluated_frame_info  cuh ac ev mfbloc pc bs
-        | Nothing ->
-            Fail "evaluate_location_description didn't find pc in location list ranges"
-        end
+      (* Claude: a location list, DWARF 4 (.debug_loc) or 5 (.debug_loclists); its
+         entries' offsets are relative to the unit's base address or to the list's
+         own base address entries, which location_list_of_attribute_value applies *)
+      match location_list_of_attribute_value str loc with
+      | Just ranges ->
+          match myfind (fun (lo,hi,_) -> pc >= lo && pc < hi) ranges with
+          | Just (_,_,bs) ->
+              evaluate_location_description_bytes c str evaluated_frame_info  cuh ac ev mfbloc pc bs
+          | Nothing ->
+              Fail "evaluate_location_description didn't find pc in location list ranges"
+          end
+      | Nothing -> Fail ("evaluate_location_description: location list not found: " ^ pp_attribute_value_plain loc)
+      end
+  | AV_loclistx i ->
+      match location_list_of_attribute_value str loc with
+      | Just ranges ->
+          match myfind (fun (lo,hi,_) -> pc >= lo && pc < hi) ranges with
+          | Just (_,_,bs) ->
+              evaluate_location_description_bytes c str evaluated_frame_info  cuh ac ev mfbloc pc bs
+          | Nothing ->
+              Fail "evaluate_location_description didn't find pc in location list ranges"
+          end
+      | Nothing -> Fail ("evaluate_location_description: location list not found: " ^ pp_attribute_value_plain loc)
+      end
   | _ -> Fail "evaluate_location_description av_location not understood"
   end
 
@@ -5543,9 +6356,9 @@ let strict s x =
 
 let analyse_type_info_top c (d: dwarf) (r:bool(*recurse into members*)) (cupdie: cupdie) : c_type_top cupdie = 
   let (cu,parents,die) = cupdie in
-  let mname = find_name_of_die d.d_str die in
-  let mtyp = find_DW_AT_type_of_die c d cu d.d_str die in
-  let s () = pp_die c cu.cu_header d.d_str true 0 false die in
+  let mname = find_name_of_die (unit_context_of_cu d cu) die in
+  let mtyp = find_DW_AT_type_of_die c d cu (unit_context_of_cu d cu) die in
+  let s () = pp_die c cu.cu_header (unit_context_of_cu d cu) true 0 false die in
   
   if die.die_abbreviation_declaration.ad_tag = tag_encode "DW_TAG_base_type" then
     let encoding =
@@ -5597,7 +6410,7 @@ let analyse_type_info_top c (d: dwarf) (r:bool(*recurse into members*)) (cupdie:
                | Just n -> Just n
                end
             end in         
-          let msubrange_type = find_DW_AT_type_of_die c d cu d.d_str die' in
+          let msubrange_type = find_DW_AT_type_of_die c d cu (unit_context_of_cu d cu) die' in
           (mcount, msubrange_type))
         subranges in 
     CT_array cupdie (strict s mtyp) dims
@@ -5617,8 +6430,8 @@ let analyse_type_info_top c (d: dwarf) (r:bool(*recurse into members*)) (cupdie:
         Just (List.map
           (fun die' ->
             let cupdie' = (cu,die::parents,die') in
-            let mname' = find_name_of_die d.d_str die' in
-            let typ' = strict s (find_DW_AT_type_of_die c d cu d.d_str die') in
+            let mname' = find_name_of_die (unit_context_of_cu d cu) die' in
+            let typ' = strict s (find_DW_AT_type_of_die c d cu (unit_context_of_cu d cu) die') in
             let mdata_member_location' =
               match atk with
 (* PS 2025-06-10 make the DW_AT_data_member_location non-strict so that it doesn't fail on struct bitfield members, which have a DW_AT_bit_size and DW_AT_data_bit_offset instead. TODO: support those properly *)
@@ -5645,7 +6458,7 @@ let analyse_type_info_top c (d: dwarf) (r:bool(*recurse into members*)) (cupdie:
         Just (List.map
                 (fun die' ->
                   let cupdie' = (cu,die::parents,die') in
-                  let mname' = find_name_of_die d.d_str die' in
+                  let mname' = find_name_of_die (unit_context_of_cu d cu) die' in
                   (*let _ = my_debug5 (s ()) in *)
                  let const_value = strict s (find_integer_attribute_value_of_die c "DW_AT_const_value" die') in (*let _ = my_debug5 "ok" in*)
                   (cupdie',mname',const_value))
@@ -5668,8 +6481,8 @@ let analyse_type_info_top c (d: dwarf) (r:bool(*recurse into members*)) (cupdie:
       (List.map
          (fun die' ->
            let cupdie' = (cu,die::parents,die') in
-           let mname' = find_name_of_die d.d_str die' in
-           let typ' = strict s (find_DW_AT_type_of_die c d cu d.d_str die') in
+           let mname' = find_name_of_die (unit_context_of_cu d cu) die' in
+           let typ' = strict s (find_DW_AT_type_of_die c d cu (unit_context_of_cu d cu) die') in
            typ')
          parameter_types_raw) in
 
@@ -5708,7 +6521,7 @@ let rec analyse_type_info_deep (d: dwarf) (r:bool(*recurse_into_members*)) cupdi
 let find_DW_AT_type_of_die_deep d cupdie : maybe c_type =
   let c = p_context_of_d d in
   let (cu,parents,die) = cupdie in
-  match find_reference_attribute_of_die c d cu d.d_str "DW_AT_type" die with
+  match find_reference_attribute_of_die c d cu (unit_context_of_cu d cu) "DW_AT_type" die with
   | Nothing -> Nothing
   | Just cupdie' ->
      Just (analyse_type_info_deep d false cupdie')
@@ -5717,7 +6530,7 @@ let find_DW_AT_type_of_die_deep d cupdie : maybe c_type =
 let find_DW_AT_type_of_die_deep_using_abstract_origin d cupdie : maybe c_type =
   let c = p_context_of_d d in
   let (cu,parents,die) = cupdie in
-  match find_reference_attribute_using_abstract_origin c d cu d.d_str "DW_AT_type" die with
+  match find_reference_attribute_using_abstract_origin c d cu (unit_context_of_cu d cu) "DW_AT_type" die with
   | Nothing -> Nothing
   | Just cupdie' ->
      Just (analyse_type_info_deep d false cupdie')
@@ -5896,19 +6709,19 @@ let analyse_locations_raw c (d: dwarf) =
              die.die_abbreviation_declaration.ad_attribute_specifications
              die.die_attribute_values in
 
-         let find_ats (s:string) = myfindNonPure (fun  (((at: sym_natural), (af: sym_natural)), ((pos: sym_natural),(av:attribute_value))) -> sym_eq (attribute_encode s) at) ats in
+         let find_ats (s:string) = myfindNonPure (fun  ((sp: attribute_specification), ((pos: sym_natural),(av:attribute_value))) -> let at = sp.as_attribute in sym_eq (attribute_encode s) at) ats in
 
-         let ((_,_),(_,av_name)) = find_ats "DW_AT_name" in
+         let (_,(_,av_name)) = find_ats "DW_AT_name" in
 
          let name =
            match av_name with
            | AV_string bs -> string_of_sym_byte_sequence bs
-           | AV_strp n -> pp_debug_str_entry d.d_str n
+           | AV_strp n -> pp_debug_str_entry (unit_context_of_cu d cu) n
            | _ -> "av_name AV not understood"
            end in
 
 
-         let ((_,_),(_,av_location)) = find_ats "DW_AT_location" in
+         let (_,(_,av_location)) = find_ats "DW_AT_location" in
 
          let ppd_location =
            match av_location with
@@ -5958,50 +6771,71 @@ don't cover where we are?)
 
 For each variable and formal parameter that has a DW_AT_name, we'll calculate a list of pairs of a concrete (low,high) range and a location expression.
 *)
-let cu_base_address cu =
-  match find_attribute_value "DW_AT_low_pc" cu.cu_die with
-  | Just (AV_addr n) -> n
-  | _ -> 0 (*Nothing*) (*Assert_extra.failwith "no cu DW_AT_low_pc"*)
-  end
+(* Claude: the unit's base address (DW_AT_low_pc, by address or address index) is
+   computed with the unit context *)
+let cu_base_address (d: dwarf) (cu: compilation_unit) : sym_natural =
+  (unit_context_of_cu d cu).uc_base_address
 
 
-    
-let range_of_die c cuh str (dranges: range_list_list) (cu_base_address: sym_natural) (die: die) : maybe (list (sym_natural * sym_natural)) =
-  match (find_attribute_value "DW_AT_low_pc" die, find_attribute_value "DW_AT_high_pc" die, find_attribute_value "DW_AT_ranges" die) with
-  | (Just (AV_addr n),  Nothing,                       Nothing               ) -> Just [(n,n+1)]   (* unclear if this case is used? *)
-  | (Just (AV_addr n1), Just (AV_addr n2),             Nothing               ) -> Just [(n1,n2)]
-  | (Just (AV_addr n1), Just (AV_constant_ULEB128 n2), Nothing               ) -> Just [(n1, n1+n2)] (* should be mod all? *)
-  | (Just (AV_addr n1), Just (AV_constant_SLEB128 i2), Nothing               ) -> Just [(n1, partialSymNaturalFromInteger (symIntegerFromNatural n1 + i2))] (* should be mod all? *)
-  | (Just (AV_addr n1), Just (AV_constantN _ _),       Nothing               ) -> Assert_extra.failwith "AV_constantN in range_of_die"
-        
-  | (Just (AV_addr n1), Just (AV_block n bs),          Nothing               ) -> let n2 = sym_natural_of_bytes c.endianness bs in Just [(n1, n1+n2)] (* should be mod all? *) (* signed or unsigned interp? *)
-  | (_,                 Nothing,                       Just (AV_sec_offset n)) ->
-      let rlis = Tuple.snd (match find_range_list dranges n with Just rlis->rlis | None -> Assert_extra.failwith ("find_range_list failed on AV_sec_offset n=" ^ show n ^ " for die\n" ^ pp_die c cuh str false 0 false die) end) in
-      let nns = interpret_range_list cu_base_address rlis in
-      Just nns
-  | (Nothing,           Nothing,                       Nothing               ) -> Nothing
-  | (_,                 _,                             _                     ) -> Just [] (*Assert_extra.failwith "unexpected attribute values in closest_enclosing_range"*)
+(* Claude: the pc ranges of a DIE: DW_AT_low_pc (an address, or in DWARF 5 an
+   address index) with DW_AT_high_pc as an address or an offset, or DW_AT_ranges
+   as a range list; the unit context resolves the DWARF 5 forms *)
+let range_of_die c (str: unit_context) (die: die) : maybe (list (sym_natural * sym_natural)) =
+  let low = match find_attribute_value "DW_AT_low_pc" die with Just av -> address_of_attribute_value str av | Nothing -> Nothing end in
+  match (low, find_attribute_value "DW_AT_high_pc" die, find_attribute_value "DW_AT_ranges" die) with
+  | (Just n,  Nothing,  Nothing) -> Just [(n,n+1)]   (* unclear if this case is used? *)
+  | (Just n1, Just hav, Nothing) ->
+      match address_of_attribute_value str hav with
+      | Just n2 -> Just [(n1,n2)]
+      | Nothing ->
+          match hav with
+          | AV_constant_SLEB128 i2 -> Just [(n1, partialSymNaturalFromInteger (symIntegerFromNatural n1 + i2))] (* should be mod all? *)
+          | _ ->
+              match maybe_natural_of_constant_attribute_value die c hav with
+              | Just n2 -> Just [(n1, n1+n2)] (* should be mod all? *) (* signed or unsigned? *)
+              | Nothing -> Assert_extra.failwith ("range_of_die: DW_AT_high_pc of an unexpected form: " ^ pp_attribute_value_plain hav)
+              end
+          end
+      end
+  | (_, Nothing, Just rav) ->
+      match ranges_of_attribute_value str rav with
+      | Just nns -> Just nns
+      | Nothing -> Assert_extra.failwith ("range_of_die: range list not found for DW_AT_ranges " ^ pp_attribute_value_plain rav ^ " of die\n" ^ pp_die c str.uc_cuh str true 0 false die)
+      end
+  | (Nothing, Nothing, Nothing) -> Nothing
+  | (_,       _,       _      ) -> Just [] (*Assert_extra.failwith "unexpected attribute values in closest_enclosing_range"*)
 end
 
 let range_of_die_d (d:dwarf) cu (die: die) : maybe (list (sym_natural * sym_natural)) =
   let c = p_context_of_d d in
-  range_of_die c cu.cu_header d.d_str d.d_ranges (cu_base_address cu) die     
+  range_of_die c (unit_context_of_cu d cu) die
 
-let entry_address (die:die) : maybe sym_natural =
-  match (find_attribute_value "DW_AT_low_pc" die, find_attribute_value "DW_AT_entry_pc" die) with
-  | (_, Just (AV_addr n)) -> Just n
-  | (Just (AV_addr n), _) -> Just n    
-  | (Nothing,Nothing) -> Nothing
-  end                       
+(* Claude: DW_AT_entry_pc, or failing that DW_AT_low_pc; in DWARF 5 either may be
+   an address index (DW_FORM_addrx), or DW_AT_entry_pc a constant offset from
+   DW_AT_low_pc, resolved through the unit context *)
+let entry_address (str: unit_context) (die:die) : maybe sym_natural =
+  let low = match find_attribute_value "DW_AT_low_pc" die with Just av -> address_of_attribute_value str av | Nothing -> Nothing end in
+  match find_attribute_value "DW_AT_entry_pc" die with
+  | Just av ->
+      match address_of_attribute_value str av with
+      | Just n -> Just n
+      | Nothing ->
+          match (low, maybe_natural_of_constant_attribute_value die str.uc_c av) with
+          | (Just l, Just off) -> Just (l + off)
+          | _ -> low
+          end
+      end
+  | Nothing -> low
+  end
                                  
-let rec closest_enclosing_range c cuh str (dranges: range_list_list) (cu_base_address: sym_natural) (parents: list die) : maybe (list (sym_natural * sym_natural)) =
+let rec closest_enclosing_range c (str: unit_context) (parents: list die) : maybe (list (sym_natural * sym_natural)) =
   match parents with
   | [] -> Nothing
   | die::parents' ->
-      match range_of_die c cuh str dranges cu_base_address die with
+      match range_of_die c str die with
       | ((Just x) as y) -> y
       | Nothing ->
-          closest_enclosing_range c cuh str dranges cu_base_address parents'        
+          closest_enclosing_range c str parents'
       end
   end
 
@@ -6014,26 +6848,26 @@ rather than DW_FORM_data<n>.
 no kidding - if we get an AV_constantN for DW_AT_high_pc, should it be interpreted as signed or unsigned? *)
 
 
-let rec closest_enclosing_frame_base dloc (base_address: sym_natural) (parents: list die) : maybe attribute_value =
+let rec closest_enclosing_frame_base (parents: list die) : maybe attribute_value =
   match parents with
   | [] -> Nothing
   | die::parents' ->
       match find_attribute_value "DW_AT_frame_base" die with
       | Just av -> Just av
-      | Nothing -> closest_enclosing_frame_base dloc base_address parents'
+      | Nothing -> closest_enclosing_frame_base parents'
       end
   end
 
-let interpreted_location c cuh str (dloc: location_list_list) (dranges: range_list_list) (base_address: sym_natural) (parents: list die) loc : maybe (list (sym_natural * sym_natural * single_location_description)) =
+let interpreted_location c (str: unit_context) (parents: list die) loc : maybe (list (sym_natural * sym_natural * single_location_description)) =
   (* for a simple location expression bs, we look in the enclosing die
   tree to find the associated pc range *)
   let location bs =
-    match closest_enclosing_range c cuh str dranges base_address parents with
+    match closest_enclosing_range c str parents with
     | Just nns ->
         Just (List.map (fun (n1,n2) -> (n1,n2,bs)) nns)
     | Nothing ->
         (* if there is no such range, we take the full 0 - 0xfff.fff range*)
-        Just [(0,(arithmetic_context_of_cuh cuh).ac_max,bs)]
+        Just [(0,(arithmetic_context_of_cuh str.uc_cuh).ac_max,bs)]
     end in
 
   match loc with
@@ -6041,15 +6875,13 @@ let interpreted_location c cuh str (dloc: location_list_list) (dranges: range_li
   | Just (AV_block n bs) -> location bs
   (* while for a location list, we take the associated pc range from
   each element of the list *)
-  | Just (AV_sec_offset n) ->
-      let (_,llis) = find_location_list dloc n in
-      Just (interpret_location_list base_address llis)
+  | Just av -> location_list_of_attribute_value str av   (* Claude: DWARF 4 or 5 location lists *)
   | Nothing -> Nothing
   end
 
-let interpreted_location_of_die c cuh str (dloc: location_list_list) (dranges: range_list_list) (base_address: sym_natural) (parents: list die) (die: die) : maybe (list (sym_natural * sym_natural * single_location_description)) =
+let interpreted_location_of_die c (str: unit_context) (parents: list die) (die: die) : maybe (list (sym_natural * sym_natural * single_location_description)) =
   let loc = find_attribute_value "DW_AT_location" die in
-  interpreted_location c cuh str dloc dranges base_address (die::parents) loc
+  interpreted_location c str (die::parents) loc
 
 val analyse_locations : dwarf -> analysed_location_data
 let analyse_locations (d: dwarf) : analysed_location_data =
@@ -6071,9 +6903,8 @@ let analyse_locations (d: dwarf) : analysed_location_data =
 
   List.map
     (fun (((cu:compilation_unit), (parents: list die), (die: die)) as x) ->
-      let base_address = cu_base_address cu in
       let interpreted_locations : maybe (list (sym_natural * sym_natural * single_location_description)) =
-        interpreted_location_of_die c cu.cu_header d.d_str d.d_loc d.d_ranges base_address parents die in
+        interpreted_location_of_die c (unit_context_of_cu d cu) parents die in
       (x,interpreted_locations)
     )
     dies
@@ -6110,13 +6941,14 @@ let pp_analysed_location_data (d: dwarf) (als: analysed_location_data) : string 
 (*  let cu = myhead d.d_compilation_units in 
   let (cuh_default : compilation_unit_header) = cu.cu_header in
  *)
-  pp_analysed_locations3 c (*HACK*) d d.d_str als
+  pp_analysed_locations3 c d als
  *)
 
 
-let pp_analysed_locations3 c d str (removed:bool) (als: analysed_location_data) : list (bool(*removed?*) * (string(*name*) * string(*offset*) * string(*kind*)) * (unit->string)(*string*)(*type*) * string(*locations*) * (unit->string)(*parents*)) = 
+let pp_analysed_locations3 c d (removed:bool) (als: analysed_location_data) : list (bool(*removed?*) * (string(*name*) * string(*offset*) * string(*kind*)) * (unit->string)(*string*)(*type*) * string(*locations*) * (unit->string)(*parents*)) = 
   List.map
     (fun ((cu,parents,die1),mnnls) ->
+      let str = unit_context_of_cu d cu in
       (removed,
        pp_die_abbrev_var c d cu str false parents die1, (*4.5s for only this*)
        (fun () -> pp_type_info_die_DW_AT_type c d cu str die1), (*12.2s for this and above*)
@@ -6125,10 +6957,10 @@ let pp_analysed_locations3 c d str (removed:bool) (als: analysed_location_data) 
     )
     als
 
-let pp_analysed_locations3_diff c d str (als_old: analysed_location_data) (als_new: analysed_location_data) : list (bool(*removed?*) * (string(*name*) * string(*offset*) * string(*kind*)) * (unit->string)(*type*) * string(*locations*) *(unit->string)(*parents*)) = 
+let pp_analysed_locations3_diff c d (als_old: analysed_location_data) (als_new: analysed_location_data) : list (bool(*removed?*) * (string(*name*) * string(*offset*) * string(*kind*)) * (unit->string)(*type*) * string(*locations*) *(unit->string)(*parents*)) = 
   (* maybe alpha sort these? *)
-  let ppd_old = pp_analysed_locations3 c d str true als_old  in
-  let ppd_new = pp_analysed_locations3 c d str false als_new in 
+  let ppd_old = pp_analysed_locations3 c d true als_old  in
+  let ppd_new = pp_analysed_locations3 c d false als_new in 
 
   (* the old entries that don't have a same-name new entry *)
   let ppd_gone = List.filter (fun (removed,(name,offset,kind),typ,locs,parents) -> not (List.any (fun (removed',(name',offset',kind'),typ',locs',parents') -> name=name') ppd_new)) ppd_old in
@@ -6170,14 +7002,14 @@ let pp_analysed_location_data (d: dwarf) (als: analysed_location_data) : string=
 (*  let cu = myhead d.d_compilation_units in 
   let (cuh_default : compilation_unit_header) = cu.cu_header in
  *)
-  pp_analysed_location_format (pp_analysed_locations3 c (*HACK*) d d.d_str false als)
+  pp_analysed_location_format (pp_analysed_locations3 c d false als)
 
 let pp_analysed_location_data_diff (d: dwarf) (als_old: analysed_location_data) (als_new: analysed_location_data) : string=
   let c = p_context_of_d d in
 (*  let cu = myhead d.d_compilation_units in 
   let (cuh_default : compilation_unit_header) = cu.cu_header in
  *)
-  pp_analysed_location_format (pp_analysed_locations3_diff c (*HACK*) d d.d_str als_old als_new)
+  pp_analysed_location_format (pp_analysed_locations3_diff c d als_old als_new)
   
 
 
@@ -6186,7 +7018,7 @@ let pp_analysed_location_data_at_pc (d: dwarf) (alspc: analysed_location_data_at
     (fun ((cu,parents,die),(n1,n2,sld,esl)) ->
       "          " ^
       let name =
-        match find_name_of_die d.d_str die with
+        match find_name_of_die (unit_context_of_cu d cu) die with
         | Just s ->  s
         | Nothing -> "<no name>\n"
         end in
@@ -6230,13 +7062,13 @@ let analysed_locations_at_pc
     (List.map
        (fun ((cu,parents,die),nns) ->
          let ac = arithmetic_context_of_cuh cu.cu_header in
-         let base_address = cu_base_address cu in
+         let str = unit_context_of_cu ds.ds_dwarf cu in
          let mfbloc : maybe attribute_value =
-           closest_enclosing_frame_base ds.ds_dwarf.d_loc base_address parents in
+           closest_enclosing_frame_base parents in
          List.map
            (fun (n1,n2,sld) ->
              let el : error single_location =
-               evaluate_location_description_bytes c ds.ds_dwarf.d_loc base_address ds.ds_evaluated_frame_info cu.cu_header ac ev mfbloc pc sld in
+               evaluate_location_description_bytes c str ds.ds_evaluated_frame_info cu.cu_header ac ev mfbloc pc sld in
              ((cu,parents,die),(n1,n2,sld,el))
            )
            nns
@@ -6255,7 +7087,7 @@ let names_of_address
       match esl with
       | Success (SL_simple (SL_memory_address a)) ->
           if a=address then
-            match find_name_of_die d.d_str die with
+            match find_name_of_die (unit_context_of_cu d cu) die with
             | Just s -> Just s
             | Nothing -> Nothing
             end
@@ -6334,7 +7166,7 @@ let subprogram_line_extents_compilation_unit d cu : list (string * unpacked_file
       let lnh = lnp.lnp_header in
       List.mapMaybe
         (fun die -> 
-          match (find_name_of_die d.d_str die,
+          match (find_name_of_die (unit_context_of_cu d cu) die,
                  find_natural_attribute_value_of_die c "DW_AT_decl_file" die, 
                  find_natural_attribute_value_of_die c "DW_AT_decl_line" die) with
           | (Just name, Just file, Just line) -> 
@@ -6432,7 +7264,7 @@ let analyse_subprograms (d: dwarf) : analysed_location_data =
     (fun (((cu:compilation_unit), (parents: list die), (die: die)) as x) ->
 
       let name =
-        match find_name_of_die d.d_str die with
+        match find_name_of_die (unit_context_of_cu d cu) die with
         | Just s ->  s
         | Nothing -> "<no name>\n"
         end in
@@ -6442,9 +7274,8 @@ let analyse_subprograms (d: dwarf) : analysed_location_data =
         | Nothing -> Nothing
         | 
        
-     let base_address = cu_base_address cu in
       let interpreted_locations : maybe (list (sym_natural * sym_natural * single_location_description)) =
-        interpreted_location_of_die c cuh_default d.d_loc d.d_ranges base_address parents die in
+        interpreted_location_of_die c (unit_context_of_cu d cu) parents die in
       (x,interpreted_locations)
     )
     dies
@@ -6773,25 +7604,24 @@ let rec mk_sdt_variable_or_formal_parameter (d:dwarf) subprogram_line_extents cu
   else
 
     let c = p_context_of_d d in
-    (*    let s (cu,parents,die) = pp_die c cu.cu_header d.d_str true 0 false die in*)
+    (*    let s (cu,parents,die) = pp_die c cu.cu_header (unit_context_of_cu d cu) true 0 false die in*)
 
     let cupdie = (cu,parents,die) in
     let kind = if die.die_abbreviation_declaration.ad_tag = tag_encode "DW_TAG_variable" then  SVPK_var else if die.die_abbreviation_declaration.ad_tag = tag_encode "DW_TAG_formal_parameter" then SVPK_param else Assert_extra.failwith ("unreachable bad kind") in
 
     (* find aDW_AT_specification die, if it exists. TODO: how should this interact with abstract origins? *)
-    let mcupdie_spec = find_reference_attribute_of_die c d cu d.d_str "DW_AT_specification" die in
+    let mcupdie_spec = find_reference_attribute_of_die c d cu (unit_context_of_cu d cu) "DW_AT_specification" die in
     
-    let base_address = cu_base_address cu in
 
     Just (
     <|
     svfp_cupdie = cupdie;
     svfp_kind = kind;
-    (*    svfp_name = strict_msvfp (find_name_of_die_using_abstract_origin_and_spec c d cu d.d_str die mcupdie_spec) "no name" s cupdie;*)
-    svfp_name = match (find_name_of_die_using_abstract_origin_and_spec c d cu d.d_str die mcupdie_spec) with Just name -> name | Nothing -> "no name" end;
+    (*    svfp_name = strict_msvfp (find_name_of_die_using_abstract_origin_and_spec c d cu (unit_context_of_cu d cu) die mcupdie_spec) "no name" s cupdie;*)
+    svfp_name = match (find_name_of_die_using_abstract_origin_and_spec c d cu (unit_context_of_cu d cu) die mcupdie_spec) with Just name -> name | Nothing -> "no name" end;
     svfp_type =  (*strict_msvfp*) (find_DW_AT_type_of_die_deep_using_abstract_origin d cupdie) (*"no type" s cupdie*);
     svfp_abstract_origin =
-      match find_reference_attribute_of_die c d cu d.d_str "DW_AT_abstract_origin" die with
+      match find_reference_attribute_of_die c d cu (unit_context_of_cu d cu) "DW_AT_abstract_origin" die with
       | Nothing ->
          Nothing 
       | Just ((cu',parents',die') as cupdie') ->
@@ -6801,12 +7631,12 @@ let rec mk_sdt_variable_or_formal_parameter (d:dwarf) subprogram_line_extents cu
     svfp_external = match find_flag_attribute_value_of_die_using_abstract_origin d "DW_AT_external" cupdie with Just b -> b | Nothing -> false end;
     svfp_declaration = match find_flag_attribute_value_of_die_using_abstract_origin d "DW_AT_declaration" cupdie with Just b -> b | Nothing -> false end;
     svfp_locations_frame_base =
-      let frame_base = closest_enclosing_frame_base d.d_loc base_address (die::parents) in
-      let interpreted_frame_base = interpreted_location c cu.cu_header d.d_str d.d_loc d.d_ranges base_address (die::parents) frame_base in
+      let frame_base = closest_enclosing_frame_base (die::parents) in
+      let interpreted_frame_base = interpreted_location c (unit_context_of_cu d cu) (die::parents) frame_base in
       Maybe.map (fun nnbss -> List.map (fun (n1,n2,bs) -> (n1,n2,parse_operations_bs c cu.cu_header bs)) nnbss) interpreted_frame_base;
     svfp_locations =
       let interpreted_locations : maybe (list (sym_natural * sym_natural * single_location_description)) =
-        interpreted_location_of_die c cu.cu_header d.d_str d.d_loc d.d_ranges base_address parents die in
+        interpreted_location_of_die c (unit_context_of_cu d cu) parents die in
       Maybe.map (fun nnbss -> List.map (fun (n1,n2,bs) -> (n1,n2,parse_operations_bs c cu.cu_header bs)) nnbss) interpreted_locations;
     svfp_decl = decl_of_die d subprogram_line_extents cu die;
     |> )
@@ -6823,7 +7653,7 @@ let rec mk_sdt_subroutine (d:dwarf) subprogram_line_extents (cu:compilation_unit
   then Nothing
   else
     let c = p_context_of_d d in
-    (* let s (cu,parents,die) : string = pp_die c cu.cu_header d.d_str true 0 false die in*)
+    (* let s (cu,parents,die) : string = pp_die c cu.cu_header (unit_context_of_cu d cu) true 0 false die in*)
     
     let cupdie = (cu, parents, die) in
     let parents' = die::parents in
@@ -6831,11 +7661,11 @@ let rec mk_sdt_subroutine (d:dwarf) subprogram_line_extents (cu:compilation_unit
     Just (
         <|
         ss_cupdie = cupdie;
-        ss_name = (*strict_mss ( *)find_name_of_die_using_abstract_origin c d cu d.d_str die(* ) "no name" s cupdie;*);
+        ss_name = (*strict_mss ( *)find_name_of_die_using_abstract_origin c d cu (unit_context_of_cu d cu) die(* ) "no name" s cupdie;*);
         ss_kind = kind;
         ss_call_site = call_site_of_die d subprogram_line_extents cu die; 
         ss_abstract_origin =
-          match find_reference_attribute_of_die c d cu d.d_str "DW_AT_abstract_origin" die with
+          match find_reference_attribute_of_die c d cu (unit_context_of_cu d cu) "DW_AT_abstract_origin" die with
           | Nothing ->
              Nothing 
           | Just ((cu',parents',die') as cupdie') ->
@@ -6844,7 +7674,7 @@ let rec mk_sdt_subroutine (d:dwarf) subprogram_line_extents (cu:compilation_unit
         ss_type = find_DW_AT_type_of_die_deep(*_using_abstract_origin*) d cupdie;
         ss_vars = List.mapMaybe (mk_sdt_variable_or_formal_parameter d subprogram_line_extents cu parents') die.die_children; 
         ss_unspecified_parameters = List.mapMaybe (mk_sdt_unspecified_parameter d subprogram_line_extents cu parents') die.die_children; 
-        ss_entry_address = entry_address die;
+        ss_entry_address = entry_address (unit_context_of_cu d cu) die;
         ss_pc_ranges = range_of_die_d d cu die;
         ss_subroutines  = List.mapMaybe (mk_sdt_subroutine d subprogram_line_extents cu parents') die.die_children; 
         ss_lexical_blocks = List.mapMaybe (mk_sdt_lexical_block d subprogram_line_extents cu parents') die.die_children; 
@@ -6858,7 +7688,7 @@ let rec mk_sdt_subroutine (d:dwarf) subprogram_line_extents (cu:compilation_unit
   then Nothing
   else
     let c = p_context_of_d d in
-    (*let s (cu,parents,die) : string = pp_die c cu.cu_header d.d_str true 0 false die in*)
+    (*let s (cu,parents,die) : string = pp_die c cu.cu_header (unit_context_of_cu d cu) true 0 false die in*)
     
     let cupdie = (cu, parents, die) in
     let parents' = die::parents in
@@ -6881,13 +7711,13 @@ let strict_mscu x e s z =
 
 let mk_sdt_compilation_unit (d:dwarf) subprogram_line_extents (cu:compilation_unit) : sdt_compilation_unit =
     let c = p_context_of_d d in
-    let s (cu,(parents:list die),die) : string = pp_die c cu.cu_header d.d_str true 0 false die in
+    let s (cu,(parents:list die),die) : string = pp_die c cu.cu_header (unit_context_of_cu d cu) true 0 false die in
     let cupdie = (cu, [], cu.cu_die) in
     
     let parents' = [cu.cu_die] in
     <|
     scu_cupdie = (cu, [], cu.cu_die);
-    scu_name = strict_mscu (find_name_of_die d.d_str cu.cu_die) "no name" s cupdie;
+    scu_name = strict_mscu (find_name_of_die (unit_context_of_cu d cu) cu.cu_die) "no name" s cupdie;
     scu_subroutines = List.mapMaybe (mk_sdt_subroutine d subprogram_line_extents cu parents') cu.cu_die.die_children; 
     scu_vars = List.mapMaybe (mk_sdt_variable_or_formal_parameter d subprogram_line_extents cu parents') cu.cu_die.die_children;
     scu_pc_ranges = range_of_die_d d cu cu.cu_die;
@@ -7073,7 +7903,7 @@ let analyse_inlined_subroutines (d: dwarf) : inlined_subroutine_data =
 
   let c = p_context_of_d d in
   
-  let s (cu,parents,die) = pp_die c cu.cu_header d.d_str true 0 false die in
+  let s (cu,parents,die) = pp_die c cu.cu_header (unit_context_of_cu d cu) true 0 false die in
 
   let inlined_subroutines : list (compilation_unit * (list die) * die) =
     find_dies
@@ -7085,10 +7915,10 @@ let analyse_inlined_subroutines (d: dwarf) : inlined_subroutine_data =
     (fun (((cu:compilation_unit), (parents: list die), (die: die)) as inlined_subroutine) ->
       
       let ((cu',parents,die') as abstract_origin) : compilation_unit * (list die) * die = 
-        strict_ais (find_reference_attribute_of_die c d cu d.d_str "DW_AT_abstract_origin" die)
+        strict_ais (find_reference_attribute_of_die c d cu (unit_context_of_cu d cu) "DW_AT_abstract_origin" die)
           "no abstract origin" s inlined_subroutine  in
       let name : string =
-        strict_ais (find_name_of_die d.d_str die')
+        strict_ais (find_name_of_die (unit_context_of_cu d cu) die')
           "no abstract origin name" s abstract_origin in
       let call_file : unpacked_file_entry = 
         let file_index = strict_ais (find_natural_attribute_value_of_die c "DW_AT_call_file" die) "no DW_AT_call_file" s inlined_subroutine in
@@ -7096,12 +7926,12 @@ let analyse_inlined_subroutines (d: dwarf) : inlined_subroutine_data =
         (*        match filename d cu file_index with | Just s -> s | Nothing -> "none" end in*)
       let call_line : sym_natural = strict_ais (find_natural_attribute_value_of_die c "DW_AT_call_line" die) "no DW_AT_call_line" s inlined_subroutine  in
       let pc_ranges : list (sym_natural*sym_natural) = 
-        strict_ais (closest_enclosing_range c d.d_ranges (cu_base_address cu) [die](*deliberately ignore parents*))
+        strict_ais (closest_enclosing_range c (unit_context_of_cu d cu) [die](*deliberately ignore parents*))
           "no pc ranges" s inlined_subroutine in
       let const_params =
         List.mapMaybe (fun die'' ->
             if die''.die_abbreviation_declaration.ad_tag = tag_encode "DW_TAG_formal_parameter" then
-              match find_reference_attribute_of_die c d cu d.d_str "DW_AT_abstract_origin" die'' with
+              match find_reference_attribute_of_die c d cu (unit_context_of_cu d cu) "DW_AT_abstract_origin" die'' with
               | Nothing -> Nothing
               | Just abstract_origin' ->
                  match find_integer_attribute_value_of_die c "DW_AT_const_value" die'' with
@@ -7236,7 +8066,7 @@ let pp_inlined_subroutine_const_params d is =
        (List.map
           (fun iscp ->
             let fake_als : analysed_location_data = [(iscp.iscp_abstract_origin,Nothing)] in
-            let fake_diff = pp_analysed_locations3_diff c (*HACK*) d d.d_str [] fake_als in
+            let fake_diff = pp_analysed_locations3_diff c d [] fake_als in
             let const_in_place_of_locs = 
               List.map
                 (fun (removed,(name,offset,kind),typ,locs,parents) ->
@@ -7403,6 +8233,17 @@ let pp_attribute_value_raw (av:attribute_value) : string =
   | AV_sec_offset n -> "AV_sec_offset " ^ pphex_sym n
   | AV_string bs -> "AV_string \"" ^ string_of_sym_byte_sequence bs ^ "\""
   | AV_strp n -> "AV_strp " ^ pphex_sym n
+  (* Claude: DWARF 5 *)
+  | AV_strx i -> "AV_strx " ^ pphex_sym i
+  | AV_addrx i -> "AV_addrx " ^ pphex_sym i
+  | AV_line_strp n -> "AV_line_strp " ^ pphex_sym n
+  | AV_data16 bs -> "AV_data16 " ^ pp_sym_bytes_raw bs
+  | AV_implicit_const i -> "AV_implicit_const " ^ show i
+  | AV_loclistx i -> "AV_loclistx " ^ pphex_sym i
+  | AV_rnglistx i -> "AV_rnglistx " ^ pphex_sym i
+  | AV_ref_sup4 n -> "AV_ref_sup4 " ^ pphex_sym n
+  | AV_ref_sup8 n -> "AV_ref_sup8 " ^ pphex_sym n
+  | AV_strp_sup n -> "AV_strp_sup " ^ pphex_sym n
   end
 
 val style_raw : die_style
@@ -7414,10 +8255,10 @@ let style_raw : die_style =
        ^ " " ^ pp_tag_encoding ad.ad_tag ^ " (" ^ pphex_sym ad.ad_tag ^ ")"
        ^ (if ad.ad_has_children then " [has children]" else " [no children]")
        ^ " end=" ^ pp_pos die.die_end ^ "\n")
-   ; ds_attribute = (fun cuh level die ((at, af), (pos, av)) ->
+   ; ds_attribute = (fun cuh level die (sp, (pos, av)) ->
        indent_level_plus_one true level ^ pp_pos pos ^ "   "
-       ^ right_space_padded_to 18 (pp_attribute_encoding at) ^ " (" ^ pphex_sym at ^ ") "
-       ^ pp_attribute_form_encoding af ^ " (" ^ pphex_sym af ^ "): "
+       ^ right_space_padded_to 18 (pp_attribute_encoding sp.as_attribute) ^ " (" ^ pphex_sym sp.as_attribute ^ ") "
+       ^ pp_attribute_form_encoding sp.as_form ^ " (" ^ pphex_sym sp.as_form ^ "): "
        ^ pp_attribute_value_raw av ^ "\n")
    ; ds_terminator = (fun _ _ -> "")
   |>
@@ -7477,7 +8318,7 @@ let pp_location_list_resolved c cuh regname ((offset:sym_natural), (llis: list l
         end)
       llis)
 
-val pp_attribute_value_resolved : p_context -> dwarf -> compilation_unit -> sym_byte_sequence -> (natural -> string) ->
+val pp_attribute_value_resolved : p_context -> dwarf -> compilation_unit -> unit_context -> (natural -> string) ->
   die -> sym_natural -> sym_natural -> attribute_value -> string
 let pp_attribute_value_resolved c d cu str regname (die:die) (at:sym_natural) (af:sym_natural) (av:attribute_value) : string =
   let cuh = cu.cu_header in
@@ -7503,6 +8344,16 @@ let pp_attribute_value_resolved c d cu str regname (die:die) (at:sym_natural) (a
     | AV_sec_offset n -> pphex_sym n
     | AV_string bs -> "\"" ^ string_of_sym_byte_sequence bs ^ "\""
     | AV_strp n -> "\"" ^ pp_debug_str_entry str n ^ "\" (strp " ^ pphex_sym n ^ ")"
+    | AV_strx i -> "\"" ^ strx_string str i ^ "\" (strx " ^ pphex_sym i ^ ")"
+    | AV_addrx i -> (match addrx_address str i with Just a -> pphex_sym a | Nothing -> "<no DW_AT_addr_base>" end) ^ " (addrx " ^ pphex_sym i ^ ")"
+    | AV_line_strp n -> "\"" ^ line_strp_string str n ^ "\" (line_strp " ^ pphex_sym n ^ ")"
+    | AV_data16 bs -> pp_sym_bytes_raw bs
+    | AV_implicit_const i -> show i ^ " (implicit_const)"
+    | AV_loclistx i -> (match loclistx_offset str i with Just o -> pphex_sym o | Nothing -> "<no DW_AT_loclists_base>" end) ^ " (loclistx " ^ pphex_sym i ^ ")"
+    | AV_rnglistx i -> (match rnglistx_offset str i with Just o -> pphex_sym o | Nothing -> "<no DW_AT_rnglists_base>" end) ^ " (rnglistx " ^ pphex_sym i ^ ")"
+    | AV_ref_sup4 n -> "alt " ^ pphex_sym n
+    | AV_ref_sup8 n -> "alt " ^ pphex_sym n
+    | AV_strp_sup n -> "alt strp " ^ pphex_sym n
     end
   in
   let extra =
@@ -7533,7 +8384,7 @@ let pp_attribute_value_resolved c d cu str regname (die:die) (at:sym_natural) (a
   in
     value ^ extra
 
-val style_resolved : p_context -> dwarf -> compilation_unit -> sym_byte_sequence -> (natural -> string) -> die_style
+val style_resolved : p_context -> dwarf -> compilation_unit -> unit_context -> (natural -> string) -> die_style
 let style_resolved c d cu str regname : die_style =
   <| ds_die_line = (fun level die ->
        let ad = die.die_abbreviation_declaration in
@@ -7541,11 +8392,11 @@ let style_resolved c d cu str regname : die_style =
        ^ ": " ^ pp_tag_encoding ad.ad_tag
        ^ (match find_name_of_die_using_abstract_origin c d cu str die with Just name -> " \"" ^ name ^ "\"" | Nothing -> "" end)
        ^ " (abbrev " ^ show die.die_abbreviation_code ^ ")\n")
-   ; ds_attribute = (fun cuh level die ((at, af), (pos, av)) ->
+   ; ds_attribute = (fun cuh level die (sp, (pos, av)) ->
        indent_level_plus_one true level ^ pp_pos pos ^ "   "
-       ^ right_space_padded_to 18 (pp_attribute_encoding at) ^ ": "
-       ^ "(" ^ pp_attribute_form_encoding af ^ ") "
-       ^ pp_attribute_value_resolved c d cu str regname die at af av
+       ^ right_space_padded_to 18 (pp_attribute_encoding sp.as_attribute) ^ ": "
+       ^ "(" ^ pp_attribute_form_encoding sp.as_form ^ ") "
+       ^ pp_attribute_value_resolved c d cu str regname die sp.as_attribute sp.as_form av
        ^ "\n")
    ; ds_terminator = (fun _ _ -> "")
   |>
@@ -7558,7 +8409,7 @@ let pp_dwarf_resolved regname (d:dwarf) : string =
       (fun cu ->
         pp_compilation_unit_header cu.cu_header
         ^ "\n"
-        ^ pp_die_tree (style_resolved c d cu d.d_str regname) cu.cu_header true 0 cu.cu_die
+        ^ pp_die_tree (style_resolved c d cu (unit_context_of_cu d cu) regname) cu.cu_header true 0 cu.cu_die
         ^ "\n")
       d.d_compilation_units)
 

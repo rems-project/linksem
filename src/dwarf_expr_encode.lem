@@ -213,4 +213,6 @@ let cuh_dwarf4_addr8 =
      cuh_unit_length = sym_natural_const 0;
      cuh_version = sym_natural_const 4;
      cuh_debug_abbrev_offset = sym_natural_const 0;
-     cuh_address_size = sym_natural_const 8 |>
+     cuh_address_size = sym_natural_const 8;
+     cuh_unit_type = Nothing;
+     cuh_dwo_id = Nothing |>

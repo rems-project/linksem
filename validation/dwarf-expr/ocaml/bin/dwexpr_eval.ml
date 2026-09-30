@@ -52,10 +52,11 @@ let () =
     let ev : Dwarf.evaluation_context = { Dwarf.read_register; read_memory } in
     (* the pc for a variable is the stop label of the subprogram it belongs to *)
     let tag_subprogram = Dwarf.tag_encode "DW_TAG_subprogram" in
-    let pc_of_parents d (parents : Dwarf.die list) =
+    let pc_of_parents d (cu : Dwarf.compilation_unit) (parents : Dwarf.die list) =
+      let str = Dwarf.unit_context_of_cu d cu in
       let func = List.find_map (fun (die : Dwarf.die) ->
           if Sym_ocaml.Num.to_num die.die_abbreviation_declaration.ad_tag = Sym_ocaml.Num.to_num tag_subprogram
-          then Dwarf.find_name_of_die d.Dwarf.d_str die else None) parents in
+          then Dwarf.find_name_of_die str die else None) parents in
       let label = match func with
         | Some f -> (match List.assoc_opt f st.stops with Some l -> l | None -> failwith ("no stop label for function " ^ f))
         | None -> st.pc in
@@ -85,8 +86,8 @@ let () =
     (* Claude: the variables' DIEs, indexed by name once (a search per variable was
        quadratic in the number of expressions) *)
     let by_name = Hashtbl.create 1024 in
-    List.iter (fun ((_, _, die) as cupdie) ->
-        match Dwarf.find_name_of_die d.d_str die with
+    List.iter (fun ((cu, _, die) as cupdie) ->
+        match Dwarf.find_name_of_die (Dwarf.unit_context_of_cu d cu) die with
         | Some name -> if not (Hashtbl.mem by_name name) then Hashtbl.add by_name name cupdie
         | None -> ())
       (Dwarf.find_dies (fun die -> Dwarf.find_attribute_value "DW_AT_location" die <> None) d);
@@ -96,11 +97,12 @@ let () =
           | None -> "error: no DIE named " ^ n.var
           | Some (cu, parents, die) ->
             let ac = Dwarf.arithmetic_context_of_cuh cu.cu_header in
-            let mfbloc = Dwarf.closest_enclosing_frame_base d.d_loc (Dwarf.cu_base_address cu) parents in
+            let str = Dwarf.unit_context_of_cu d cu in
+            let mfbloc = Dwarf.closest_enclosing_frame_base parents in
             match Dwarf.find_attribute_value "DW_AT_location" die with
             | None -> "error: no DW_AT_location"
             | Some loc ->
-              (try match Dwarf.evaluate_location_description c d.d_loc (Dwarf.cu_base_address cu) efi cu.cu_header ac ev mfbloc (pc_of_parents d parents) loc with
+              (try match Dwarf.evaluate_location_description c str efi cu.cu_header ac ev mfbloc (pc_of_parents d cu parents) loc with
                  | Error.Success sl -> render sl
                  | Error.Fail m -> "error: " ^ m
                with Failure m -> "error: exception " ^ m
