@@ -31,7 +31,7 @@ answers to its choice points.
    record the byte offset; we should not be re-encoding"; "check the DWARF pdf
    specification.  If the above is correct, follow gdb and document that this
    is making something specified."; "no, put the harness in
-   linksem/validate/test-dwarf-expr"; "include the design notes in that
+   linksem/validate/test-dwarf-expr" [it went into linksem/validation/test-dwarf-expr, later renamed to validation/dwarf-expr]; "include the design notes in that
    README"; "include in that directory the notes and other instructions (the
    initial notes036 prompt, this note, and other instructions (if any) I have
    given you for this experiment)."; "the harness should support regression
@@ -71,7 +71,7 @@ answers to its choice points.
 
 10. "add location lists and non-CFA frame bases to the harness"
 
-11. Tidying points given during that work: "in test-dwarf-expr/notes, you've
+11. Tidying points given during that work: "in test-dwarf-expr/notes [later renamed to dwarf-expr/notes], you've
     not followed the notes naming convention"; "the README in the directory
     above needs to be updated to point to this too, in the "two kinds of
     validation live here" (now there are three kinds) and the rest of that

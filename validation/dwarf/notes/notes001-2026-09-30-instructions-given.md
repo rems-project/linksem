@@ -39,7 +39,7 @@ The general rules are in `notes002-2026-09-30-general-instructions.md`.
 
 14. (2026-09-19 14:46) Mark B13 and A13 as deferred for now. Commit the notes. Then apply all these fixes, commiting (after sanity checking) each one separately, so we can figure out which was responsible if we later discover that one was broken.
 
-15. (2026-09-19 17:01) move the name-table generators into validation/common and commit those.  Then commit the validation harness and an overall commit with a message including (a) a brief summary of all this work, then (b) your message above (Notes/Fixes/Verification and the first of the Two things to know, then (c) the whole of notes007.
+15. (2026-09-19 17:01) move the name-table generators into validation/common [later renamed to validation/dwarf/scripts] and commit those.  Then commit the validation harness and an overall commit with a message including (a) a brief summary of all this work, then (b) your message above (Notes/Fixes/Verification and the first of the Two things to know, then (c) the whole of notes007.
 
 16. (2026-09-19 17:04) make a reworked version of quickcheck.py and commit that, before the "overall commit"
 

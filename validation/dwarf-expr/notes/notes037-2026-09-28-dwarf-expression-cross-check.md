@@ -171,7 +171,7 @@ PS: check the DWARF pdf specification.  If the above is correct, follow gdb and 
    `DW_OP_implicit_value` shorter than the object: keep returning the bytes.
 3. **the harness** goes into `read-dwarf-private3/test-dwarf-expr/`
 
-PS no, put the harness in linksem/validate/test-dwarf-expr
+PS no, put the harness in linksem/validate/test-dwarf-expr [Claude: it went into linksem/validation/test-dwarf-expr, later renamed to validation/dwarf-expr]
 
    in the
    pattern of `objcheck`: an OCaml dune project using the `linksem` library
