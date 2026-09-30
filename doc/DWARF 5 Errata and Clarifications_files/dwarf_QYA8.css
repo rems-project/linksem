@@ -1,0 +1,467 @@
+@import url('https://fonts.googleapis.com/css2?family=Open+Sans:ital,wght@0,400;0,700;1,400;1,700&display=swap');
+
+:root {
+  --body-max-width: 1000px;
+  --sidebar-width: 220px;
+  --gutter-width: 10px;
+  --body-font: "Open Sans", sans-serif;
+  --code-font: 'Consolas', 'Menlo', 'DejaVu Sans Mono', 'Bitstream Vera Sans Mono', monospace;
+  --header-color: #6060a0;
+  --definition-color: #606060;
+  --code-color: #2000A0;
+  --table-border-color: #d8d8d8;
+  --small-screen-nav-background-color: #f0f0f0;
+  --footer-background-color: white;
+  --footer-text-color: #383838;
+  --footer-border-color: #d8d8d8;
+  --blockquote-border-color: #f0f0f0;
+  --pre-background-color: #f0f0f0;
+  --issue-hover-background-color: #f0f0ff;
+  --sort-arrow-color: #c0c0c0;
+  --old-text-color: #ff6060;
+  --old-background-color: #ffeeee;
+  --new-text-color: #00b000;
+  --new-background-color: #eeffee;
+}
+
+body, div, h1, h2, h3, h4, h5, h6, th, td, p, li, dd, code {
+  font-family: var(--body-font);
+}
+
+* {
+  box-sizing: border-box;
+}
+
+/* Basic page layout */
+
+body {
+  font-size: 12pt;
+  line-height: 1.33;
+  margin: 0 auto;
+  padding: 10px;
+  max-width: var(--body-max-width);
+}
+
+div.pageheader {
+  position: relative;
+  width: 100%;
+  height: 160px;
+  text-align: left;
+  margin-bottom: 20px;
+  background: no-repeat url("../images/dwarf-header-bg.png") 0 center/1000px auto;
+}
+
+#dwarf-logo {
+  position: relative;
+  left: 20px;
+  top: 10px;
+  width: 140px;
+}
+
+div.contentwrapper {
+  float: left;
+  width: 100%;
+}
+
+div.content {
+  margin-left: var(--sidebar-width);
+  padding-left: var(--gutter-width);
+}
+
+div.nav {
+  float: left;
+  width: var(--sidebar-width);
+  padding: 10px;
+  margin-left: -100%;
+  font-size: 0.9em;
+}
+
+div.clearer {
+  clear: both;
+}
+
+div.pagefooter {
+  border-top: 1px solid var(--footer-border-color);
+  padding: 20px 0;
+  margin-top: 40px;
+}
+
+div.pagefooter p {
+  margin: 1em 0 0 0;
+  font-size: 90%;
+  font-style: italic;
+  color: #606060;
+  text-align: center;
+}
+
+div.pagefooter p:first-child {
+  margin: 0;
+}
+
+/* Custom styles */
+
+h1, h2, h3, h4, h5, h6 {
+  color: var(--header-color);
+}
+
+h1 {
+  font-size: 180%;
+}
+
+div.content > h1:first-child {
+  margin-top: 0;
+}
+
+h2 {
+  margin-top: 2em;
+  font-size: 110%;
+}
+
+h3 {
+  margin-top: 1em;
+  font-size: 100%;
+}
+
+#page-faq h2 {
+  font-size: 130%;
+}
+
+#page-faq dt {
+  font-weight: bold;
+  font-style: italic;
+  color: var(--definition-color);
+  margin: 1em 0 0 0;
+  padding-top: 1em;
+  border-top: 1px solid var(--definition-color);
+}
+
+#page-faq dt:first-child {
+  margin: 0;
+  border-top: none;
+}
+
+#page-faq dd {
+  margin: 1em 0 0 2em;
+}
+
+#page-faq dd p {
+  margin: 0.5em 0;
+}
+
+pre, tt, code {
+  font-family: var(--code-font);
+  font-size: 0.9em;
+  color: var(--code-color);
+}
+
+pre {
+  margin: 1em;
+  background-color: var(--pre-background-color);
+  padding: 0.5em;
+  overflow-x: scroll;
+}
+
+pre.proposal {
+  margin: 1em 0;
+  background-color: inherit;
+  padding: 0;
+  color: inherit;
+}
+
+blockquote {
+  margin-left: 1em;
+  border-left: 3px solid var(--blockquote-border-color);
+  padding-left: 1em;
+}
+
+blockquote > blockquote {
+  border-left: none;
+  padding-left: 0;
+}
+
+table {
+  margin: 1em auto 1em 0;
+  width: auto;
+  border: none;
+  border-spacing: 0;
+  border-collapse: collapse;
+}
+
+tr {
+  vertical-align: top;
+}
+
+thead tr {
+  vertical-align: bottom;
+}
+
+th {
+  text-align: left;
+  padding: 0.375em;
+  border-bottom: 2px solid black;
+}
+
+td {
+  padding: 0.375em;
+  border-bottom: 1px solid var(--table-border-color);
+}
+
+table.issueheader {
+  min-width: 300px;
+  border: 1px solid black;
+}
+
+table.issueheader th, table.issueheader td {
+  padding: 5px;
+  text-align: left;
+  border-bottom: 1px solid black;
+}
+
+div.mdsource {
+  margin: 1em 0 0 0;
+  font-size: 90%;
+  font-style: italic;
+  text-align: right;
+}
+
+/* Navigation sidebar styles */
+
+div.nav ul {
+  list-style-type: none;
+  margin: 0;
+  padding: 0;
+}
+
+div.nav ul ul {
+  list-style-type: disc;
+  margin: 0;
+  padding: 0 0 0 1.5em;
+}
+
+div.nav ul li {
+  margin: 1em 0;
+}
+
+div.nav ul ul li {
+  margin: 0.25em 0;
+}
+
+ul.issuenav {
+  list-style-type: none;
+  margin: 0 0 1em 0;
+  padding: 0;
+}
+
+ul.issuenav li {
+  display: inline;
+}
+
+ul.issuenav li:not(:first-child)::before {
+  content: " | ";
+}
+
+li.self a {
+  text-decoration: none;
+  color: inherit;
+}
+
+/* Issue index styles */
+
+#issuefilter {
+  display: none;
+  list-style-type: none;
+  margin: 0 0 1em 0;
+  padding: 0;
+}
+
+#issuefilter.enabled {
+  display: block;
+}
+
+#issuefilter li {
+  display: inline;
+  padding: 0 1em 0 0;
+  line-height: 2;
+  white-space: nowrap;
+}
+
+#issuefilter label {
+  font-size: 90%;
+  padding-right: 0.5em;
+}
+
+#resultcount {
+  font-size: 90%;
+  font-style: italic;
+}
+
+.indexcontainer {
+  padding: 2em 0;
+  /* Let the table of issues scroll horizontally if necessary without
+     widening the whole page. */
+  width: 100%;
+  overflow-x: scroll;
+}
+
+table.issueindex {
+  margin: 0;
+}
+
+table.issueindex th {
+  white-space: nowrap;
+  position: relative;
+  padding-right: 1.5em;
+}
+
+table.issueindex th span {
+  visibility: hidden;
+  display: inline-block;
+  width: 0;
+  font-size: 80%;
+  color: var(--sort-arrow-color);
+  margin: 0 -0.5em 0 0.5em;
+}
+
+table.issueindex th.sorted span {
+  visibility: visible;
+}
+
+table.issueindex tbody tr:hover {
+  background-color: var(--issue-hover-background-color);
+}
+
+.nobreak {
+  white-space: nowrap;
+}
+
+/* Styles for revision tracking. */
+
+del, span.del {
+  color: red;
+  text-decoration: line-through;
+}
+
+del code, del tt, span.del code, span.del tt {
+  color: inherit;
+}
+
+ins, span.add {
+  background-color: lightgreen;
+  text-decoration: none;
+}
+
+pre.old {
+  background-color: var(--old-background-color);
+  color: var(--old-text-color);
+}
+
+pre.new {
+  background-color: var(--new-background-color);
+  color: var(--new-text-color);
+}
+
+pre.both {
+}
+
+pre.proposal.old, pre.proposal.new, pre.proposal.both {
+  margin: 0.25em;
+}
+
+
+/* Responsive layout... */
+
+/* For wide screens, let the table of issues extend past the margin. */
+
+@media screen and (min-width: 1024px) {
+  .indexcontainer {
+    --side-margin: calc((100vw - var(--body-max-width)) / 2);
+    width: calc(100vw - var(--side-margin) - var(--sidebar-width) - var(--gutter-width) - 20px);
+    /* ... but not too far. */
+    max-width: 120%;
+  }
+
+  /* Also let plaintext issues extend. */
+  pre.proposal {
+    overflow-x: inherit;
+  }
+}
+
+/* For narrow screens, move nav to bottom. */
+
+@media screen and (max-width: 875px) {
+  :root {
+    --sidebar-width: 0;
+    --gutter-width: 0;
+  }
+
+  div.contentwrapper {
+    float: none;
+  }
+
+  div.content {
+    min-width: 300px;
+  }
+
+  div.nav {
+    margin: 20px 0 0 0;
+    width: 100%;
+    background-color: var(--small-screen-nav-background-color);
+  }
+
+  div.pagefooter {
+    margin-top: 0;
+    background-color: var(--small-screen-nav-background-color);
+  }
+}
+
+@media screen and (max-width: 600px) {
+  div.pageheader {
+    background-image: none;
+  }
+}
+
+@media screen and (max-width: 360px) {
+  body {
+    font-size: 10pt;
+  }
+}
+
+@media print {
+  :root {
+    --sidebar-width: 0;
+    --gutter-width: 0;
+  }
+
+  div.contentwrapper {
+    float: none;
+  }
+
+  div.content {
+    /* min-width: 300px; */
+  }
+
+  div.pageheader,
+  div.pagefooter,
+  div.nav,
+  ul.issuenav,
+  #issuefilter.enabled,
+  #resultcount {
+    display: none;
+  }
+}
+
+/* Presentation Mode */
+
+body.presentation {
+  --sidebar-width: 0;
+  --gutter-width: 0;
+  font-size: 14pt;
+}
+
+body.presentation div.contentwrapper {
+  float: none;
+}
+
+body.presentation div.nav {
+  display: none;
+}
