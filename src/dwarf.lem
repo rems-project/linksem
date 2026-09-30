@@ -4917,14 +4917,14 @@ let arithmetic_context_of_cuh cuh =
   | 8 ->
       <|
       ac_bitwidth = 64;
-      ac_half = symNaturalPow 2 32;
+      ac_half = symNaturalPow 2 63;  (* Claude: was 2^32; ac_half is the sign boundary, 2^(bitwidth-1) *)
       ac_all = symNaturalPow 2 64;
       ac_max = (symNaturalPow 2 64) - 1;
     |>
   | 4 ->
       <|
       ac_bitwidth = 32;
-      ac_half = symNaturalPow 2 16;
+      ac_half = symNaturalPow 2 31;  (* Claude: was 2^16 *)
       ac_all = symNaturalPow 2 32;
       ac_max = (symNaturalPow 2 32) - 1;
     |>
