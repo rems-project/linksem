@@ -15,6 +15,12 @@ to this directory (`validation/dwarf/`).
 
 ## Running
 
+    make go                                        # all three corpora (builds the library and tool first)
+    make go CORPORA=elfutils                       # one corpus
+    make clean                                     # drop cache/ (fetched sources, built objects) and tools/
+
+or by hand:
+
     make -C ../../src && make -C ../../src_ocaml   # the library and the tool
     ./run.sh binutils                              # one corpus ...
     ./run.sh binutils llvm elfutils                # ... or several

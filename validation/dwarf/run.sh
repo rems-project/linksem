@@ -7,7 +7,7 @@ here=$(cd "$(dirname "$0")" && pwd)
 stamp=${RESULTS_NAME:-$(date +%Y%m%d-%H%M%S)}
 results="$here/results/$stamp"; mkdir -p "$results"
 for corpus in "$@"; do
-  "$here/dwarf/corpora/$corpus/fetch.sh"
+  "$here/corpora/$corpus/fetch.sh"
   case $corpus in
     binutils) src="$here/cache/src/binutils/binutils/testsuite/binutils-all" ;;
     llvm)     src="$here/cache/src/llvm" ;;
