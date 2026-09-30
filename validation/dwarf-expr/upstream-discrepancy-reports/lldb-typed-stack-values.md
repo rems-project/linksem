@@ -77,3 +77,32 @@ rows above once minimised: 37 "extracting data from value failed" (row 5), 35
 computes as -1 or another value lldb treats as invalid (row 6), and 32 different
 values or addresses from the typed `abs`, `neg`-then-`abs`, `mod` and comparison
 operations (rows 1 to 4).
+
+**DWARF 5 typed operations (added 30 September 2026).**  With DWARF 5 units
+(version 5 header, `.debug_loclists`, `.debug_addr`, base types `unsigned
+char` .. `long` in the unit), lldb 18.1.3:
+
+- does not implement `DW_OP_const_type`, `DW_OP_regval_type`,
+  `DW_OP_deref_type`, `DW_OP_reinterpret` or `DW_OP_constx` ("Unhandled
+  opcode DW_OP_const_type in DWARFExpression", and so on; gdb 15.1 implements
+  all but `DW_OP_constx`);
+- implements `DW_OP_convert` but ignores the signedness of the *source* type
+  (section 2.5.1.6 converts the value, so a signed source sign-extends and an
+  unsigned one zero-extends):
+
+| # | expression (`DW_AT_location`)                                          | DWARF 5 / gdb / linksem | lldb 18.1.3          |
+|---|------------------------------------------------------------------------|-------------------------|----------------------|
+| 7 | `DW_OP_lit1; DW_OP_neg; DW_OP_convert <int>; DW_OP_convert <generic>`  | 0xffffffffffffffff      | 0xffffffff           |
+| 8 | `DW_OP_const1u 0x80; DW_OP_convert <unsigned char>; DW_OP_convert <long>` | 0x80                 | 0xffffffffffffff80   |
+
+  In row 7 the int -1 converted back to the generic (address-sized) type is
+  zero-extended; in row 8 the unsigned char 0x80 converted to long is
+  sign-extended: lldb appears to extend by the signedness of the *target*
+  type (or of the previous entry) rather than of the value being converted.
+  `DW_OP_convert` of a positive value, and truncations, agree.
+
+Reproducers in `lldb-dwarf5-examples/`: `t_conv_neg_int` (row 7),
+`t_conv_zext` (row 8), `t_const_type` and `t_constx` (unhandled opcodes);
+same commands as above, `frame variable -L NAME`.  The `prog.s` are DWARF 5
+units; the `T_i`, `T_uc`, `T_l` labels are the base type DIEs the operands
+name.

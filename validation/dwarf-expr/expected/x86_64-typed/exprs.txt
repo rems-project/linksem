@@ -1,0 +1,70 @@
+# Claude: the DWARF 5 typed-stack and indexed operations (section 2.5.1; linksem
+# notes008), hand-written; built as a DWARF 5 unit.  T_uc/T_sc/T_us/T_s/T_ui/T_i/
+# T_ul/T_l are the base types Dwarf_asm defines (unsigned/signed char, short, int,
+# long); register 2 holds -1, register 1 0x10; dw_mem is the known byte block.
+# dwarf 5
+t_conv_neg_int: DW_OP_lit1; DW_OP_neg; DW_OP_convert T_i; DW_OP_convert 0                 # -1 through int and back: 0xffffffffffffffff
+t_conv_trunc_uc: DW_OP_const2u 0x1ff; DW_OP_convert T_uc; DW_OP_convert 0                 # truncation: 0xff
+t_conv_sext: DW_OP_const1u 0x80; DW_OP_convert T_sc; DW_OP_convert T_l; DW_OP_convert 0    # sign extension: 0xffffffffffffff80
+t_conv_zext: DW_OP_const1u 0x80; DW_OP_convert T_uc; DW_OP_convert T_l; DW_OP_convert 0    # zero extension: 0x80
+t_conv_generic_neg: DW_OP_lit1; DW_OP_neg; DW_OP_convert T_uc; DW_OP_convert T_i; DW_OP_convert 0   # 0xff as unsigned char widens to 0xff
+t_conv_signed_to_generic: DW_OP_const1u 0xff; DW_OP_convert T_sc; DW_OP_convert 0          # -1 signed char to generic: 0xffffffffffffffff
+t_conv_narrow_neg_l_us: DW_OP_const_type T_l {ff,ff,ff,ff,ff,ff,ff,ff}; DW_OP_convert T_us; DW_OP_convert 0   # -1 long to unsigned short: 0xffff (gdb gives 1, the magnitude's low bits)
+t_conv_narrow_neg_l_s: DW_OP_const_type T_l {fe,ff,ff,ff,ff,ff,ff,ff}; DW_OP_convert T_s; DW_OP_convert 0      # -2 long to short to generic: 0xfffffffffffffffe
+t_conv_narrow_neg_i_uc: DW_OP_const_type T_i {1c,91,69,ea}; DW_OP_convert T_uc; DW_OP_convert 0                # 0xea69911c (negative int) to unsigned char: 0x1c
+t_conv_narrow_neg_i_sc: DW_OP_const_type T_i {1c,91,69,ea}; DW_OP_convert T_sc; DW_OP_convert 0                # to signed char: 0x1c
+t_conv_narrow_pos_l_us: DW_OP_const_type T_l {b3,11,d5,19,77,73,74,5f}; DW_OP_convert T_us; DW_OP_convert 0   # a positive long: 0x11b3
+t_conv_narrow_neg_i_us: DW_OP_const_type T_i {1c,91,69,ea}; DW_OP_convert T_us; DW_OP_convert 0                # to unsigned short: 0x911c
+t_conv_narrow_neg_i_ui: DW_OP_const_type T_i {1c,91,69,ea}; DW_OP_convert T_ui; DW_OP_convert 0                # same size: 0xea69911c
+t_conv_widen_neg_i_l: DW_OP_const_type T_i {1c,91,69,ea}; DW_OP_convert T_l; DW_OP_convert 0                   # widening: 0xffffffffea69911c
+t_conv_narrow_neg_l_uc: DW_OP_const_type T_l {1c,91,69,ea,ff,ff,ff,ff}; DW_OP_convert T_uc; DW_OP_convert 0    # the same value as a long, to unsigned char: 0x1c
+t_conv_narrow_intmin_uc: DW_OP_const_type T_i {00,00,00,80}; DW_OP_convert T_uc; DW_OP_convert 0               # INT_MIN to unsigned char: 0
+t_conv_narrow_m2_uc: DW_OP_const_type T_i {fe,ff,ff,ff}; DW_OP_convert T_uc; DW_OP_convert 0                   # -2 to unsigned char: 0xfe
+t_conv_narrow_m256_uc: DW_OP_const_type T_i {00,ff,ff,ff}; DW_OP_convert T_uc; DW_OP_convert 0                 # -256 to unsigned char: 0
+t_conv_narrow_m257_uc: DW_OP_const_type T_i {ff,fe,ff,ff}; DW_OP_convert T_uc; DW_OP_convert 0                 # -257 to unsigned char: 0xff
+t_conv_narrow_m300_uc: DW_OP_const_type T_i {d4,fe,ff,ff}; DW_OP_convert T_uc; DW_OP_convert 0                 # -300 to unsigned char: 0xd4
+t_conv_widen_neg_sc_us: DW_OP_const_type T_sc {ff}; DW_OP_convert T_us; DW_OP_convert 0                        # -1 signed char to unsigned short: 0xffff
+t_conv_widen_neg_i_ul: DW_OP_const_type T_i {ff,ff,ff,ff}; DW_OP_convert T_ul; DW_OP_convert 0                # -1 int to unsigned long: 0xffffffffffffffff
+t_const_type: DW_OP_const_type T_ui {ff,ff,ff,ff}; DW_OP_convert 0                      # 0xffffffff
+t_const_type_signed_addr: DW_OP_const_type T_i {ff,ff,ff,ff}                            # a typed result taken as an address: sign-extended
+t_const_type_unsigned_addr: DW_OP_const_type T_ui {ff,ff,ff,ff}                         # zero-extended
+t_regval_type: DW_OP_regval_type 2 T_ui; DW_OP_convert 0                                  # register 2 (-1) as unsigned int: 0xffffffff
+t_regval_type_signed: DW_OP_regval_type 2 T_s; DW_OP_convert 0                            # as short: -1 again
+t_deref_type: DW_OP_addr dw_mem+8; DW_OP_deref_type 2 T_us; DW_OP_convert 0               # two bytes of dw_mem
+t_deref_type_signed: DW_OP_addr dw_mem+3; DW_OP_deref_type 1 T_sc; DW_OP_convert 0        # one byte, sign-extended if >= 0x80
+t_typed_add_wrap: DW_OP_const_type T_uc {ff}; DW_OP_const_type T_uc {02}; DW_OP_plus; DW_OP_convert 0      # 8-bit wrap-around: 1
+t_typed_mul_wrap: DW_OP_const_type T_us {00,80}; DW_OP_const_type T_us {02,00}; DW_OP_mul; DW_OP_convert 0  # 0x8000*2 in 16 bits: 0
+t_typed_div_unsigned: DW_OP_const_type T_uc {fe}; DW_OP_const_type T_uc {03}; DW_OP_div; DW_OP_convert 0   # 254/3 = 84
+t_typed_div_signed: DW_OP_const_type T_sc {fe}; DW_OP_const_type T_sc {03}; DW_OP_div; DW_OP_convert 0     # -2/3 = 0
+t_typed_mod_unsigned: DW_OP_const_type T_uc {fe}; DW_OP_const_type T_uc {03}; DW_OP_mod; DW_OP_convert 0   # 254 mod 3 = 2
+t_typed_mod_signed: DW_OP_const_type T_sc {fe}; DW_OP_const_type T_sc {03}; DW_OP_mod; DW_OP_convert 0     # -2 rem 3 = -2 (the type's remainder, as gdb; DWARF leaves the signedness open)
+t_typed_mod_signed_pos: DW_OP_const_type T_sc {07}; DW_OP_const_type T_sc {fd}; DW_OP_mod; DW_OP_convert 0 # 7 rem -3 = 1
+t_typed_lt_unsigned: DW_OP_const_type T_uc {fe}; DW_OP_const_type T_uc {03}; DW_OP_lt                     # 254 < 3: 0
+t_typed_lt_signed: DW_OP_const_type T_sc {fe}; DW_OP_const_type T_sc {03}; DW_OP_lt                       # -2 < 3: 1
+t_typed_eq: DW_OP_const_type T_i {ff,ff,ff,ff}; DW_OP_lit1; DW_OP_neg; DW_OP_convert T_i; DW_OP_eq          # 1
+t_typed_shl: DW_OP_const_type T_uc {81}; DW_OP_lit1; DW_OP_convert T_uc; DW_OP_shl; DW_OP_convert 0         # 0x02 (the top bit is lost)
+t_typed_shr: DW_OP_const_type T_uc {80}; DW_OP_lit1; DW_OP_convert T_uc; DW_OP_shr; DW_OP_convert 0         # 0x40
+t_typed_shra: DW_OP_const_type T_sc {80}; DW_OP_lit1; DW_OP_convert T_sc; DW_OP_shra; DW_OP_convert 0       # 0xc0 sign-extended: 0xffffffffffffffc0
+t_typed_neg: DW_OP_const_type T_uc {01}; DW_OP_neg; DW_OP_convert 0                                        # 0xff
+t_typed_abs_unsigned: DW_OP_const_type T_uc {ff}; DW_OP_abs; DW_OP_convert 0                               # unsigned: 0xff
+t_typed_abs_signed: DW_OP_const_type T_sc {ff}; DW_OP_abs; DW_OP_convert 0                                 # |-1| = 1
+t_typed_not: DW_OP_const_type T_us {0f,00}; DW_OP_not; DW_OP_convert 0                                     # 0xfff0
+t_typed_plus_uconst: DW_OP_const_type T_uc {ff}; DW_OP_plus_uconst 2; DW_OP_convert 0                      # 1: the constant "interpreted as the same type as the operand" (2.5.1.4); gdb gives a generic 0x101
+t_typed_plus_uconst_signed: DW_OP_const_type T_sc {ff}; DW_OP_plus_uconst 2; DW_OP_convert 0               # -1 + 2 = 1
+t_reinterpret: DW_OP_const_type T_i {ff,ff,ff,ff}; DW_OP_reinterpret T_ui; DW_OP_convert 0                 # 0xffffffff
+t_reinterpret_generic: DW_OP_lit1; DW_OP_neg; DW_OP_reinterpret T_l; DW_OP_convert T_i; DW_OP_convert 0      # -1 as long, to int, back: 0xffffffffffffffff
+t_typed_stack_value_us: DW_OP_const_type T_us {34,12}; DW_OP_stack_value                                  # a 2-byte typed value
+t_typed_stack_value_generic: DW_OP_const_type T_us {34,12}; DW_OP_convert 0; DW_OP_stack_value             # 0x1234
+t_typed_stack_value_s_neg: DW_OP_const_type T_s {ff,ff}; DW_OP_stack_value                                  # a 2-byte signed -1: does the consumer sign-extend?
+t_typed_stack_value_uc: DW_OP_const_type T_uc {ff}; DW_OP_stack_value                                       # a 1-byte 0xff
+t_typed_stack_value_l: DW_OP_const_type T_l {ff,ff,ff,ff,ff,ff,ff,ff}; DW_OP_stack_value                    # an 8-byte typed -1
+t_typed_dup_swap: DW_OP_const_type T_uc {05}; DW_OP_dup; DW_OP_plus; DW_OP_convert 0                        # 10
+t_mismatch: DW_OP_const_type T_uc {01}; DW_OP_lit1; DW_OP_plus                                             # operands of different types: an error
+t_reinterpret_size_mismatch: DW_OP_const_type T_uc {01}; DW_OP_reinterpret T_ui                              # sizes differ: an error
+t_addrx0: DW_OP_addrx 0                                                                                      # dw_mem
+t_addrx1_deref: DW_OP_addrx 1; DW_OP_deref                                                                   # the 8 bytes at dw_mem+16
+t_constx: DW_OP_constx 1; DW_OP_stack_value                                                                  # the address dw_mem+16 as a value
+# (an out-of-range DW_OP_addrx index is not tested here: gdb rejects the whole unit
+# at load time, "DW_FORM_addr_index pointing outside of .debug_addr section")
+t_typed_loclist@loclist: DW_OP_const_type T_sc {ff}; DW_OP_convert 0                                       # through a .debug_loclists list
+t_typed_loclist_base@loclist-base@fb=loclist: DW_OP_fbreg 8                                                  # a base address entry, frame base from a list

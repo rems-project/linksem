@@ -4,10 +4,19 @@
 
    An ARG is a decimal or 0x-hex integer (possibly negative), a symbol with an
    optional +/- offset (dw_mem+16; only allowed for DW_OP_addr, where the
-   assembler resolves it), or a byte block {01,ff} for DW_OP_implicit_value.
+   assembler resolves it), or a byte block {01,ff} for DW_OP_implicit_value and
+   DW_OP_const_type (whose size operand is the block's length).
    For DW_OP_skip and DW_OP_bra the integer operand counts operations, not
    bytes: k skips the k operations that follow (k < 0 branches back); the byte
    offset is computed when the expression is encoded.
+
+   An ARG may also be a base-type symbol T_uc, T_sc, T_us, T_s, T_ui, T_i, T_ul or
+   T_l (unsigned/signed char, short, int, long) for the type operand of the DWARF 5
+   typed operations (DW_OP_convert, DW_OP_reinterpret, DW_OP_const_type,
+   DW_OP_regval_type, DW_OP_deref_type); Dwarf_asm defines those base types.  A
+   file whose first lines include the pragma "# dwarf 5" is built as a DWARF 5 unit
+   (with .debug_loclists and .debug_addr, so DW_OP_addrx/constx work); the default
+   is DWARF 4.
 
    The annotations on the name say how the expression is attached to the
    variable (see Dwarf_asm):
@@ -90,6 +99,16 @@ let parse_line line =
       let n = parse_name (String.sub line 0 i) in
       let body = String.sub line (i + 1) (String.length line - i - 1) in
       Some { n with ops = List.filter_map parse_op (String.split_on_char ';' body) }
+
+(* the DWARF version pragma of a file: "# dwarf N" among its comment lines, else 4 *)
+let dwarf_version_of_file path =
+  let ic = open_in path in
+  let rec go v = match input_line ic with
+    | l ->
+      let l = String.trim l in
+      go (if String.length l > 8 && String.sub l 0 8 = "# dwarf " then int_of_string (String.trim (String.sub l 8 (String.length l - 8))) else v)
+    | exception End_of_file -> close_in ic; v in
+  go 4
 
 let read_file path =
   let ic = open_in path in

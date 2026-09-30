@@ -1,0 +1,1 @@
+t_typed_plus_uconst: DW_OP_const_type T_uc {ff}; DW_OP_plus_uconst 2

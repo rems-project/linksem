@@ -37,7 +37,7 @@ host may be x86_64 or aarch64; the host's architecture runs natively and the
 other one under qemu-user with the debuggers attached to its gdb stub.
 
     make build                          # the OCaml programs
-    make check-native-arch              # regression, host architecture (basic, minimal, frames, random-seed1, random-frames-seed1)
+    make check-native-arch              # regression, host architecture (basic, minimal, frames, typed, random-seed1, random-frames-seed1, random-typed-seed1)
     make check-all-archs                # both architectures
     make check-random SEED=7 N=2000 MAXOPS=12   # an extensive random run, with minimal examples of every disagreement
     make check-one EXPR='DW_OP_lit1; DW_OP_lit2; DW_OP_minus'   # a single expression
@@ -121,15 +121,62 @@ a harness artefact: `DW_OP_call_frame_cfa` in a function other than `main`
 gives lldb a stack-pointer-based CFA rather than the FDE's `fp + 16`, since
 those functions have no CFI of their own start; real functions always do.
 
+## DWARF 5 units and the typed stack
+
+A set whose file carries the pragma `# dwarf 5` among its leading comment
+lines is built as a DWARF 5 unit (`Dwarf_asm.emit ~version:5`): a version 5
+unit header (`DW_UT_compile`), the location lists in `.debug_loclists`
+(`DW_LLE_offset_pair` entries relative to the unit base, after a
+`DW_LLE_base_address` entry for `@loclist-base`, with `DW_LLE_start_length`
+and `DW_LLE_start_end` decoys), and a `.debug_addr` table (`dw_mem`,
+`dw_mem+16`, `_start`) with `DW_AT_addr_base` on the unit, so `DW_OP_addrx`
+and `DW_OP_constx` can be tested.  Both versions define eight base types
+(`T_uc`, `T_sc`, `T_us`, `T_s`, `T_ui`, `T_i`, `T_ul`, `T_l`: unsigned and
+signed char, short, int and long; `T_ul` is the variables' type) whose DIEs
+are labelled with those names, so an expression can write
+`DW_OP_convert T_uc`, `DW_OP_const_type T_i {1c,91,69,ea}` (the block is the
+value, its size operand implied), `DW_OP_regval_type 2 T_s`,
+`DW_OP_deref_type 2 T_us`, `DW_OP_reinterpret T_ui`; the encoder emits such a
+type operand as `.uleb128 T_x-.Lcu_start` and keeps the base types' offsets
+below 128 so that its byte-offset arithmetic for branches stays right.
+`dwexpr_gen --typed` (set `random-typed-seed1`) tracks a stack of types,
+inserts a `DW_OP_convert` so that binary operations see operands of one type,
+and usually converts a typed result back to the generic type (one expression in
+eight is left typed).  `tests/typed.txt` (63 expressions) is the hand-written
+set: conversions in all directions, typed constants, register and memory
+reads, arithmetic and comparisons in signed and unsigned narrow types,
+reinterpretation, typed `DW_OP_stack_value`, the address table, and the
+errors (mixed types, size mismatch).
+
+linksem's typed stack (`src/dwarf.lem`, DWARF 5 section 2.5.1; the choice is
+recorded in `linksem/notes/notes008`) agrees with gdb 15.1 on all of them and
+on the 1000 random typed expressions except for gdb's own three points in
+`upstream-discrepancy-reports/gdb-DWARF5-typed-operations.md`: narrowing
+conversions of large negative values, `DW_OP_plus_uconst` on a typed operand
+(where linksem follows the text and gdb makes the result generic), and
+`DW_OP_constx` (unimplemented in gdb, so omitted from the random generator).
+Where DWARF 5 is silent, gdb is followed: a typed value taken as an address is
+its bit pattern zero-extended, and `DW_OP_mod` in a signed base type is the
+type's (C) remainder while the generic type's stays unsigned.  A typed
+`DW_OP_stack_value` shorter than the 8-byte variable is reported by
+`dwexpr_eval` as the value zero-extended, which is how gdb reads it (the same
+rendering now applies to a short `DW_OP_implicit_value`, so `m_implicit4` in
+`minimal` is compared rather than `incomparable`; there gdb refuses the value
+and lldb zero-extends it).  lldb 18.1.3 implements only
+`DW_OP_convert` (differently, see the lldb report) and `DW_OP_addrx` of these,
+so most rows of the typed sets are `lldb-differs`.
+
 ## Regression sets and expected results
 
 `tests/basic.txt` (76 expressions) exercises every operation at least once;
 `tests/minimal.txt` (79) holds one-line reproducers of every difference found so
 far, with the expected result per the DWARF 4 text in comments;
 `tests/frames.txt` (26) the location-list and frame-base forms above;
-`random-seed1` is 1000 expressions from `dwexpr_gen` with seed 1 and at most 8
-operations (deterministic), and `random-frames-seed1` the same expressions
-with random location-list and frame-base annotations.  `expected/<arch>-<set>/` holds the committed
+`tests/typed.txt` (63) the DWARF 5 typed and indexed operations, as a DWARF 5
+unit; `random-seed1` is 1000 expressions from `dwexpr_gen` with seed 1 and at
+most 8 operations (deterministic), `random-frames-seed1` the same expressions
+with random location-list and frame-base annotations, and `random-typed-seed1`
+1000 expressions with the typed operations, as a DWARF 5 unit.  `expected/<arch>-<set>/` holds the committed
 results and report of each set on each architecture; `make check-native-arch` fails if a
 result file differs from it (a difference caused by a debugger not being
 installed is reported but not counted).  When a change to linksem, to the tests
@@ -146,6 +193,17 @@ binutils 2.42, qemu 8.2.2, on an x86_64 host):
 | frames              |          26 |    24 |            2 |           0 |         0 |            0 |
 | random-seed1        |        1000 |   958 |           28 |           0 |        14 |            0 |
 | random-frames-seed1 |        1000 |   922 |           70 |           0 |         8 |            0 |
+| typed               |          63 |     7 |           48 |           0 |         0 |            0 |
+| random-typed-seed1  |        1000 |   437 |          539 |           0 |        11 |            0 |
+
+(In `typed`, the 7 `all-differ` and 1 `linksem-differs` not shown are gdb's
+narrowing-conversion and `DW_OP_plus_uconst` points with lldb not implementing
+the operation; in `random-typed-seed1` the 8 `all-differ` and 5
+`linksem-differs` are the same two points.  `minimal` now has 4 `gdb-differs`
+and no `incomparable`: the short `DW_OP_implicit_value` (`m_implicit4`) is
+compared, and gdb 15.1 refuses it, "access outside bounds of object referenced
+via synthetic pointer", where lldb and linksem give the value zero-extended;
+see the gdb DWARF 5 report's last point.)
 
 (Of the 42 extra lldb differences of `random-frames-seed1` over
 `random-seed1`, 41 are the CFA artefact described above and one is a former
@@ -167,8 +225,18 @@ the absolute value" are the operation after a `DW_OP_mod` by zero failing on
 the invalid value lldb leaves.
 
 The aarch64 results (under qemu) are identical, as expected for
-architecture-neutral expressions.  There are no `linksem-differs` left: where
-gdb and lldb agree, linksem agrees with them.
+architecture-neutral expressions (the typed sets differ only in the absolute
+addresses `DW_OP_addrx` and `DW_OP_addr dw_mem` produce, since the two
+programs are linked at different addresses).  There are no `linksem-differs`
+left in the DWARF 4 sets: where gdb and lldb agree, linksem agrees with them;
+in the typed sets the only ones are gdb's `DW_OP_plus_uconst` deviation, on
+which lldb happens to agree with gdb.
+
+The lldb result files of the frame sets contain live stack addresses (lldb
+evaluates the CFA in the running process, not from `state.txt`), so they only
+match the expected files where ASLR is disabled; in a container where
+`personality(2)` is unavailable those lines differ from run to run and the
+check reports them, harmlessly.
 
 ## Coverage
 
@@ -276,7 +344,7 @@ lldb report), which is what most of the remaining `lldb-differs` are.
                                 arch (the two architectures), dwarf_asm (the .s emitter),
                                 state (state.txt)
     ocaml/bin/                  dwexpr_gen, dwexpr_build, dwexpr_eval
-    tests/basic.txt, minimal.txt
+    tests/basic.txt, minimal.txt, frames.txt, typed.txt
     expected/<arch>-<set>/      committed reference results and reports
     notes/                      the notes and instructions this was built from, (notesNNN-YYYY-MM-DD-topic.md)
     upstream-discrepancy-reports/   the gdb and lldb reports, with standalone examples

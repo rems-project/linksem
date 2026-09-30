@@ -26,7 +26,7 @@
 
 ARCH   ?= $(shell uname -m | sed 's/amd64/x86_64/;s/arm64/aarch64/')
 OTHER   = $(if $(filter x86_64,$(ARCH)),aarch64,x86_64)
-SETS   ?= basic minimal frames random-seed1 random-frames-seed1
+SETS   ?= basic minimal frames typed random-seed1 random-frames-seed1 random-typed-seed1
 SEED   ?= 1
 N      ?= 2000
 MAXOPS ?= 12

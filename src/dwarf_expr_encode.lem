@@ -152,6 +152,7 @@ let argument_kind_ok oat oav =
   | (OAT_sint64, OAV_integer _) -> true
   | (OAT_SLEB128, OAV_integer _) -> true
   | (OAT_block, OAV_block _ _) -> true
+  | (OAT_block1, OAV_block _ _) -> true   (* Claude: DW_OP_const_type *)
   | (OAT_addr, OAV_natural _) -> true
   | (OAT_dwarf_format_t, OAV_natural _) -> true
   | (OAT_uint8, OAV_natural _) -> true

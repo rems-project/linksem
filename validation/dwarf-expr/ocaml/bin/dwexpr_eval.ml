@@ -6,7 +6,8 @@
 
      v3 = addr 0x4010a0       a memory location
      v4 = reg 5               a register location
-     v5 = value 0x10          an implicit value (DW_OP_stack_value / DW_OP_implicit_value)
+     v5 = value 0x10          an implicit value (DW_OP_stack_value / DW_OP_implicit_value; a
+                              value shorter than 8 bytes is zero-extended, as gdb reads it)
      v6 = composite ...       a composite location
      v7 = error: MESSAGE      evaluation failed (linksem's message) *)
 open Dwexpr
@@ -73,7 +74,10 @@ let () =
       | Dwarf.SL_implicit bs ->
         let bl = Dwarf_byte_sequence.byte_list_of_sym_byte_sequence bs in
         let v = List.fold_right (fun b acc -> Z.add (Z.shift_left acc 8) (Z.of_int (Char.code b))) bl Z.zero in
-        if List.length bl = 8 then "value " ^ hex v
+        (* Claude: a value shorter than the 8-byte variable is its low-order bytes,
+           zero-filled above, which is how gdb reads such a DW_OP_implicit_value or a
+           DWARF 5 typed DW_OP_stack_value; a longer one is shown as bytes *)
+        if List.length bl <= 8 then "value " ^ hex v
         else "implicit {" ^ String.concat "," (List.map (fun b -> Printf.sprintf "%02x" (Char.code b)) bl) ^ "}"
       | Dwarf.SL_empty -> "empty" in
     let render = function

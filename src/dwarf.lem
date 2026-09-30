@@ -267,6 +267,7 @@ type arithmetic_context =
   ac_all: sym_natural;   (* 2 ^ ac_bitwidth      *)
   ac_max: sym_natural;   (* (2 ^ ac_bitwidth) -1 *) (* also the representation of -1 *)
   ac_signed: bool;       (* Claude: whether the signed operations (div, abs, the comparisons) read values as signed: true for the generic type and for signed base types *)
+  ac_generic: bool;      (* Claude: the generic type's arithmetic (DW_OP_mod is unsigned there; in a signed base type it is a signed remainder, as gdb has it) *)
 |>
 
 type operation_semantics =
@@ -1452,6 +1453,18 @@ let stack_value_signed (ac: arithmetic_context) (v: sym_natural) : sym_integer =
 
 let stack_value_of_bool (b: bool) : sym_natural = if b then 1 else 0
 
+(* Claude: the C remainder (the sign of the dividend), for DW_OP_mod on a signed base
+   type: DWARF 5 does not specify the signedness of DW_OP_mod, and gdb computes the
+   type's remainder there (the generic type's modulus stays unsigned) *)
+let stack_value_signed_rem (ac: arithmetic_context) (v1: sym_natural) (v2: sym_natural) : maybe sym_natural =
+  if v2 = 0 then Nothing else
+  let neg1 = v1 >= ac.ac_half in
+  let neg2 = v2 >= ac.ac_half in
+  let a1 = if neg1 then ac.ac_all - v1 else v1 in
+  let a2 = if neg2 then ac.ac_all - v2 else v2 in
+  let r = a1 mod a2 in
+  Just (if neg1 && r <> 0 then ac.ac_all - r else r)
+
 (* v1 / v2 truncating toward zero, as gdb and C do; Nothing for division by zero *)
 let stack_value_signed_div (ac: arithmetic_context) (v1: sym_natural) (v2: sym_natural) : maybe sym_natural =
   if v2 = 0 then Nothing else
@@ -1487,7 +1500,7 @@ let operation_encodings = [
 ("DW_OP_and",                 sym_natural_of_hex "0x1a", []                         , OpSem_binary (fun ac v1 v2 -> Just (sym_natural_land v1 v2))); (*0*)
 ("DW_OP_div",                 sym_natural_of_hex "0x1b", []                         , OpSem_binary (fun ac v1 v2 -> stack_value_signed_div ac v1 v2)); (*0*) (* Claude: signed, truncating; division by zero fails, as in gdb and lldb *)
 ("DW_OP_minus",               sym_natural_of_hex "0x1c", []                         , OpSem_binary (fun ac v1 v2 -> Just (partialSymNaturalFromInteger ((symIntegerFromNatural v1 - symIntegerFromNatural v2) mod (symIntegerFromNatural ac.ac_all))))); (*0*)
-("DW_OP_mod",                 sym_natural_of_hex "0x1d", []                         , OpSem_binary (fun ac v1 v2 -> if v2 = 0 then Just v1 else Just (v1 mod v2))); (*0*) (* Claude: unsigned (section 2.5.1.4's default arithmetic); DWARF 4 does not specify modulo by zero and gdb returns the dividend, which we follow (lldb fails) *)
+("DW_OP_mod",                 sym_natural_of_hex "0x1d", []                         , OpSem_binary (fun ac v1 v2 -> if v2 = 0 then Just v1 else if ac.ac_signed && not ac.ac_generic then stack_value_signed_rem ac v1 v2 else Just (v1 mod v2))); (*0*) (* Claude: unsigned (section 2.5.1.4's default arithmetic); DWARF 4 does not specify modulo by zero and gdb returns the dividend, which we follow (lldb fails) *)
 ("DW_OP_mul",                 sym_natural_of_hex "0x1e", []                         , OpSem_binary (fun ac v1 v2 -> Just (partialSymNaturalFromInteger ((symIntegerFromNatural v1 * symIntegerFromNatural v2) mod (symIntegerFromNatural ac.ac_all))))); (*0*)
 ("DW_OP_neg",                 sym_natural_of_hex "0x1f", []                         , OpSem_unary (fun ac v -> Just ((ac.ac_all - v) mod ac.ac_all))); (*0*) (* Claude: two's complement negation; for 0 and for the most negative value (DWARF 4: undefined) this wraps to the value itself, as gdb and lldb do *)
 ("DW_OP_not",                 sym_natural_of_hex "0x20", []                         , OpSem_unary (fun ac v -> Just (sym_natural_lxor v ac.ac_max))); (*0*)
@@ -1880,6 +1893,10 @@ let rec myfiltermaybe f xs =
 
 
 val bytes_of_natural: endianness -> natural (*size*) -> natural (*value*) -> sym_byte_sequence
+(* Claude: any size, for the values of DWARF 5 base types (1, 2, 4, 8 or 16 bytes) *)
+let rec bytes_le_of_natural_n (size: natural) (n: natural) : list byte =
+  if size = 0 then [] else byte_of_natural (n mod 256) :: bytes_le_of_natural_n (size - 1) (n div 256)
+
 let bytes_of_natural en size n =
   sym_byte_sequence_of_byte_list (
   if size = 8 then
@@ -1887,7 +1904,7 @@ let bytes_of_natural en size n =
   else if size = 4 then
     bytes_of_elf32_word en (elf32_word_of_natural n)
   else
-    Assert_extra.failwith "bytes_of_natural given size that is not 4 or 8")
+    match en with Little -> bytes_le_of_natural_n size n | Big -> List.reverse (bytes_le_of_natural_n size n) end)
 
 let bytes_of_sym_natural en size n = bytes_of_natural en (sym_natural_expect_const size (*"bytes_of_sym_natural size"*)) (sym_natural_expect_const n (*"bytes_of_sym_natural n"*))
 
@@ -5873,7 +5890,8 @@ let ac_of_stack_type (ac: arithmetic_context) (t: stack_type) : arithmetic_conte
          ac_half = symNaturalPow 2 (nbits - 1);
          ac_all = symNaturalPow 2 nbits;
          ac_max = symNaturalPow 2 nbits - 1;
-         ac_signed = stack_type_signed t |>
+         ac_signed = stack_type_signed t;
+         ac_generic = false |>
   end
 
 (* the value of a typed entry as an integer: signed base types by two's
@@ -5917,6 +5935,7 @@ let arithmetic_context_of_cuh cuh =
       ac_all = symNaturalPow 2 64;
       ac_max = (symNaturalPow 2 64) - 1;
     ac_signed = true;   (* Claude: the generic type: div and the comparisons are signed *)
+      ac_generic = true;
     |>
   | 4 ->
       <|
@@ -5925,6 +5944,7 @@ let arithmetic_context_of_cuh cuh =
       ac_all = symNaturalPow 2 32;
       ac_max = (symNaturalPow 2 32) - 1;
     ac_signed = true;   (* Claude: the generic type: div and the comparisons are signed *)
+      ac_generic = true;
     |>
   | _ -> Assert_extra.failwith "arithmetic_context_of_cuh given non-4/8 size"
   end
@@ -5956,8 +5976,13 @@ let rec evaluate_operation_list (c:p_context) (str: unit_context) (evaluated_fra
   let push_memory_address v vs' = Success <| s with s_stack = (v, ST_generic) :: vs'; s_value = SL_memory_address v |>  in
   (* Claude: a typed push; the location a stack denotes (its top's value); and the
      type an operand of a typed operation names *)
-  let push_typed v t vs' = Success <| s with s_stack = (v, t) :: vs'; s_value = SL_memory_address v |>  in
-  let value_of_stack (vs: operation_stack) : simple_location = match vs with [] -> SL_empty | (v',_)::_ -> SL_memory_address v' end in
+  (* a typed top entry taken as the result (an address): DWARF 5 does not say how
+     a base-type value becomes an address; gdb takes its bytes as an unsigned
+     integer (dwarf_expr_context::fetch_address), so a signed value is not
+     sign-extended, and that is followed here *)
+  let address_of_entry v t = v in
+  let push_typed v t vs' = Success <| s with s_stack = (v, t) :: vs'; s_value = SL_memory_address (address_of_entry v t) |>  in
+  let value_of_stack (vs: operation_stack) : simple_location = match vs with [] -> SL_empty | (v',t')::_ -> SL_memory_address (address_of_entry v' t') end in
   let typed_type toff k =
     match stack_type_of_offset str toff with
     | Just t -> k t

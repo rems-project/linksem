@@ -222,11 +222,12 @@ def run(arch, exprs, rundir, tools=None, quiet=False, batch=None, jobs=1):
 
 def exprs_for(arch, name):
     """the expression file for a named set: tests/NAME.txt, or a generated random set"""
-    m = re.match(r"random(-frames)?-seed(\d+)$", name)
+    m = re.match(r"random(-frames)?(-typed)?-seed(\d+)$", name)
     if m:
         path = os.path.join(ROOT, "output", "%s-%s" % (arch, name), "exprs.txt")
         os.makedirs(os.path.dirname(path), exist_ok=True)
-        open(path, "w").write(sh([os.path.join(BIN, "dwexpr_gen.exe"), arch, str(RANDOM_N), m.group(2), str(RANDOM_MAXOPS)] + (["--frames"] if m.group(1) else [])))
+        flags = (["--frames"] if m.group(1) else []) + (["--typed"] if m.group(2) else [])
+        open(path, "w").write(sh([os.path.join(BIN, "dwexpr_gen.exe"), arch, str(RANDOM_N), m.group(3), str(RANDOM_MAXOPS)] + flags))
         return path
     return os.path.join(ROOT, "tests", name + ".txt")
 
