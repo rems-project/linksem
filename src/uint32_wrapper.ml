@@ -7,8 +7,15 @@ let max_int =
     (Nat_big_num.of_int 1)
 ;;
 
+(* Claude: 2^32, the modulus of the arithmetic.  The operations below used to reduce
+   modulo max_int (2^32 - 1), which mapped the value 2^32 - 1 itself to 0 and wrapped
+   2^32 to 1. *)
+let modulus_ =
+  Nat_big_num.pow_int_positive 2 32
+;;
+
 let add l r =
-  Nat_big_num.modulus (Nat_big_num.add l r) max_int
+  Nat_big_num.modulus (Nat_big_num.add l r) modulus_
 ;;
 
 let of_char (c : char) : uint32 =
@@ -16,34 +23,34 @@ let of_char (c : char) : uint32 =
 ;;
 
 let of_int (i : int) : uint32 =
-  Nat_big_num.modulus (Nat_big_num.of_int i) max_int
+  Nat_big_num.modulus (Nat_big_num.of_int i) modulus_
 ;;
 
 let of_bigint (i : Nat_big_num.num) : uint32 =
-  Nat_big_num.modulus i max_int
+  Nat_big_num.modulus i modulus_
 ;;
 
 let of_int32 (i : Int32.t) : uint32 =
-  Nat_big_num.modulus (Nat_big_num.of_int32 i) max_int
+  Nat_big_num.modulus (Nat_big_num.of_int32 i) modulus_
 ;;
 
 let to_bigint (u : uint32) : Nat_big_num.num = u
 ;;
 
 let shift_left i s : uint32 =
-  Nat_big_num.modulus (Nat_big_num.shift_left i s) max_int
+  Nat_big_num.modulus (Nat_big_num.shift_left i s) modulus_
 ;;
 
 let shift_right i s : uint32 =
-  Nat_big_num.modulus (Nat_big_num.shift_right i s) max_int
+  Nat_big_num.modulus (Nat_big_num.shift_right i s) modulus_
 ;;
 
 let logand l r : uint32 =
-  Nat_big_num.modulus (Nat_big_num.bitwise_and l r) max_int
+  Nat_big_num.modulus (Nat_big_num.bitwise_and l r) modulus_
 ;;
 
 let logor l r : uint32 =
-  Nat_big_num.modulus (Nat_big_num.bitwise_or l r) max_int
+  Nat_big_num.modulus (Nat_big_num.bitwise_or l r) modulus_
 ;;
 
 let to_string l : string =
@@ -63,7 +70,7 @@ let equal l r : bool =
 ;;
 
 let of_string s =
-  Nat_big_num.modulus (Nat_big_num.of_string s) max_int
+  Nat_big_num.modulus (Nat_big_num.of_string s) modulus_
 ;;
 
 let of_quad (c1: char) (c2: char) (c3: char) (c4: char) : uint32 =
