@@ -188,6 +188,9 @@ and the corpora.
    accessors (keeps the tree faithful for the dumps, which must print the
    index and the string).  Recommendation: lazily, with the accessors as the
    single place; the dumps need the raw form anyway.
+
+PS: yes, lazily in the accessors
+
 6. **Range lists.**  A `DW_RLE_*` parser and an interpreter to the same
    `(lo, hi)` list `interpret_range_list` produces from `.debug_ranges`,
    resolving `x` kinds through `.debug_addr`; `DW_AT_ranges` as
@@ -238,15 +241,39 @@ and the corpora.
     line-table records.  Check `test-pkvm` and `test-smoke` (which compiles
     with `-gdwarf-4` today and could gain a `-gdwarf-5` variant).
 
+PS: yes, it should
+
 Choice points to settle before starting: (a) lazy versus eager resolution of
-`strx`/`addrx` (above); (b) whether the version-4 and version-5 list
+`strx`/`addrx` (above);
+
+PS: lazy, to keep the dumps faithful to the raw data
+
+(b) whether the version-4 and version-5 list
 representations are unified at the parsed level or only at the interpreted
-level (recommended: interpreted only, keeping the dumps faithful); (c) whether
+level (recommended: interpreted only, keeping the dumps faithful);
+
+PS: yes
+
+(c) whether
 `.debug_addr` entries in a relocatable object are kept symbolic (recommended:
-yes, they are what `DW_FORM_addr` values were); (d) how far to take type units
-and skeleton units (parse headers, do not follow `.dwo`); (e) the typed-stack
-representation for expressions; (f) whether `.debug_names`, `.debug_macro` and
+yes, they are what `DW_FORM_addr` values were); 
+
+PS: yes
+
+(d) how far to take type units
+and skeleton units (parse headers, do not follow `.dwo`);
+
+PS: deal properly with type units; defer skeleton units
+
+(e) the typed-stack
+representation for expressions; 
+
+PS: what's the choice for that? 
+
+(f) whether `.debug_names`, `.debug_macro` and
 `.debug_aranges` version 5 changes are in scope (no).
+
+PS: handle all of those. For the first two, which you elsewhere say are accelerator tables, include in dwarf.lem functionality to check their contents if they are present
 
 ## Appendix A. What the kvm_nvhe.o DWARF 5 fragment uses
 
@@ -403,3 +430,5 @@ version 5 line header with the three content types above; and, in
 expressions, `DW_OP_addrx` (with `.debug_addr`), `DW_OP_convert` between
 unsigned base types, and parsing (not evaluating) `DW_OP_entry_value`.
 Everything else in section 1 can follow, checked against the corpora.
+
+
