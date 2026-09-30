@@ -1258,6 +1258,25 @@ let attribute_form_encodings = [
 
 (* operation encoding *)
 
+(* Claude: helpers for the signed operations of DWARF 4 section 2.5.1.4/5: a stack
+   value viewed as a two's complement integer, and truncating signed division on
+   stack values.  Signed comparison results and quotients are pushed back as
+   stack values (unsigned, modulo 2^bitwidth). *)
+let stack_value_signed (ac: arithmetic_context) (v: sym_natural) : sym_integer =
+  if v < ac.ac_half then symIntegerFromNatural v else symIntegerFromNatural v - symIntegerFromNatural ac.ac_all
+
+let stack_value_of_bool (b: bool) : sym_natural = if b then 1 else 0
+
+(* v1 / v2 truncating toward zero, as gdb and C do; Nothing for division by zero *)
+let stack_value_signed_div (ac: arithmetic_context) (v1: sym_natural) (v2: sym_natural) : maybe sym_natural =
+  if v2 = 0 then Nothing else
+  let neg1 = v1 >= ac.ac_half in
+  let neg2 = v2 >= ac.ac_half in
+  let a1 = if neg1 then ac.ac_all - v1 else v1 in
+  let a2 = if neg2 then ac.ac_all - v2 else v2 in
+  let q = a1 / a2 in
+  Just (if neg1 <> neg2 then (ac.ac_all - q) mod ac.ac_all else q)
+
 let operation_encodings = [
 ("DW_OP_addr",                sym_natural_of_hex "0x03", [OAT_addr]                 , OpSem_lit); (*1*) (*constant address (size target specific)*)
 ("DW_OP_deref",               sym_natural_of_hex "0x06", []                         , OpSem_deref); (*0*)
@@ -1280,9 +1299,9 @@ let operation_encodings = [
 ("DW_OP_xderef",              sym_natural_of_hex "0x18", []                         , OpSem_not_supported); (*0*)
 ("DW_OP_abs",                 sym_natural_of_hex "0x19", []                         , OpSem_unary (fun ac v -> if v < ac.ac_half then Just v else Just (ac.ac_all-v))); (*0*) (* Claude: the absolute value of the most negative value is unrepresentable (DWARF 4: undefined); like gdb and lldb we wrap, giving the value itself *)
 ("DW_OP_and",                 sym_natural_of_hex "0x1a", []                         , OpSem_binary (fun ac v1 v2 -> Just (sym_natural_land v1 v2))); (*0*)
-("DW_OP_div",                 sym_natural_of_hex "0x1b", []                         , OpSem_not_supported) (*TODO*); (*0*)
+("DW_OP_div",                 sym_natural_of_hex "0x1b", []                         , OpSem_binary (fun ac v1 v2 -> stack_value_signed_div ac v1 v2)); (*0*) (* Claude: signed, truncating; division by zero fails, as in gdb and lldb *)
 ("DW_OP_minus",               sym_natural_of_hex "0x1c", []                         , OpSem_binary (fun ac v1 v2 -> Just (partialSymNaturalFromInteger ((symIntegerFromNatural v1 - symIntegerFromNatural v2) mod (symIntegerFromNatural ac.ac_all))))); (*0*)
-("DW_OP_mod",                 sym_natural_of_hex "0x1d", []                         , OpSem_binary (fun ac v1 v2 -> Just (v1 mod v2))); (*0*)
+("DW_OP_mod",                 sym_natural_of_hex "0x1d", []                         , OpSem_binary (fun ac v1 v2 -> if v2 = 0 then Just v1 else Just (v1 mod v2))); (*0*) (* Claude: unsigned (section 2.5.1.4's default arithmetic); DWARF 4 does not specify modulo by zero and gdb returns the dividend, which we follow (lldb fails) *)
 ("DW_OP_mul",                 sym_natural_of_hex "0x1e", []                         , OpSem_binary (fun ac v1 v2 -> Just (partialSymNaturalFromInteger ((symIntegerFromNatural v1 * symIntegerFromNatural v2) mod (symIntegerFromNatural ac.ac_all))))); (*0*)
 ("DW_OP_neg",                 sym_natural_of_hex "0x1f", []                         , OpSem_unary (fun ac v -> Just ((ac.ac_all - v) mod ac.ac_all))); (*0*) (* Claude: two's complement negation; for 0 and for the most negative value (DWARF 4: undefined) this wraps to the value itself, as gdb and lldb do *)
 ("DW_OP_not",                 sym_natural_of_hex "0x20", []                         , OpSem_unary (fun ac v -> Just (sym_natural_lxor v ac.ac_max))); (*0*)
@@ -1295,12 +1314,12 @@ let operation_encodings = [
 ("DW_OP_xor",                 sym_natural_of_hex "0x27", []                         , OpSem_binary (fun ac v1 v2 -> Just (sym_natural_lxor v1 v2))); (*0*)
 ("DW_OP_skip",                sym_natural_of_hex "0x2f", [OAT_sint16]               , OpSem_not_supported); (*1*) (* signed 2-byte constant *)
 ("DW_OP_bra",                 sym_natural_of_hex "0x28", [OAT_sint16]               , OpSem_not_supported); (*1*) (* signed 2-byte constant *)
-("DW_OP_eq",                  sym_natural_of_hex "0x29", []                         , OpSem_not_supported); (*0*)
-("DW_OP_ge",                  sym_natural_of_hex "0x2a", []                         , OpSem_not_supported); (*0*)
-("DW_OP_gt",                  sym_natural_of_hex "0x2b", []                         , OpSem_not_supported); (*0*)
-("DW_OP_le",                  sym_natural_of_hex "0x2c", []                         , OpSem_not_supported); (*0*)
-("DW_OP_lt",                  sym_natural_of_hex "0x2d", []                         , OpSem_not_supported); (*0*)
-("DW_OP_ne",                  sym_natural_of_hex "0x2e", []                         , OpSem_not_supported); (*0*)
+("DW_OP_eq",                  sym_natural_of_hex "0x29", []                         , OpSem_binary (fun ac v1 v2 -> Just (stack_value_of_bool (stack_value_signed ac v1 = stack_value_signed ac v2)))); (*0*) (* Claude: the six comparisons are signed (section 2.5.1.5) *)
+("DW_OP_ge",                  sym_natural_of_hex "0x2a", []                         , OpSem_binary (fun ac v1 v2 -> Just (stack_value_of_bool (stack_value_signed ac v1 >= stack_value_signed ac v2)))); (*0*)
+("DW_OP_gt",                  sym_natural_of_hex "0x2b", []                         , OpSem_binary (fun ac v1 v2 -> Just (stack_value_of_bool (stack_value_signed ac v1 > stack_value_signed ac v2)))); (*0*)
+("DW_OP_le",                  sym_natural_of_hex "0x2c", []                         , OpSem_binary (fun ac v1 v2 -> Just (stack_value_of_bool (stack_value_signed ac v1 <= stack_value_signed ac v2)))); (*0*)
+("DW_OP_lt",                  sym_natural_of_hex "0x2d", []                         , OpSem_binary (fun ac v1 v2 -> Just (stack_value_of_bool (stack_value_signed ac v1 < stack_value_signed ac v2)))); (*0*)
+("DW_OP_ne",                  sym_natural_of_hex "0x2e", []                         , OpSem_binary (fun ac v1 v2 -> Just (stack_value_of_bool (stack_value_signed ac v1 <> stack_value_signed ac v2)))); (*0*)
 ("DW_OP_lit0",                sym_natural_of_hex "0x30", []                         , OpSem_opcode_lit (sym_natural_of_hex "0x30")); (*0*) (* literals 0..31 =(DW_OP_lit0 + literal) *)
 ("DW_OP_lit1",                sym_natural_of_hex "0x31", []                         , OpSem_opcode_lit (sym_natural_of_hex "0x30")); (*0*)
 ("DW_OP_lit2",                sym_natural_of_hex "0x32", []                         , OpSem_opcode_lit (sym_natural_of_hex "0x30")); (*0*)
