@@ -4,9 +4,9 @@
 #   make tools                    what is installed for each architecture, what to install
 #   make build                    the OCaml programs (needs the linksem library installed:
 #                                 make -C ../../src install)
-#   make check                    regression: the basic, minimal and random-seed1 sets on
+#   make check-native-arch        regression: the basic, minimal and random-seed1 sets on
 #                                 the host architecture, compared with expected/
-#   make check-all                the same for both architectures (the other one under qemu)
+#   make check-all-archs          the same for both architectures (the other one under qemu)
 #   make validate SEED=7 N=2000 MAXOPS=12
 #                                 an extensive random run, with minimal examples of every
 #                                 disagreement, in output/$(ARCH)-validate-seed7/
@@ -32,7 +32,7 @@ OPAM   ?= opam exec --switch ocaml551 --
 P       = scripts/pipeline.py
 BIN     = ocaml/_build/default/bin
 
-.PHONY: tools build check check-all validate one minimize diff accept clean
+.PHONY: tools build check-native-arch check-all-archs validate one minimize diff accept clean
 
 tools:
 	$(P) tools
@@ -40,10 +40,10 @@ tools:
 build:
 	cd ocaml && $(OPAM) dune build 2>&1 | head -40
 
-check: build
+check-native-arch: build
 	$(P) check $(ARCH) $(SETS)
 
-check-all: build
+check-all-archs: build
 	$(P) check $(ARCH) $(SETS); $(P) check $(OTHER) $(SETS)
 
 validate: build

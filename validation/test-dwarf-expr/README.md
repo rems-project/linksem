@@ -34,8 +34,8 @@ host may be x86_64 or aarch64; the host's architecture runs natively and the
 other one under qemu-user with the debuggers attached to its gdb stub.
 
     make build                          # the OCaml programs
-    make check                          # regression, host architecture (basic, minimal, random-seed1)
-    make check-all                      # both architectures
+    make check-native-arch              # regression, host architecture (basic, minimal, random-seed1)
+    make check-all-archs                # both architectures
     make validate SEED=7 N=2000 MAXOPS=12   # an extensive random run, with minimal examples of every disagreement
     make one EXPR='DW_OP_lit1; DW_OP_lit2; DW_OP_minus'   # a single expression
     make minimize RUN=output/x86_64-random-seed1          # minimal standalone examples of a run's disagreements
@@ -83,7 +83,7 @@ These are what an upstream report should contain.
 far, with the expected result per the DWARF 4 text in comments;
 `random-seed1` is 1000 expressions from `dwexpr_gen` with seed 1 and at most 8
 operations (deterministic).  `expected/<arch>-<set>/` holds the committed
-results and report of each set on each architecture; `make check` fails if a
+results and report of each set on each architecture; `make check-native-arch` fails if a
 result file differs from it (a difference caused by a debugger not being
 installed is reported but not counted).  When a change to linksem, to the tests
 or to the tools is intended, `make diff` shows exactly which expressions
