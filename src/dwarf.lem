@@ -4938,9 +4938,13 @@ let find_cfa_table_row_for_pc (evaluated_frame_info: evaluated_frame_info) (pc: 
       evaluated_frame_info
   with
   | Just (fde,rows) ->
-      match myfind (fun row -> pc >= row.ctr_loc) rows with
+      (* Claude: the rows of an FDE are in ascending address order and each holds
+         until the next, so the row for pc is the last one at or before pc; the
+         first such row (which is what searching forwards finds) is the FDE's
+         initial row *)
+      match myfind (fun row -> pc >= row.ctr_loc) (List.reverse rows) with
       | Just row -> row
-      | Nothing -> Assert_extra.failwith "evaluate_cfa: no matchine row"
+      | Nothing -> Assert_extra.failwith "evaluate_cfa: no matching row"
       end
   | Nothing -> Assert_extra.failwith "evaluate_cfa: no fde encloding pc"
   end
