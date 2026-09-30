@@ -124,7 +124,7 @@ gdb and lldb agree, linksem agrees with them.
 
 What the tests do and do not cover, against the DWARF 4 specification,
 `src/dwarf.lem`, and the gdb and lldb implementations, with what to add first,
-is assessed in `notes/coverage.md`.  In short: every operation linksem
+is assessed in `notes/notes040-2026-09-30-coverage.md`.  In short: every operation linksem
 implements is exercised heavily, but only as exprlocs with a
 `DW_OP_call_frame_cfa` frame base, on 64-bit little-endian DWARF32, with
 forward single-operation branches; location lists, other frame bases,
@@ -226,6 +226,6 @@ lldb report), which is what most of the remaining `lldb-differs` are.
     ocaml/bin/                  dwexpr_gen, dwexpr_build, dwexpr_eval
     tests/basic.txt, minimal.txt
     expected/<arch>-<set>/      committed reference results and reports
-    notes/                      the notes and instructions this was built from, and coverage.md
+    notes/                      the notes and instructions this was built from, (notesNNN-YYYY-MM-DD-topic.md)
     upstream-discrepancy-reports/   the gdb and lldb reports, with standalone examples
     output/                     runs (not committed)

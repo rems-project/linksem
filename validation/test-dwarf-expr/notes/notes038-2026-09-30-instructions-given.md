@@ -56,7 +56,7 @@ answers to its choice points.
    instructions I've given you (in an anonymised form, eg not referring to
    "Peter") that have been relevant for this, that another agent instance
    would need to do something similar."  (That note is
-   `general-instructions.md`.)
+   `notes039-2026-09-30-general-instructions.md`.)
 
 The harness directory is `validation/test-dwarf-expr` rather than
 `validate/test-dwarf-expr`: `validation/` is the existing directory of
