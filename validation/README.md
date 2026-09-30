@@ -1,19 +1,30 @@
-<!-- Claude: this file is largely written by Claude (19 September 2026). -->
+<!-- Claude: this file is largely written by Claude (19 September 2026; the third harness added 30 September 2026). -->
 # Validating linksem against other tools
 
-Two kinds of validation live here.
+Three kinds of validation live here, each in its own directory:
 
 - `elf/harness.sh`: the original (2016) check of `main_elf` against
   `readelf --wide` and `hexdump -v` over a directory of binaries.
-- `dwarf/`: the current harness.  It fetches other projects' test suites on
-  demand, turns them into ELF objects and linked executables, runs
+- `dwarf/`: the parsing and printing harness.  It fetches other projects' test
+  suites on demand, turns them into ELF objects and linked executables, runs
   `linksem readelf` (see `../src_ocaml/`) against the corresponding real
   tool on each, and reports where they differ.  The design and rationale
   are in `../notes/notes006-2026-09-19-dwarf-validation-plan.md`; the issues
   it has found, what was fixed and what remains are in
-  `../notes/notes007-2026-09-19-linksem-issues-from-validation.md`.
+  `../notes/notes007-2026-09-19-linksem-issues-from-validation.md`; the
+  instructions it was built under are in `dwarf/notes/`.
+- `test-dwarf-expr/`: the DWARF expression evaluation harness.  It generates
+  programs whose variables have chosen or random DWARF 4 location expressions,
+  evaluates them with linksem's interpreter, gdb and lldb, and reports where
+  they differ; it has its own README, Makefile, committed regression results
+  and notes, and `upstream-discrepancy-reports/` for the debugger bugs it
+  found.  Everything below this list is about `elf/` and `dwarf/`; see
+  `test-dwarf-expr/README.md` for the third.
 
-## Running
+The rest of this file describes the `dwarf/` harness (and, where the `elf/`
+one is meant, says so).
+
+## Running (`dwarf/`)
 
     make -C ../src && make -C ../src_ocaml      # the library and the tool
     dwarf/run.sh binutils                       # one corpus ...
@@ -35,7 +46,7 @@ with `manifest.json` describing every build attempt and `classes.json` the
 classification of every ELF file).  `cache/`, `results/` and `tools/` are
 not checked in.
 
-## What is compared
+## What is compared (`dwarf/`)
 
 `common/compare.py` defines the matrix.  The parsing row compares
 byte-faithful dumps: `objdump --dwarf=abbrev,info` against
@@ -51,7 +62,7 @@ interpreter), compressed debug sections.  Oracles are binutils 2.42
 ones otherwise, since the cross objdump prints generic names for other
 machines).
 
-## Corpora
+## Corpora (`dwarf/`)
 
 | corpus | source | what is built |
 |---|---|---|
@@ -63,11 +74,12 @@ Tool versions are pinned to match the installed oracles; override with
 `BINUTILS_REF`, `LLVM_REF`, `ELFUTILS_REF`.  Corpora are fetched as shallow,
 blobless, sparse clones into `cache/src/`, and used in place.
 
-## Licensing
+## Licensing (`dwarf/`)
 
-See `LICENCE-NOTE.md`.  Nothing fetched is distributed with linksem.
+See `LICENCE-NOTE.md`.  Nothing fetched is distributed with linksem.  The
+`test-dwarf-expr/` harness fetches nothing; its test programs are generated.
 
-## Checking one fix
+## Checking one fix (`dwarf/`)
 
     common/quickcheck.py 'strip-1[345]|^testfile$'
 
@@ -76,7 +88,7 @@ comparison whose status changed against `results/baseline/` (or the most
 recent run; `--against DIR` chooses), and exits with status 2 if anything got
 worse.  This is how each fix was checked before it was committed.
 
-## Name tables by observation
+## Name tables by observation (`dwarf/`)
 
 `common/mkreloc.py` and `common/mkhdr.py` generate an object carrying every
 relocation type in a range, and a bare header with a given machine, OS/ABI

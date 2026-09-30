@@ -36,14 +36,23 @@ def read_results(path):
         d[name.strip()] = res.strip()
     return d
 
+ANNOTATIONS = {}   # bare variable name -> its annotations ("@loclist@fb=reg"), from the last read_exprs
+
 def read_exprs(path):
+    """bare variable name -> expression body; the name's annotations go to ANNOTATIONS"""
     d = collections.OrderedDict()
     for line in open(path):
         line = line.split("#")[0].strip()
         if not line: continue
         name, body = line.split(":", 1)
-        d[name.strip()] = body.strip()
+        parts = name.strip().split("@")
+        d[parts[0]] = body.strip()
+        ANNOTATIONS[parts[0]] = "".join("@" + a for a in parts[1:])
     return d
+
+def shown(name):
+    """the name with its annotations, for the reports"""
+    return name + ANNOTATIONS.get(name, "")
 
 def norm(res):
     """(kind, number-or-None) for comparison"""
@@ -133,14 +142,14 @@ def write_report(rundir, rows, have_gdb, have_lldb, versions=()):
     out.append("|------|-------|------------|---------|-----|------|")
     for name, expr, l, g, d, c in rows:
         if c in ("agree", "not-run"): continue
-        out.append("| %s | %s | `%s` | %s | %s | %s |" % (name, c, esc(expr), esc(l), esc(g), esc(d)))
+        out.append("| %s | %s | `%s` | %s | %s | %s |" % (shown(name), c, esc(expr), esc(l), esc(g), esc(d)))
     out.append("")
     if have_gdb and have_lldb:
         out.append("## gdb versus lldb\n")
         out.append("| name | expression | gdb | lldb | linksem |")
         out.append("|------|------------|-----|------|---------|")
         for name, expr, l, g, d, c in dbg_differ:
-            out.append("| %s | `%s` | %s | %s | %s |" % (name, esc(expr), esc(g), esc(d), esc(l)))
+            out.append("| %s | `%s` | %s | %s | %s |" % (shown(name), esc(expr), esc(g), esc(d), esc(l)))
         out.append("")
     open(os.path.join(rundir, "report.md"), "w").write("\n".join(out) + "\n")
     return "%d expressions: %s%s" % (len(rows), ", ".join("%s %d" % (k, v) for k, v in sorted(counts.items())),

@@ -2,6 +2,8 @@
 
 Run directory: `/home/pes20/linksem/validation/test-dwarf-expr/output/x86_64-basic`; evaluators: linksem, gdb, lldb.
 
+Tools: as: GNU assembler (GNU Binutils for Ubuntu) 2.42; gdb: GNU gdb (Ubuntu 15.1-1ubuntu1~24.04.1) 15.1; lldb: lldb version 18.1.3.
+
 ## Summary
 
 | class               | count |
@@ -20,7 +22,7 @@ gdb and lldb differ from each other on 8 expression(s) (see the last section).
 
 ## Operations involved in disagreements
 
-- **lldb-differs**: DW_OP_breg2 (6), DW_OP_lit0 (3), DW_OP_shra (3), DW_OP_lt (2), DW_OP_mod (1), DW_OP_lit20 (1), DW_OP_abs (1), DW_OP_lit4 (1), DW_OP_breg13 (1), DW_OP_const1u (1), DW_OP_gt (1), DW_OP_breg3 (1), DW_OP_breg4 (1)
+- **lldb-differs**: DW_OP_breg2 (6), DW_OP_lit0 (3), DW_OP_shra (3), DW_OP_lt (2), DW_OP_mod (1), DW_OP_lit20 (1), DW_OP_abs (1), DW_OP_lit4 (1), DW_OP_breg13 (1), DW_OP_const1u (1), DW_OP_breg3 (1), DW_OP_breg4 (1), DW_OP_gt (1)
 
 ## Disagreements
 

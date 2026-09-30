@@ -8,7 +8,8 @@
 #                                            with BATCH, split the expressions into programs of
 #                                            BATCH variables (RUNDIR/batchNN/), JOBS at a time
 #   pipeline.py check ARCH NAME [NAME...]     run tests/NAME.txt (or the random set NAME =
-#                                            random-seedS) into output/ARCH-NAME and compare
+#                                            random-seedS or random-frames-seedS) into
+#                                            output/ARCH-NAME and compare
 #                                            with expected/ARCH-NAME; exit 1 on a difference
 #   pipeline.py accept ARCH NAME [NAME...]    copy output/ARCH-NAME results into expected/
 #   pipeline.py minimize RUNDIR               a minimal standalone example for each disagreement,
@@ -221,11 +222,11 @@ def run(arch, exprs, rundir, tools=None, quiet=False, batch=None, jobs=1):
 
 def exprs_for(arch, name):
     """the expression file for a named set: tests/NAME.txt, or a generated random set"""
-    m = re.match(r"random-seed(\d+)$", name)
+    m = re.match(r"random(-frames)?-seed(\d+)$", name)
     if m:
         path = os.path.join(ROOT, "output", "%s-%s" % (arch, name), "exprs.txt")
         os.makedirs(os.path.dirname(path), exist_ok=True)
-        open(path, "w").write(sh([os.path.join(BIN, "dwexpr_gen.exe"), arch, str(RANDOM_N), m.group(1), str(RANDOM_MAXOPS)]))
+        open(path, "w").write(sh([os.path.join(BIN, "dwexpr_gen.exe"), arch, str(RANDOM_N), m.group(2), str(RANDOM_MAXOPS)] + (["--frames"] if m.group(1) else [])))
         return path
     return os.path.join(ROOT, "tests", name + ".txt")
 
@@ -241,6 +242,7 @@ def cmd_check(arch, names):
         print(tools.report()); print("cannot run %s programs on this host; skipping" % arch); return 0
     failed = 0
     for name in names:
+        failed_before = failed
         rundir = os.path.join(ROOT, "output", "%s-%s" % (arch, name))
         expected = os.path.join(ROOT, "expected", "%s-%s" % (arch, name))
         run(arch, exprs_for(arch, name), rundir, tools)
@@ -255,7 +257,7 @@ def cmd_check(arch, names):
                 failed += 1
                 diffs = [(i, a, b) for i, (a, b) in enumerate(zip(got, want)) if a != b]
                 print("  FAIL %s/%s: %d line(s) differ from expected/ (first: got %r, expected %r)" % (name, f, len(diffs) + abs(len(got) - len(want)), diffs[0][1] if diffs else None, diffs[0][2] if diffs else None))
-        if failed == 0: print("  %s: as expected" % name)
+        if failed == failed_before: print("  %s: as expected" % name)
     return 1 if failed else 0
 
 def cmd_accept(arch, names):
@@ -325,6 +327,7 @@ def cmd_minimize(rundir):
     if not targets: print("no disagreements to minimise"); return
     # current best per target: (ops, signature)
     best = {r[0]: (parse_expr(r[1]), compare.signature(r[2], r[3], r[4]), (r[2], r[3], r[4])) for r in targets}
+    annots = dict(compare.ANNOTATIONS)
     work = os.path.join(rundir, "minimize")
     rnd = 0
     while True:
@@ -337,7 +340,7 @@ def cmd_minimize(rundir):
         cdir = os.path.join(work, "round%d" % rnd)
         os.makedirs(cdir, exist_ok=True)
         with open(os.path.join(cdir, "exprs.txt"), "w") as f:
-            for cname, (_, c) in cand.items(): f.write("%s: %s\n" % (cname, "; ".join(c)))
+            for cname, (tname, c) in cand.items(): f.write("%s%s: %s\n" % (cname, annots.get(tname, ""), "; ".join(c)))
         crow = run(arch, os.path.join(cdir, "exprs.txt"), cdir, tools, quiet=True)
         byname = {r[0]: r for r in crow}
         improved = False
@@ -357,7 +360,7 @@ def cmd_minimize(rundir):
     fdir = os.path.join(work, "final")
     os.makedirs(fdir, exist_ok=True)
     with open(os.path.join(fdir, "exprs.txt"), "w") as f:
-        for name, (ops, sig, res) in best.items(): f.write("%s: %s\n" % (name, "; ".join(ops)))
+        for name, (ops, sig, res) in best.items(): f.write("%s%s: %s\n" % (name, annots.get(name, ""), "; ".join(ops)))
     frows = {r[0]: r for r in run(arch, os.path.join(fdir, "exprs.txt"), fdir, tools, quiet=True)}
     ddir = os.path.join(rundir, "discrepancies")
     if os.path.isdir(ddir): shutil.rmtree(ddir)
@@ -368,13 +371,13 @@ def cmd_minimize(rundir):
         d = os.path.join(ddir, name)
         exprs = os.path.join(d, "expr.txt")
         os.makedirs(d, exist_ok=True)
-        open(exprs, "w").write("%s: %s\n" % (name, "; ".join(ops)))
+        open(exprs, "w").write("%s%s: %s\n" % (name, annots.get(name, ""), "; ".join(ops)))
         build(arch, exprs, d, tools)
         r = frows[name]
         for f, i in (("linksem.txt", 2), ("gdb.txt", 3), ("lldb.txt", 4)):
             open(os.path.join(d, f), "w").write("%s = %s\n" % (name, r[i]) if r[i] is not None else "# not run\n")
         write_standalone_readme(d, arch, tools, name, ops, r)
-        index.append("| [%s](%s/README.md) | %s | `%s` | %s | %s | %s |" % (name, name, r[5], compare.esc(r[1]), compare.esc(r[2]), compare.esc(r[3]), compare.esc(r[4])))
+        index.append("| [%s](%s/README.md) | %s | `%s` | %s | %s | %s |" % (name + annots.get(name, ""), name, r[5], compare.esc(r[1]), compare.esc(r[2]), compare.esc(r[3]), compare.esc(r[4])))
     open(os.path.join(ddir, "README.md"), "w").write("\n".join(index) + "\n")
     print("wrote %s/README.md and one directory per disagreement" % ddir)
 
@@ -387,9 +390,10 @@ def write_standalone_readme(d, arch, tools, name, ops, r):
         lldb_cmd = "qemu-%s -g %d prog & %s -b -o 'gdb-remote %d' -o 'b dw_here' -o continue -o 'frame variable -L %s' prog" % (arch, PORT, os.path.basename(tools.lldb or "lldb"), PORT, name)
     txt = """# Claude: a minimal standalone example of a DWARF expression disagreement
 
-Expression (the `DW_AT_location` of the variable `%s` of `main` in `prog`):
+Expression (the `DW_AT_location` of the variable `%s` in `prog`; annotations after the
+name say whether it is a location list and which frame-base kind its function has):
 
-    %s
+    %s%s: %s
 
 Results at `dw_here` (class `%s`):
 
@@ -420,7 +424,7 @@ Reproduce without the harness (%s):
 Tool versions of this run:
 
 %s
-""" % (name, expr, c, l, g or "not run", dd or "not run", name, arch,
+""" % (name, name, compare.ANNOTATIONS.get(name, ""), expr, c, l, g or "not run", dd or "not run", name, arch,
        "native" if tools.native else "under qemu-user with the debuggers attached to its gdb stub",
        os.path.basename(tools.as_ or "as"), os.path.basename(tools.ld or "ld"), gdb_cmd, lldb_cmd,
        "\n".join("    " + v for v in tools.versions()))

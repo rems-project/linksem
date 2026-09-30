@@ -58,6 +58,28 @@ answers to its choice points.
    would need to do something similar."  (That note is
    `notes039-2026-09-30-general-instructions.md`.)
 
+7. "rename `make check` to `make check-native-arch` and `make check-all` to
+   `make check-all-archs`"
+
+8. "try a larger validation run - as big as you think can do (including
+   analysis of the results) in 10 minutes"; then "split large sets into
+   several programs and try 100000"
+
+9. "Consider the coverage of the tests, with respect to the DWARF spec pdf,
+   the dwarf.lem, and the gdb and lldb implementations."; then "put this into
+   the harness notes, with a pointer from the README"
+
+10. "add location lists and non-CFA frame bases to the harness"
+
+11. Tidying points given during that work: "in test-dwarf-expr/notes, you've
+    not followed the notes naming convention"; "the README in the directory
+    above needs to be updated to point to this too, in the "two kinds of
+    validation live here" (now there are three kinds) and the rest of that
+    README needs to be structured so that it's clear which kind(s) each part
+    refers to."; "as a general rule, for all of this linksem validation work,
+    include in additional notes files the same as what I said above: the
+    prompts and general rules as given to you"
+
 The harness directory is `validation/test-dwarf-expr` rather than
 `validate/test-dwarf-expr`: `validation/` is the existing directory of
 linksem's validation harnesses, and the instruction is taken to mean it.

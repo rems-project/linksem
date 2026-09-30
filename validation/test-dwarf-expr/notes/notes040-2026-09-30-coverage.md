@@ -47,14 +47,18 @@ Not covered:
 The expression evaluator proper, `evaluate_operation_list`, is well covered;
 the paths around it are not:
 
-- **Location lists** (`AV_sec_offset`, `find_location_list`, `LLI_base`, which
-  carries a TODO) are never exercised: every test location is a
-  `DW_FORM_exprloc`.  `AV_block` locations (the DWARF 2/3 forms) likewise.
-- **Frame base**: only `DW_OP_call_frame_cfa`, and only the `CR_register` CFA
-  rule (frame pointer plus 16).  A CFA given by a `CR_expression` makes
-  linksem `failwith`, untested; a frame base that is a register or a location
-  list is untested; the recursion of `DW_OP_fbreg` where the frame base
-  itself uses `fbreg` is an open question in the code and untested.
+- **Location lists** were not exercised when this note was first written;
+  `tests/frames.txt` and `random-frames-seed1` now cover `AV_sec_offset`
+  locations, with and without a base address selection entry (added later on
+  30 September 2026; they found that the offsets were compared unadjusted and
+  the selection entry misparsed).  `AV_block` locations (the DWARF 2/3 forms)
+  are still untested.
+- **Frame base**: the same sets now cover `DW_OP_call_frame_cfa`, a register,
+  a `bregN`, a longer expression and a location list as `DW_AT_frame_base`
+  (finding that a register frame base was rejected).  Still untested: a CFA
+  given by a `CR_expression` (linksem `failwith`s), CFA rules other than
+  `CR_register` (frame pointer plus 16), and the recursion of `DW_OP_fbreg`
+  where the frame base itself uses `fbreg`, an open question in the code.
 - **Register and memory read failures** (`RRR_not_currently_available`,
   `RRR_bad_register_number` for a real register, `MRR_bad_address` on real
   reads) are never hit, because reads only go to the known registers and to
@@ -87,8 +91,7 @@ do substantial work, are outside the comparison.
 
 In rough order of value:
 
-1. location lists and non-CFA frame bases (they are what real compilers emit
-   and what read-dwarf depends on);
+1. (done 30 September 2026) location lists and non-CFA frame bases;
 2. backward and multi-operation branches, which also exercise the fuel bound;
 3. a 32-bit address-size target and a big-endian one;
 4. `DW_OP_bit_piece`, with a way to compare composites (for instance asking

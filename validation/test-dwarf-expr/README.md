@@ -34,7 +34,7 @@ host may be x86_64 or aarch64; the host's architecture runs natively and the
 other one under qemu-user with the debuggers attached to its gdb stub.
 
     make build                          # the OCaml programs
-    make check-native-arch              # regression, host architecture (basic, minimal, random-seed1)
+    make check-native-arch              # regression, host architecture (basic, minimal, frames, random-seed1, random-frames-seed1)
     make check-all-archs                # both architectures
     make validate SEED=7 N=2000 MAXOPS=12   # an extensive random run, with minimal examples of every disagreement
     make one EXPR='DW_OP_lit1; DW_OP_lit2; DW_OP_minus'   # a single expression
@@ -48,8 +48,8 @@ other one under qemu-user with the debuggers attached to its gdb stub.
 ## What a run produces
 
 `output/<arch>-<run>/` holds `exprs.txt` (the expressions), `prog.s` and
-`prog` (the test program), `state.txt` (the register values and CFA rule at the
-stopping point), one result file per evaluator (`linksem.txt`, `gdb.txt`,
+`prog` (the test program), `state.txt` (the register values, the CFA rule and
+the stop label of each function), one result file per evaluator (`linksem.txt`, `gdb.txt`,
 `lldb.txt`, each a line `NAME = RESULT` per expression), and `report.md`.  A
 result is one of
 
@@ -81,13 +81,52 @@ writes `output/<arch>-<run>/discrepancies/<name>/`: a one-variable test program
 reproduce them with plain `as`, `ld`, `gdb` and `lldb`, no harness needed.
 These are what an upstream report should contain.
 
+## Location lists and frame bases
+
+An expression line may carry annotations on the variable's name
+(`ocaml/lib/expr.ml`):
+
+    NAME@loclist: ...          the DW_AT_location is a location list in .debug_loc whose
+                               entry at the stop is the expression; decoy entries
+                               (DW_OP_lit1 before the stop, DW_OP_lit2 after) surround it
+    NAME@loclist-base: ...     the same, after a base address selection entry
+    NAME@fb=KIND: ...          the variable belongs to the function whose DW_AT_frame_base
+                               is of that kind
+
+The test program has one "function" per frame-base kind, each a few nops with
+its own stop label, all under the single FDE of `_start`, and the debuggers
+stop at each in turn (`state.txt` lists `stop FUNCTION LABEL`).  With the frame
+pointer register `fp` (DWARF 6 on x86_64, 29 on aarch64) holding the constant
+0x700000000000, the kinds and the frame base they give are:
+
+| kind      | function     | DW_AT_frame_base                              | frame base   |
+|-----------|--------------|-----------------------------------------------|--------------|
+| `cfa`     | `main`       | `DW_OP_call_frame_cfa` (the default)          | fp + 16      |
+| `reg`     | `f_reg`      | `DW_OP_regN` of fp (what clang emits)         | fp           |
+| `breg`    | `f_breg`     | `DW_OP_bregN 32`                              | fp + 32      |
+| `expr`    | `f_expr`     | `DW_OP_bregN 0; DW_OP_const1u 48; DW_OP_plus` | fp + 48      |
+| `loclist` | `f_loclist`  | a location list whose entry at the stop is `DW_OP_bregN 64` | fp + 64 |
+
+`tests/frames.txt` covers each kind, each location-list form, and their
+combinations; `dwexpr_gen ... --frames` gives random expressions random
+annotations from a second generator, so the expressions are those of the run
+without `--frames`.  These found two linksem defects (location lists were
+compared against raw offsets rather than base-relative ones, with the base
+address selection entry misparsed; and a register frame base was rejected by
+`DW_OP_fbreg`), both fixed on 30 September 2026.  One `lldb-differs` residue is
+a harness artefact: `DW_OP_call_frame_cfa` in a function other than `main`
+gives lldb a stack-pointer-based CFA rather than the FDE's `fp + 16`, since
+those functions have no CFI of their own start; real functions always do.
+
 ## Regression sets and expected results
 
 `tests/basic.txt` (76 expressions) exercises every operation at least once;
 `tests/minimal.txt` (79) holds one-line reproducers of every difference found so
 far, with the expected result per the DWARF 4 text in comments;
+`tests/frames.txt` (26) the location-list and frame-base forms above;
 `random-seed1` is 1000 expressions from `dwexpr_gen` with seed 1 and at most 8
-operations (deterministic).  `expected/<arch>-<set>/` holds the committed
+operations (deterministic), and `random-frames-seed1` the same expressions
+with random location-list and frame-base annotations.  `expected/<arch>-<set>/` holds the committed
 results and report of each set on each architecture; `make check-native-arch` fails if a
 result file differs from it (a difference caused by a debugger not being
 installed is reported but not counted).  When a change to linksem, to the tests
@@ -97,11 +136,18 @@ changed, and `make accept` adopts the new results.
 Results of the reference runs (30 September 2026; gdb 15.1, lldb 18.1.3,
 binutils 2.42, qemu 8.2.2, on an x86_64 host):
 
-| set          | expressions | agree | lldb-differs | gdb-differs | gdb-crash | incomparable |
-|--------------|-------------|-------|--------------|-------------|-----------|--------------|
-| basic        |          76 |    67 |            8 |           0 |         0 |            1 |
-| minimal      |          79 |    50 |           22 |           3 |         3 |            1 |
-| random-seed1 |        1000 |   958 |           28 |           0 |        14 |            0 |
+| set                 | expressions | agree | lldb-differs | gdb-differs | gdb-crash | incomparable |
+|---------------------|-------------|-------|--------------|-------------|-----------|--------------|
+| basic               |          76 |    67 |            8 |           0 |         0 |            1 |
+| minimal             |          79 |    50 |           22 |           3 |         3 |            1 |
+| frames              |          26 |    24 |            2 |           0 |         0 |            0 |
+| random-seed1        |        1000 |   958 |           28 |           0 |        14 |            0 |
+| random-frames-seed1 |        1000 |   922 |           70 |           0 |         8 |            0 |
+
+(The 42 extra lldb differences of `random-frames-seed1` over `random-seed1`
+are the CFA artefact described above; the 6 fewer gdb crashes are expressions
+that gdb no longer evaluates once they are location lists whose non-matching
+entries it skips.)
 
 Larger runs: `make validate SEED=11 N=8000 MAXOPS=12` (50 seconds as one
 program, 20 seconds as four batches) gave 7308 agree, 456 lldb-differs, 228
@@ -125,10 +171,10 @@ gdb and lldb agree, linksem agrees with them.
 What the tests do and do not cover, against the DWARF 4 specification,
 `src/dwarf.lem`, and the gdb and lldb implementations, with what to add first,
 is assessed in `notes/notes040-2026-09-30-coverage.md`.  In short: every operation linksem
-implements is exercised heavily, but only as exprlocs with a
-`DW_OP_call_frame_cfa` frame base, on 64-bit little-endian DWARF32, with
-forward single-operation branches; location lists, other frame bases,
-composites, 32-bit and big-endian targets, and malformed input are not.
+implements is exercised heavily, as exprlocs and (since 30 September 2026)
+location lists, under five kinds of frame base, but only on 64-bit
+little-endian DWARF32, with forward single-operation branches; composites,
+32-bit and big-endian targets, and malformed input are not.
 
 ## Design
 
@@ -137,11 +183,13 @@ libc-free program (`Dwarf_asm.emit`).  Its `_start` loads sixteen known values
 into registers (DWARF numbers 0-5 and 8-15: a pointer to the known memory
 block, 0x10, -1, the most negative and most positive values, 0, 1, 63, 64, -16,
 a byte pattern, and so on), plus a constant "frame pointer" so that the CFA is a
-known constant, then stops at `dw_here`.  `dw_mem` is 256 bytes with
+known constant, then runs through the stop label of each frame-base function
+(`dw_here` in `main`, then `dw_here_reg`, ...).  `dw_mem` is 256 bytes with
 `dw_mem[i] = (37 i + 11) mod 256`, so every byte differs.  The DWARF 4
-`.debug_info` describes a subprogram `main` whose `DW_AT_frame_base` is
-`DW_OP_call_frame_cfa` and whose variables are the expressions under test, each
-as a `DW_AT_location` exprloc; `.debug_frame` comes from `.cfi` directives.
+`.debug_info` describes one subprogram per frame-base kind, `main` with
+`DW_OP_call_frame_cfa`, whose variables are the expressions under test, each
+as a `DW_AT_location` exprloc or location list; `.debug_frame` comes from
+`.cfi` directives.
 So all three evaluators see exactly the same bytes, registers, CFA and memory,
 and one debugger session evaluates a thousand expressions.  Stack memory is
 never dereferenced because its contents differ between the debuggers and the
@@ -164,7 +212,7 @@ bytes the debuggers read go through linksem's own parser.
 **Evaluation.**  `dwexpr_eval` parses the linked program with linksem, builds
 an `evaluation_context` from `state.txt` (registers) and the ELF image
 (memory), finds each variable's DIE and evaluates its `DW_AT_location` with
-`Dwarf.evaluate_location_description` at the address of `dw_here`.
+`Dwarf.evaluate_location_description` at the stop label of its function.
 `scripts/gdb_eval.py` runs inside gdb: `&NAME` gives the address without
 reading memory; gdb's refusal message names the register for a register
 location; "not an lvalue" means an implicit value, which is then printed.  gdb

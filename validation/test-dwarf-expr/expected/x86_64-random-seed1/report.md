@@ -2,6 +2,8 @@
 
 Run directory: `/home/pes20/linksem/validation/test-dwarf-expr/output/x86_64-random-seed1`; evaluators: linksem, gdb, lldb.
 
+Tools: as: GNU assembler (GNU Binutils for Ubuntu) 2.42; gdb: GNU gdb (Ubuntu 15.1-1ubuntu1~24.04.1) 15.1; lldb: lldb version 18.1.3.
+
 ## Summary
 
 | class               | count |
@@ -20,8 +22,8 @@ gdb and lldb differ from each other on 41 expression(s) (see the last section).
 
 ## Operations involved in disagreements
 
-- **lldb-differs**: DW_OP_neg (16), DW_OP_stack_value (15), DW_OP_abs (12), DW_OP_bregx (9), DW_OP_not (8), DW_OP_nop (8), DW_OP_dup (7), DW_OP_pick (6), DW_OP_skip (6), DW_OP_const2u (4), DW_OP_call_frame_cfa (4), DW_OP_addr (4), DW_OP_eq (4), DW_OP_plus_uconst (4), DW_OP_le (4), DW_OP_const2s (4), DW_OP_constu (3), DW_OP_lt (3), DW_OP_const1u (3), DW_OP_deref_size (3), DW_OP_shra (3), DW_OP_fbreg (3), DW_OP_gt (3), DW_OP_over (3), DW_OP_xor (2), DW_OP_const8u (2), DW_OP_const8s (2), DW_OP_minus (2), DW_OP_ge (2), DW_OP_bra (2), DW_OP_const1s (2), DW_OP_consts (2), DW_OP_breg6 (2), DW_OP_breg9 (1), DW_OP_ne (1), DW_OP_breg1 (1), DW_OP_lit20 (1), DW_OP_mul (1), DW_OP_const4u (1), DW_OP_breg2 (1), DW_OP_rot (1), DW_OP_lit16 (1), DW_OP_deref (1), DW_OP_lit17 (1), DW_OP_or (1), DW_OP_const4s (1)
-- **gdb-crash**: DW_OP_bra (14), DW_OP_not (8), DW_OP_stack_value (8), DW_OP_neg (7), DW_OP_abs (6), DW_OP_constu (5), DW_OP_const8u (5), DW_OP_skip (4), DW_OP_const2s (4), DW_OP_const1u (4), DW_OP_pick (3), DW_OP_nop (3), DW_OP_const2u (2), DW_OP_const1s (2), DW_OP_const4u (2), DW_OP_plus_uconst (2), DW_OP_consts (2), DW_OP_drop (2), DW_OP_lit31 (1), DW_OP_lit2 (1), DW_OP_lit20 (1), DW_OP_lit27 (1), DW_OP_const8s (1), DW_OP_le (1)
+- **lldb-differs**: DW_OP_neg (16), DW_OP_stack_value (15), DW_OP_abs (12), DW_OP_bregx (9), DW_OP_not (8), DW_OP_nop (8), DW_OP_dup (7), DW_OP_pick (6), DW_OP_skip (6), DW_OP_const2u (4), DW_OP_call_frame_cfa (4), DW_OP_addr (4), DW_OP_eq (4), DW_OP_plus_uconst (4), DW_OP_le (4), DW_OP_const2s (4), DW_OP_constu (3), DW_OP_lt (3), DW_OP_const1u (3), DW_OP_deref_size (3), DW_OP_shra (3), DW_OP_fbreg (3), DW_OP_over (3), DW_OP_gt (3), DW_OP_xor (2), DW_OP_const8u (2), DW_OP_const8s (2), DW_OP_minus (2), DW_OP_ge (2), DW_OP_bra (2), DW_OP_const1s (2), DW_OP_consts (2), DW_OP_breg6 (2), DW_OP_breg9 (1), DW_OP_ne (1), DW_OP_breg1 (1), DW_OP_lit20 (1), DW_OP_mul (1), DW_OP_const4u (1), DW_OP_breg2 (1), DW_OP_lit16 (1), DW_OP_rot (1), DW_OP_deref (1), DW_OP_lit17 (1), DW_OP_or (1), DW_OP_const4s (1)
+- **gdb-crash**: DW_OP_bra (14), DW_OP_not (8), DW_OP_stack_value (8), DW_OP_neg (7), DW_OP_abs (6), DW_OP_constu (5), DW_OP_const8u (5), DW_OP_skip (4), DW_OP_const1u (4), DW_OP_const2s (4), DW_OP_nop (3), DW_OP_pick (3), DW_OP_const2u (2), DW_OP_const4u (2), DW_OP_const1s (2), DW_OP_plus_uconst (2), DW_OP_consts (2), DW_OP_drop (2), DW_OP_lit31 (1), DW_OP_lit2 (1), DW_OP_lit20 (1), DW_OP_lit27 (1), DW_OP_const8s (1), DW_OP_le (1)
 
 ## Disagreements
 

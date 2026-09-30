@@ -23,8 +23,8 @@ gdb and lldb differ from each other on 28 expression(s) (see the last section).
 ## Operations involved in disagreements
 
 - **lldb-differs**: DW_OP_const1s (11), DW_OP_shra (8), DW_OP_lit2 (5), DW_OP_mod (5), DW_OP_lit1 (4), DW_OP_lt (4), DW_OP_lit4 (4), DW_OP_constu (4), DW_OP_stack_value (3), DW_OP_lit0 (3), DW_OP_not (2), DW_OP_eq (2), DW_OP_neg (2), DW_OP_const1u (2), DW_OP_lit7 (2), DW_OP_breg2 (2), DW_OP_abs (2), DW_OP_lit20 (1), DW_OP_breg14 (1), DW_OP_const2s (1)
-- **gdb-crash**: DW_OP_lit1 (3), DW_OP_bra (3), DW_OP_not (3), DW_OP_nop (2), DW_OP_lit5 (1), DW_OP_lit0 (1)
-- **gdb-differs**: DW_OP_mul (2), DW_OP_const8u (2), DW_OP_const8s (1), DW_OP_shl (1), DW_OP_consts (1), DW_OP_const2s (1)
+- **gdb-crash**: DW_OP_not (3), DW_OP_lit1 (3), DW_OP_bra (3), DW_OP_nop (2), DW_OP_lit5 (1), DW_OP_lit0 (1)
+- **gdb-differs**: DW_OP_const8u (2), DW_OP_mul (2), DW_OP_const8s (1), DW_OP_shl (1), DW_OP_const2s (1), DW_OP_consts (1)
 
 ## Disagreements
 

@@ -1,7 +1,10 @@
-(* Claude: dwexpr_gen ARCH N SEED [MAXOPS] > EXPRS.txt
+(* Claude: dwexpr_gen ARCH N SEED [MAXOPS] [--frames] > EXPRS.txt
    Generates N random well-formed DWARF 4 expressions of up to MAXOPS operations
    (default 8), named v0..v(N-1), tracking the stack depth so that every operation
-   finds its operands.  Memory is only dereferenced inside dw_mem, so all three
+   finds its operands.  With --frames, each variable also gets random location
+   and frame-base annotations (@loclist, @loclist-base, @fb=KIND; see Expr), drawn
+   from a second generator so that the expressions themselves are those of the run
+   without --frames.  Memory is only dereferenced inside dw_mem, so all three
    evaluators see the same bytes.  Some expressions are whole register locations
    (DW_OP_regN, DW_OP_regx), some end in DW_OP_stack_value; the rest denote memory
    addresses.  The operand values are biased towards boundary values. *)
@@ -115,10 +118,17 @@ let () =
   match Array.to_list Sys.argv with
   | _ :: arch :: n :: seed :: rest ->
     let a = Arch.of_name arch in
-    let maxops = match rest with [m] -> int_of_string m | _ -> 8 in
+    let frames = List.mem "--frames" rest in
+    let maxops = match List.filter (( <> ) "--frames") rest with [m] -> int_of_string m | _ -> 8 in
     Random.init (int_of_string seed);
-    Printf.printf "# Claude: %s random DWARF expressions for %s, seed %s, up to %d operations (dwexpr_gen)\n" n arch seed maxops;
+    let ann = Random.State.make [| int_of_string seed; 1 |] in
+    Printf.printf "# Claude: %s random DWARF expressions for %s, seed %s, up to %d operations%s (dwexpr_gen)\n" n arch seed maxops (if frames then ", with location-list and frame-base annotations" else "");
     for i = 0 to int_of_string n - 1 do
-      print_endline (Expr.string_of_named { Expr.var = Printf.sprintf "v%d" i; ops = gen_expr a maxops })
+      let ops = gen_expr a maxops in
+      let loc, fb =
+        if not frames then (Expr.Exprloc, "cfa")
+        else ((match Random.State.int ann 10 with 0 | 1 -> Expr.Loclist | 2 -> Expr.LoclistBase | _ -> Expr.Exprloc),
+              List.nth Expr.frame_kinds (Random.State.int ann (List.length Expr.frame_kinds))) in
+      print_endline (Expr.string_of_named { Expr.var = Printf.sprintf "v%d" i; ops; loc; fb })
     done
-  | _ -> prerr_endline "usage: dwexpr_gen ARCH N SEED [MAXOPS]"; exit 2
+  | _ -> prerr_endline "usage: dwexpr_gen ARCH N SEED [MAXOPS] [--frames]"; exit 2

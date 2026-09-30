@@ -1,0 +1,35 @@
+# Claude: location lists and frame bases.  The frame pointer register (DWARF 6 on x86_64,
+# 29 on aarch64) holds 0x700000000000 at every stop; the CFA is that plus 16.  Each
+# variable belongs to the function of its @fb= kind (default cfa = main), whose frame
+# base is: cfa DW_OP_call_frame_cfa (fp+16); reg DW_OP_regN (the register's contents, fp);
+# breg DW_OP_bregN 32 (fp+32); expr DW_OP_bregN 0; DW_OP_const1u 48; DW_OP_plus (fp+48);
+# loclist a location list whose entry at the stop is DW_OP_bregN 64 (fp+64).
+# @loclist puts the expression in a .debug_loc list with decoy entries (DW_OP_lit1 before
+# the stop, DW_OP_lit2 after); @loclist-base additionally starts the list with a base
+# address selection entry.
+fb_cfa: DW_OP_fbreg 0                                # 0x700000000010
+fb_cfa_neg: DW_OP_fbreg -16                          # 0x700000000000
+fb_reg@fb=reg: DW_OP_fbreg 0                         # 0x700000000000
+fb_reg_off@fb=reg: DW_OP_fbreg 8                     # 0x700000000008
+fb_breg@fb=breg: DW_OP_fbreg 0                       # 0x700000000020
+fb_breg_neg@fb=breg: DW_OP_fbreg -32                 # 0x700000000000
+fb_expr@fb=expr: DW_OP_fbreg 0                       # 0x700000000030
+fb_loclist@fb=loclist: DW_OP_fbreg 0                 # 0x700000000040
+fb_loclist_neg@fb=loclist: DW_OP_fbreg -64           # 0x700000000000
+cfa_in_reg@fb=reg: DW_OP_call_frame_cfa              # 0x700000000010 (the CFA is the same everywhere)
+cfa_in_loclist@fb=loclist: DW_OP_call_frame_cfa      # 0x700000000010
+lit_in_expr@fb=expr: DW_OP_lit5                      # 5
+ll_lit@loclist: DW_OP_lit5                           # 5 (not the decoys 1 or 2)
+ll_addr@loclist: DW_OP_addr dw_mem+16                # dw_mem+16
+ll_breg@loclist: DW_OP_breg0 8                       # dw_mem+8
+ll_sv@loclist: DW_OP_lit7; DW_OP_stack_value         # value 7
+ll_fbreg@loclist: DW_OP_fbreg 0                      # 0x700000000010
+ll_reg@loclist: DW_OP_reg3                           # reg 3
+llb_lit@loclist-base: DW_OP_lit5                     # 5
+llb_addr@loclist-base: DW_OP_addr dw_mem+16          # dw_mem+16
+llb_sv@loclist-base: DW_OP_lit7; DW_OP_stack_value   # value 7
+ll_in_reg@loclist@fb=reg: DW_OP_fbreg 0              # 0x700000000000
+ll_in_breg@loclist@fb=breg: DW_OP_fbreg 0            # 0x700000000020
+ll_in_loclist@loclist@fb=loclist: DW_OP_fbreg 0      # 0x700000000040: a location list variable with a location list frame base
+llb_in_loclist@loclist-base@fb=loclist: DW_OP_fbreg 0   # 0x700000000040
+llb_in_expr@loclist-base@fb=expr: DW_OP_fbreg 16     # 0x700000000040

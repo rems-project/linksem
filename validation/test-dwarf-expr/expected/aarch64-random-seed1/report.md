@@ -2,6 +2,8 @@
 
 Run directory: `/home/pes20/linksem/validation/test-dwarf-expr/output/aarch64-random-seed1`; evaluators: linksem, gdb, lldb.
 
+Tools: aarch64-linux-gnu-as: GNU assembler (GNU Binutils for Ubuntu) 2.42; gdb-multiarch: GNU gdb (Ubuntu 15.1-1ubuntu1~24.04.1) 15.1; lldb: lldb version 18.1.3; qemu-aarch64: qemu-aarch64 version 8.2.2 (Debian 1:8.2.2+ds-0ubuntu1.18).
+
 ## Summary
 
 | class               | count |
@@ -20,8 +22,8 @@ gdb and lldb differ from each other on 41 expression(s) (see the last section).
 
 ## Operations involved in disagreements
 
-- **lldb-differs**: DW_OP_neg (16), DW_OP_stack_value (15), DW_OP_abs (12), DW_OP_bregx (9), DW_OP_nop (8), DW_OP_not (8), DW_OP_dup (7), DW_OP_pick (6), DW_OP_skip (6), DW_OP_const2u (4), DW_OP_call_frame_cfa (4), DW_OP_eq (4), DW_OP_addr (4), DW_OP_plus_uconst (4), DW_OP_le (4), DW_OP_const2s (4), DW_OP_constu (3), DW_OP_lt (3), DW_OP_const1u (3), DW_OP_shra (3), DW_OP_deref_size (3), DW_OP_fbreg (3), DW_OP_gt (3), DW_OP_over (3), DW_OP_xor (2), DW_OP_const8u (2), DW_OP_minus (2), DW_OP_const8s (2), DW_OP_ge (2), DW_OP_bra (2), DW_OP_const1s (2), DW_OP_consts (2), DW_OP_breg29 (2), DW_OP_breg9 (1), DW_OP_ne (1), DW_OP_breg1 (1), DW_OP_lit20 (1), DW_OP_mul (1), DW_OP_const4u (1), DW_OP_breg2 (1), DW_OP_rot (1), DW_OP_lit16 (1), DW_OP_deref (1), DW_OP_lit17 (1), DW_OP_or (1), DW_OP_const4s (1)
-- **gdb-crash**: DW_OP_bra (14), DW_OP_not (8), DW_OP_stack_value (8), DW_OP_neg (7), DW_OP_abs (6), DW_OP_constu (5), DW_OP_const8u (5), DW_OP_skip (4), DW_OP_const1u (4), DW_OP_const2s (4), DW_OP_nop (3), DW_OP_pick (3), DW_OP_const2u (2), DW_OP_const4u (2), DW_OP_const1s (2), DW_OP_plus_uconst (2), DW_OP_consts (2), DW_OP_drop (2), DW_OP_lit31 (1), DW_OP_lit2 (1), DW_OP_lit20 (1), DW_OP_lit27 (1), DW_OP_const8s (1), DW_OP_le (1)
+- **lldb-differs**: DW_OP_neg (16), DW_OP_stack_value (15), DW_OP_abs (12), DW_OP_bregx (9), DW_OP_nop (8), DW_OP_not (8), DW_OP_dup (7), DW_OP_pick (6), DW_OP_skip (6), DW_OP_const2u (4), DW_OP_call_frame_cfa (4), DW_OP_addr (4), DW_OP_eq (4), DW_OP_plus_uconst (4), DW_OP_const2s (4), DW_OP_le (4), DW_OP_constu (3), DW_OP_lt (3), DW_OP_const1u (3), DW_OP_deref_size (3), DW_OP_shra (3), DW_OP_fbreg (3), DW_OP_over (3), DW_OP_gt (3), DW_OP_xor (2), DW_OP_const8u (2), DW_OP_minus (2), DW_OP_const8s (2), DW_OP_ge (2), DW_OP_bra (2), DW_OP_const1s (2), DW_OP_consts (2), DW_OP_breg29 (2), DW_OP_breg9 (1), DW_OP_ne (1), DW_OP_breg1 (1), DW_OP_lit20 (1), DW_OP_mul (1), DW_OP_const4u (1), DW_OP_breg2 (1), DW_OP_rot (1), DW_OP_lit16 (1), DW_OP_deref (1), DW_OP_lit17 (1), DW_OP_or (1), DW_OP_const4s (1)
+- **gdb-crash**: DW_OP_bra (14), DW_OP_not (8), DW_OP_stack_value (8), DW_OP_neg (7), DW_OP_abs (6), DW_OP_constu (5), DW_OP_const8u (5), DW_OP_skip (4), DW_OP_const1u (4), DW_OP_const2s (4), DW_OP_nop (3), DW_OP_pick (3), DW_OP_const2u (2), DW_OP_const4u (2), DW_OP_const1s (2), DW_OP_plus_uconst (2), DW_OP_consts (2), DW_OP_drop (2), DW_OP_lit31 (1), DW_OP_lit20 (1), DW_OP_lit2 (1), DW_OP_lit27 (1), DW_OP_const8s (1), DW_OP_le (1)
 
 ## Disagreements
 
@@ -37,7 +39,7 @@ gdb and lldb differ from each other on 41 expression(s) (see the last section).
 | v126 | gdb-crash | `DW_OP_const1u 128; DW_OP_const2s -32271; DW_OP_neg; DW_OP_bra 1; DW_OP_neg; DW_OP_stack_value` | value 0x80 | error: gdb aborted | value 0x80 |
 | v158 | lldb-differs | `DW_OP_bregx 29 -106; DW_OP_call_frame_cfa; DW_OP_ne; DW_OP_skip 1; DW_OP_neg; DW_OP_stack_value` | value 0x1 | value 0x1 | error: extracting data from value failed |
 | v161 | gdb-crash | `DW_OP_const1s 74; DW_OP_pick 0; DW_OP_neg; DW_OP_const4u 67; DW_OP_bra 1; DW_OP_abs; DW_OP_abs` | addr 0x4a | error: gdb aborted | addr 0x4a |
-| v182 | lldb-differs | `DW_OP_addr dw_mem+227; DW_OP_neg; DW_OP_abs; DW_OP_not; DW_OP_neg` | addr 0x410264 | addr 0x410264 | addr 0xffffffffffbefd9e |
+| v182 | lldb-differs | `DW_OP_addr dw_mem+227; DW_OP_neg; DW_OP_abs; DW_OP_not; DW_OP_neg` | addr 0x4110e4 | addr 0x4110e4 | addr 0xffffffffffbeef1e |
 | v215 | lldb-differs | `DW_OP_bregx 13 198; DW_OP_skip 1; DW_OP_neg; DW_OP_pick 0; DW_OP_ge; DW_OP_plus_uconst 0x2d0a4974f0c04156; DW_OP_const8s 10; DW_OP_eq; DW_OP_stack_value` | value 0x0 | value 0x0 | error: extracting data from value failed |
 | v216 | lldb-differs | `DW_OP_breg1 -78; DW_OP_plus_uconst 61` | addr 0xffffffffffffffff | addr 0xffffffffffffffff | error: invalid load address |
 | v250 | gdb-crash | `DW_OP_const2s 46; DW_OP_lit31; DW_OP_bra 1; DW_OP_neg; DW_OP_skip 1; DW_OP_abs; DW_OP_plus_uconst 8; DW_OP_stack_value` | value 0x36 | error: gdb aborted | value 0x36 |
@@ -84,7 +86,7 @@ gdb and lldb differ from each other on 41 expression(s) (see the last section).
 | v126 | `DW_OP_const1u 128; DW_OP_const2s -32271; DW_OP_neg; DW_OP_bra 1; DW_OP_neg; DW_OP_stack_value` | error: gdb aborted | value 0x80 | value 0x80 |
 | v158 | `DW_OP_bregx 29 -106; DW_OP_call_frame_cfa; DW_OP_ne; DW_OP_skip 1; DW_OP_neg; DW_OP_stack_value` | value 0x1 | error: extracting data from value failed | value 0x1 |
 | v161 | `DW_OP_const1s 74; DW_OP_pick 0; DW_OP_neg; DW_OP_const4u 67; DW_OP_bra 1; DW_OP_abs; DW_OP_abs` | error: gdb aborted | addr 0x4a | addr 0x4a |
-| v182 | `DW_OP_addr dw_mem+227; DW_OP_neg; DW_OP_abs; DW_OP_not; DW_OP_neg` | addr 0x410264 | addr 0xffffffffffbefd9e | addr 0x410264 |
+| v182 | `DW_OP_addr dw_mem+227; DW_OP_neg; DW_OP_abs; DW_OP_not; DW_OP_neg` | addr 0x4110e4 | addr 0xffffffffffbeef1e | addr 0x4110e4 |
 | v215 | `DW_OP_bregx 13 198; DW_OP_skip 1; DW_OP_neg; DW_OP_pick 0; DW_OP_ge; DW_OP_plus_uconst 0x2d0a4974f0c04156; DW_OP_const8s 10; DW_OP_eq; DW_OP_stack_value` | value 0x0 | error: extracting data from value failed | value 0x0 |
 | v216 | `DW_OP_breg1 -78; DW_OP_plus_uconst 61` | addr 0xffffffffffffffff | error: invalid load address | addr 0xffffffffffffffff |
 | v250 | `DW_OP_const2s 46; DW_OP_lit31; DW_OP_bra 1; DW_OP_neg; DW_OP_skip 1; DW_OP_abs; DW_OP_plus_uconst 8; DW_OP_stack_value` | error: gdb aborted | value 0x36 | value 0x36 |

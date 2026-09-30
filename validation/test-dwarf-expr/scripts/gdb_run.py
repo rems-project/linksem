@@ -35,14 +35,20 @@ def main():
         r = subprocess.run(cmd, env=env, stdout=subprocess.PIPE, stderr=subprocess.DEVNULL, text=True)
         if q: q.kill(); q.wait()
         finished = False
+        evaluating = None
         for line in r.stdout.splitlines():
             if line == "# done": finished = True; continue
+            if line.startswith("# evaluating "): evaluating = line[len("# evaluating "):]; continue
             if line.startswith("#"): print(line); continue
             if " = " in line:
-                print(line); done += 1
+                print(line); done += 1; evaluating = None
         if not finished:
-            if done < len(names):
-                print("%s = error: gdb aborted" % names[done]); done += 1
+            # gdb died while evaluating `evaluating` (the variables are evaluated in stop
+            # order, not file order, so the name comes from gdb_eval.py itself)
+            if evaluating is not None:
+                print("%s = error: gdb aborted" % evaluating); done += 1
+            elif done < len(names):
+                print("# gdb aborted before evaluating anything"); break
     sys.stdout.flush()
 
 main()
