@@ -79,11 +79,12 @@ is optional and secondary.
 
 ## 3. Layout, pipeline and reporting
 
-    validation/
+    validation/dwarf/           (paths renamed 30 September 2026: this was
+                                validation/ with the scripts in common/)
       README.md                 how to run, what is compared, licence note
       LICENCE-NOTE.md           text to append to LICENCE (draft in section 5)
       tools/                    (gitignored) locally built dwarfdump, eu-readelf
-      common/
+      scripts/
         fetch.sh                sparse blobless clone at a pinned commit, idempotent
         build-objects.py        turns a corpus into objects: gas for .S/.s, yaml2obj,
                                 llvm-mc/llc driven by the tests' own RUN lines, bunzip2;
@@ -94,11 +95,10 @@ is optional and secondary.
         compare.py              runs (oracle command, linksem command) pairs, stores
                                 both outputs, diff, stderr, exit codes, timings
         report.py               summary.md + summary.json + triage.md
-      dwarf/
-        corpora/{binutils,llvm,libdwarf,elfutils}/  fetch.sh, manifest, skip-list
-        comparisons.toml        the oracle x linksem-subcommand matrix, with normalisers
-        expected-failures.txt   known discrepancies, one line each with a reason
-        run.sh                  fetch -> build -> classify -> compare -> report
+      corpora/{binutils,llvm,libdwarf,elfutils}/  fetch.sh, manifest, skip-list
+      comparisons.toml          the oracle x linksem-subcommand matrix, with normalisers
+      expected-failures.txt     known discrepancies, one line each with a reason
+      run.sh                    fetch -> build -> classify -> compare -> report
       cache/, results/          (gitignored)
 
 The comparison matrix separates parsing from printing.  Every object first

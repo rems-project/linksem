@@ -798,7 +798,7 @@ when the section is `NOBITS`), in `harness_string_of_elf64_dynamic`.
   `llvm-dwarfdump` on precompiled inputs contribute no object, the inputs
   themselves are copied.  About half the `.ll` tests produce an object.
 
-- `common/compare.py` skips files above 64 MiB (`COMPARE_MAX_BYTES`) with
+- `dwarf/scripts/compare.py` skips files above 64 MiB (`COMPARE_MAX_BYTES`) with
   the reason `file too large`.  elfutils' `testfile-dwp-5-cu-index-overflow.dwp`
   is 4 GiB; `hexdump -v` of it is 20 GB of text, and the `--in-out`
   comparison on it is what the first elfutils run was stuck on when the
@@ -817,16 +817,16 @@ when the section is `NOBITS`), in `harness_string_of_elf64_dynamic`.
   generated object carrying every relocation type from 0 to 1200 (or 0 to
   255 for ELF32), and a generated header for every `e_machine` (0 to 65535),
   `EI_OSABI` and `EI_VERSION` value, run through readelf 2.42 and the names
-  read off.  The generators are `validation/common/mkreloc.py` and
+  read off.  The generators are `validation/dwarf/scripts/mkreloc.py` and
   `mkhdr.py`; the same objects are the quickest check that a table is right
   (`diff <(readelf -W -r gen.o) <(linksem readelf -r gen.o)`).
-- `common/compare.py` gained `COMPARE_ONLY` (a regular expression over
+- `dwarf/scripts/compare.py` gained `COMPARE_ONLY` (a regular expression over
   object names) for re-checking one cluster after a fix, writing to
   `comparisons-only.json` so as not to disturb a run's summary;
-  `common/quickcheck.py` drives it, reporting status transitions against the
+  `dwarf/scripts/quickcheck.py` drives it, reporting status transitions against the
   baseline runs and exiting with status 2 when anything regressed.
-- The three corpora were re-run after the fixes as `results/run5`, against
-  a `results/baseline` made by combining run2 (binutils) and run4 (LLVM,
+- The three corpora were re-run after the fixes as `dwarf/results/run5`, against
+  a `dwarf/results/baseline` made by combining run2 (binutils) and run4 (LLVM,
   elfutils); see section E.
 
 ## G. Found while fixing (19 September 2026)
