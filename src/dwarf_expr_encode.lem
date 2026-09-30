@@ -118,6 +118,14 @@ let encode_operation_argument en cuh oat oav =
       if naturalFromNat (List.length bl) = sym_natural_expect_const n then
         return (encode_ULEB128 (sym_natural_expect_const n) ++ bl)
       else Fail "encode: block length does not match its contents"
+  | (OAT_block1,         OAV_block n bs) ->   (* Claude: DW_OP_const_type's 1-byte-sized block *)
+      let bl = byte_list_of_sym_byte_sequence bs in
+      if naturalFromNat (List.length bl) = sym_natural_expect_const n then
+        match encode_fixed_unsigned en 1 n with
+        | Success sz -> return (sz ++ bl)
+        | Fail e -> Fail e
+        end
+      else Fail "encode: block length does not match its contents"
   | (_, _) -> Fail ("encode: argument value of the wrong kind: " ^ pp_operation_argument_value oav)
   end
 

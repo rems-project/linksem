@@ -244,13 +244,21 @@ type operation_argument_type =
   | OAT_ULEB128
   | OAT_SLEB128
   | OAT_block
+  | OAT_block1   (* Claude: a 1-byte size followed by that many bytes (DW_OP_const_type) *)
 
 type operation_argument_value =
   | OAV_natural of sym_natural
   | OAV_integer of sym_integer
   | OAV_block of sym_natural * sym_byte_sequence
 
-type operation_stack = list sym_natural
+(* Claude: DWARF 5 section 2.5.1: every stack entry has a type as well as a value:
+   the generic type (an address-sized integer of unspecified signedness, the only
+   type before DWARF 5) or a base type of the program, identified by the
+   unit-relative offset of its DW_TAG_base_type DIE, with that DIE's byte size and
+   DW_ATE encoding.  Values are bit patterns: naturals below 2^(8*size). *)
+type base_type_info = <| bt_offset: sym_natural; bt_size: natural; bt_encoding: natural |>
+type stack_type = ST_generic | ST_base of base_type_info
+type operation_stack = list (sym_natural * stack_type)
 
 type arithmetic_context =
   <|
@@ -258,6 +266,7 @@ type arithmetic_context =
   ac_half: sym_natural;  (* 2 ^ (ac_bitwidth -1) *)
   ac_all: sym_natural;   (* 2 ^ ac_bitwidth      *)
   ac_max: sym_natural;   (* (2 ^ ac_bitwidth) -1 *) (* also the representation of -1 *)
+  ac_signed: bool;       (* Claude: whether the signed operations (div, abs, the comparisons) read values as signed: true for the generic type and for signed base types *)
 |>
 
 type operation_semantics =
@@ -281,6 +290,14 @@ type operation_semantics =
   | OpSem_call_frame_cfa
   | OpSem_skip   (* Claude: DW_OP_skip, unconditional branch *)
   | OpSem_bra    (* Claude: DW_OP_bra, conditional branch *)
+  (* Claude: DWARF 5 *)
+  | OpSem_addrx        (* DW_OP_addrx: the address at an index of the unit's address table *)
+  | OpSem_constx       (* DW_OP_constx: the constant at an index of the unit's address table *)
+  | OpSem_const_type   (* DW_OP_const_type: a typed constant *)
+  | OpSem_regval_type  (* DW_OP_regval_type: a register's contents as a typed value *)
+  | OpSem_deref_type   (* DW_OP_deref_type: a typed memory read *)
+  | OpSem_convert      (* DW_OP_convert: conversion to a base type or the generic type *)
+  | OpSem_reinterpret  (* DW_OP_reinterpret: the bits of a value as another type of the same size *)
 
 type operation =
     <|
@@ -859,6 +876,7 @@ type unit_context =
     uc_ranges: range_list_list;
     uc_cuh: compilation_unit_header;
   uc_tables: unit_tables;
+  uc_index: die_index;   (* Claude: the unit's DIEs by offset, for the typed operations' base types *)
     uc_str_offsets_base: maybe sym_natural;
     uc_addr_base: maybe sym_natural;
     uc_rnglists_base: maybe sym_natural;
@@ -1430,13 +1448,14 @@ let pp_unit_type_encoding (ut: sym_natural) : string =
    stack values.  Signed comparison results and quotients are pushed back as
    stack values (unsigned, modulo 2^bitwidth). *)
 let stack_value_signed (ac: arithmetic_context) (v: sym_natural) : sym_integer =
-  if v < ac.ac_half then symIntegerFromNatural v else symIntegerFromNatural v - symIntegerFromNatural ac.ac_all
+  if v < ac.ac_half || not ac.ac_signed then symIntegerFromNatural v else symIntegerFromNatural v - symIntegerFromNatural ac.ac_all
 
 let stack_value_of_bool (b: bool) : sym_natural = if b then 1 else 0
 
 (* v1 / v2 truncating toward zero, as gdb and C do; Nothing for division by zero *)
 let stack_value_signed_div (ac: arithmetic_context) (v1: sym_natural) (v2: sym_natural) : maybe sym_natural =
   if v2 = 0 then Nothing else
+  if not ac.ac_signed then Just (v1 / v2) else   (* Claude: unsigned base types divide unsigned *)
   let neg1 = v1 >= ac.ac_half in
   let neg2 = v2 >= ac.ac_half in
   let a1 = if neg1 then ac.ac_all - v1 else v1 in
@@ -1464,7 +1483,7 @@ let operation_encodings = [
 ("DW_OP_swap",                sym_natural_of_hex "0x16", []                         , OpSem_stack (fun ac vs args -> match vs with v::v'::vs -> Just (v'::v::vs) | _ -> Nothing end)); (*0*)
 ("DW_OP_rot",                 sym_natural_of_hex "0x17", []                         , OpSem_stack (fun ac vs args -> match vs with v::v'::v''::vs -> Just (v'::v''::v::vs) | _ -> Nothing end)); (*0*)
 ("DW_OP_xderef",              sym_natural_of_hex "0x18", []                         , OpSem_not_supported); (*0*)
-("DW_OP_abs",                 sym_natural_of_hex "0x19", []                         , OpSem_unary (fun ac v -> if v < ac.ac_half then Just v else Just (ac.ac_all-v))); (*0*) (* Claude: the absolute value of the most negative value is unrepresentable (DWARF 4: undefined); like gdb and lldb we wrap, giving the value itself *)
+("DW_OP_abs",                 sym_natural_of_hex "0x19", []                         , OpSem_unary (fun ac v -> if v < ac.ac_half || not ac.ac_signed then Just v else Just (ac.ac_all-v))); (*0*) (* Claude: the absolute value of the most negative value is unrepresentable (DWARF 4: undefined); like gdb and lldb we wrap, giving the value itself *)
 ("DW_OP_and",                 sym_natural_of_hex "0x1a", []                         , OpSem_binary (fun ac v1 v2 -> Just (sym_natural_land v1 v2))); (*0*)
 ("DW_OP_div",                 sym_natural_of_hex "0x1b", []                         , OpSem_binary (fun ac v1 v2 -> stack_value_signed_div ac v1 v2)); (*0*) (* Claude: signed, truncating; division by zero fails, as in gdb and lldb *)
 ("DW_OP_minus",               sym_natural_of_hex "0x1c", []                         , OpSem_binary (fun ac v1 v2 -> Just (partialSymNaturalFromInteger ((symIntegerFromNatural v1 - symIntegerFromNatural v2) mod (symIntegerFromNatural ac.ac_all))))); (*0*)
@@ -1474,7 +1493,7 @@ let operation_encodings = [
 ("DW_OP_not",                 sym_natural_of_hex "0x20", []                         , OpSem_unary (fun ac v -> Just (sym_natural_lxor v ac.ac_max))); (*0*)
 ("DW_OP_or",                  sym_natural_of_hex "0x21", []                         , OpSem_binary (fun ac v1 v2 -> Just (sym_natural_lor v1 v2))); (*0*)
 ("DW_OP_plus",                sym_natural_of_hex "0x22", []                         , OpSem_binary (fun ac v1 v2 -> Just ((v1 + v2) mod ac.ac_all))); (*0*)
-("DW_OP_plus_uconst",         sym_natural_of_hex "0x23", [OAT_ULEB128]              , OpSem_stack (fun ac vs args -> match args with [OAV_natural n] -> match vs with v::vs' -> let v' = (v+n) mod ac.ac_all in Just (v'::vs')  | [] -> Nothing end  | _ -> Nothing end)); (*1*) (* ULEB128 addend *)
+("DW_OP_plus_uconst",         sym_natural_of_hex "0x23", [OAT_ULEB128]              , OpSem_stack (fun ac vs args -> match args with [OAV_natural n] -> match vs with (v,t)::vs' -> let v' = (v+n) mod ac.ac_all in Just ((v',t)::vs')  | [] -> Nothing end  | _ -> Nothing end)); (*1*) (* ULEB128 addend *)
 ("DW_OP_shl",                 sym_natural_of_hex "0x24", []                         , OpSem_binary (fun ac v1 v2 -> if v2 >= ac.ac_bitwidth then Just 0 else Just ((sym_natural_nat_shift_left v1 (natFromSymNatural v2)) mod ac.ac_all))); (*0*)
 ("DW_OP_shr",                 sym_natural_of_hex "0x25", []                         , OpSem_binary (fun ac v1 v2 -> if v2 >= ac.ac_bitwidth then Just 0 else Just (sym_natural_nat_shift_right v1 (natFromSymNatural v2)))); (*0*)
 ("DW_OP_shra",                sym_natural_of_hex "0x26", []                         , OpSem_binary (fun ac v1 v2 -> if v1 < ac.ac_half then (if v2 >= ac.ac_bitwidth then Just 0 else Just (sym_natural_nat_shift_right v1 (natFromSymNatural v2))) else (if v2 >= ac.ac_bitwidth then Just ac.ac_max  else Just (ac.ac_max - (sym_natural_nat_shift_right (ac.ac_max - v1) (natFromSymNatural v2)))))); (*0*)
@@ -1606,13 +1625,14 @@ let operation_encodings = [
 ("DW_OP_GNU_uninit",           sym_natural_of_hex "0xf0", []                        , OpSem_not_supported); (*0*)
 ("DW_OP_GNU_implicit_pointer", sym_natural_of_hex "0xf2", [OAT_dwarf_format_t; OAT_SLEB128], OpSem_not_supported); (*2*)
 ("DW_OP_GNU_entry_value",      sym_natural_of_hex "0xf3", [OAT_block]               , OpSem_not_supported); (*1*) (* ULEB128 size followed by DWARF expression block of that size*)
-("DW_OP_GNU_regval_type",      sym_natural_of_hex "0xf5", [OAT_ULEB128; OAT_ULEB128], OpSem_not_supported); (*2*)
-("DW_OP_GNU_deref_type",       sym_natural_of_hex "0xf6", [OAT_uint8; OAT_ULEB128]  , OpSem_not_supported); (*2*)
-("DW_OP_GNU_convert",          sym_natural_of_hex "0xf7", [OAT_ULEB128]             , OpSem_not_supported); (*1*)
-("DW_OP_GNU_reinterpret",      sym_natural_of_hex "0xf9", [OAT_ULEB128]             , OpSem_not_supported); (*1*)
+("DW_OP_GNU_const_type",       sym_natural_of_hex "0xf4", [OAT_ULEB128;OAT_block1]   , OpSem_const_type);
+("DW_OP_GNU_regval_type",      sym_natural_of_hex "0xf5", [OAT_ULEB128; OAT_ULEB128], OpSem_regval_type); (*2*)
+("DW_OP_GNU_deref_type",       sym_natural_of_hex "0xf6", [OAT_uint8; OAT_ULEB128]  , OpSem_deref_type); (*2*)
+("DW_OP_GNU_convert",          sym_natural_of_hex "0xf7", [OAT_ULEB128]             , OpSem_convert); (*1*)
+("DW_OP_GNU_reinterpret",      sym_natural_of_hex "0xf9", [OAT_ULEB128]             , OpSem_reinterpret); (*1*)
 ("DW_OP_GNU_parameter_ref",    sym_natural_of_hex "0xfa", [OAT_uint32]              , OpSem_not_supported); (*1*)
-("DW_OP_GNU_addr_index",       sym_natural_of_hex "0xfb", [OAT_ULEB128]             , OpSem_not_supported); (*1*)
-("DW_OP_GNU_const_index",      sym_natural_of_hex "0xfc", [OAT_ULEB128]             , OpSem_not_supported); (*1*)
+("DW_OP_GNU_addr_index",       sym_natural_of_hex "0xfb", [OAT_ULEB128]             , OpSem_addrx); (*1*)
+("DW_OP_GNU_const_index",      sym_natural_of_hex "0xfc", [OAT_ULEB128]             , OpSem_constx); (*1*)
 ("DW_OP_GNU_variable_value",   sym_natural_of_hex "0xfd", [OAT_dwarf_format_t]      , OpSem_not_supported); (*1*)
 (* these aren't real operations
 ("DW_OP_lo_user",             sym_natural_of_hex "0xe0", []                         , );
@@ -1626,22 +1646,24 @@ http://dwarfstd.org/ShowIssue.php?issue=100909.1 *)
 (* Claude: DWARF 5 and GNU operators, added so that expressions using them parse;
    none of them are evaluated (OpSem_not_supported) *)
 ("DW_OP_implicit_pointer",    sym_natural_of_hex "0xa0", [OAT_dwarf_format_t;OAT_SLEB128], OpSem_not_supported);
-("DW_OP_addrx",               sym_natural_of_hex "0xa1", [OAT_ULEB128]              , OpSem_not_supported);
-("DW_OP_constx",              sym_natural_of_hex "0xa2", [OAT_ULEB128]              , OpSem_not_supported);
+("DW_OP_addrx",               sym_natural_of_hex "0xa1", [OAT_ULEB128]              , OpSem_addrx);
+("DW_OP_constx",              sym_natural_of_hex "0xa2", [OAT_ULEB128]              , OpSem_constx);
+("DW_OP_const_type",          sym_natural_of_hex "0xa4", [OAT_ULEB128;OAT_block1]   , OpSem_const_type);   (* Claude: type DIE offset, 1-byte size, that many bytes *)
 ("DW_OP_entry_value",         sym_natural_of_hex "0xa3", [OAT_block]                , OpSem_not_supported);
-("DW_OP_regval_type",         sym_natural_of_hex "0xa5", [OAT_ULEB128;OAT_ULEB128]  , OpSem_not_supported);
-("DW_OP_deref_type",          sym_natural_of_hex "0xa6", [OAT_uint8;OAT_ULEB128]    , OpSem_not_supported);
+("DW_OP_regval_type",         sym_natural_of_hex "0xa5", [OAT_ULEB128;OAT_ULEB128]  , OpSem_regval_type);
+("DW_OP_deref_type",          sym_natural_of_hex "0xa6", [OAT_uint8;OAT_ULEB128]    , OpSem_deref_type);
 ("DW_OP_xderef_type",         sym_natural_of_hex "0xa7", [OAT_uint8;OAT_ULEB128]    , OpSem_not_supported);
-("DW_OP_convert",             sym_natural_of_hex "0xa8", [OAT_ULEB128]              , OpSem_not_supported);
-("DW_OP_reinterpret",         sym_natural_of_hex "0xa9", [OAT_ULEB128]              , OpSem_not_supported);
+("DW_OP_convert",             sym_natural_of_hex "0xa8", [OAT_ULEB128]              , OpSem_convert);
+("DW_OP_reinterpret",         sym_natural_of_hex "0xa9", [OAT_ULEB128]              , OpSem_reinterpret);
 ("DW_OP_GNU_uninit",          sym_natural_of_hex "0xf0", []                         , OpSem_not_supported);
-("DW_OP_GNU_regval_type",     sym_natural_of_hex "0xf5", [OAT_ULEB128;OAT_ULEB128]  , OpSem_not_supported);
-("DW_OP_GNU_deref_type",      sym_natural_of_hex "0xf6", [OAT_uint8;OAT_ULEB128]    , OpSem_not_supported);
-("DW_OP_GNU_convert",         sym_natural_of_hex "0xf7", [OAT_ULEB128]              , OpSem_not_supported);
-("DW_OP_GNU_reinterpret",     sym_natural_of_hex "0xf9", [OAT_ULEB128]              , OpSem_not_supported);
+("DW_OP_GNU_const_type",       sym_natural_of_hex "0xf4", [OAT_ULEB128;OAT_block1]   , OpSem_const_type);
+("DW_OP_GNU_regval_type",     sym_natural_of_hex "0xf5", [OAT_ULEB128;OAT_ULEB128]  , OpSem_regval_type);
+("DW_OP_GNU_deref_type",      sym_natural_of_hex "0xf6", [OAT_uint8;OAT_ULEB128]    , OpSem_deref_type);
+("DW_OP_GNU_convert",         sym_natural_of_hex "0xf7", [OAT_ULEB128]              , OpSem_convert);
+("DW_OP_GNU_reinterpret",     sym_natural_of_hex "0xf9", [OAT_ULEB128]              , OpSem_reinterpret);
 ("DW_OP_GNU_parameter_ref",   sym_natural_of_hex "0xfa", [OAT_uint32]               , OpSem_not_supported);
-("DW_OP_GNU_addr_index",      sym_natural_of_hex "0xfb", [OAT_ULEB128]              , OpSem_not_supported);
-("DW_OP_GNU_const_index",     sym_natural_of_hex "0xfc", [OAT_ULEB128]              , OpSem_not_supported);
+("DW_OP_GNU_addr_index",      sym_natural_of_hex "0xfb", [OAT_ULEB128]              , OpSem_addrx);
+("DW_OP_GNU_const_index",     sym_natural_of_hex "0xfc", [OAT_ULEB128]              , OpSem_constx);
 ("DW_OP_GNU_variable_value",  sym_natural_of_hex "0xfd", [OAT_dwarf_format_t]       , OpSem_not_supported)
 
 ]
@@ -1649,6 +1671,8 @@ http://dwarfstd.org/ShowIssue.php?issue=100909.1 *)
 
 let vDW_OP_reg0 = sym_natural_of_hex "0x50"
 let vDW_OP_breg0 = sym_natural_of_hex "0x70"
+let vDW_OP_eq = sym_natural_of_hex "0x29"   (* Claude: the comparisons are DW_OP_eq .. DW_OP_ne, 0x29 .. 0x2e *)
+let vDW_OP_ne = sym_natural_of_hex "0x2e"
 
 
 (* call frame instruction encoding *)
@@ -2632,7 +2656,7 @@ let pp_debug_str_entry_bytes (str: sym_byte_sequence) (n: sym_natural) : string 
      readelf and objdump use the addend, as the offset part here *)
   if sym_bs_length str = 0 then "<no .debug_str section>" else   (* Claude: readelf's text *)
   match sym_dropbytes (sym_natural_offset_part n) str with
-  | Fail _ -> "strp beyond .debug_str extent"
+  | Fail _ -> "<offset is too big>"   (* Claude: readelf's text *)
   | Success bs -> string_of_sym_byte_sequence (null_terminated_bs bs)
   end
 
@@ -2645,7 +2669,7 @@ let pp_debug_str_entry (str: unit_context) (n: sym_natural) : string =
 let line_strp_string (str: unit_context) (n: sym_natural) : string =
   if sym_bs_length str.uc_sections.sec_line_str = 0 then "<no .debug_line_str section>" else
   match sym_dropbytes (sym_natural_offset_part n) str.uc_sections.sec_line_str with
-  | Fail _ -> "line_strp beyond .debug_line_str extent"
+  | Fail _ -> "<offset is too big>"   (* Claude: readelf's text *)
   | Success bs -> string_of_sym_byte_sequence (null_terminated_bs bs)
   end
 
@@ -2656,9 +2680,13 @@ let strx_offset (str: unit_context) (i: sym_natural) : maybe sym_natural =
   Map.lookup (sym_natural_offset_part i) str.uc_tables.ut_str_offsets
 
 let strx_string (str: unit_context) (i: sym_natural) : string =
+  (* the message texts are readelf's; the first also for a unit without a string
+     offsets table *)
   match strx_offset str i with
-  | Just off -> pp_debug_str_entry_bytes str.uc_sections.sec_str off
-  | Nothing -> "<indexed string " ^ pphex_sym i ^ ": no string offsets table>"
+  | Just off ->
+      if sym_natural_offset_part off >= sym_bs_length str.uc_sections.sec_str then "<indirect index offset is too big>"
+      else pp_debug_str_entry_bytes str.uc_sections.sec_str off
+  | Nothing -> "<string index too big>"
   end
 
 (* the address at the unit's address index i: entry i of the address table at
@@ -2729,6 +2757,13 @@ let pp_operation_semantics (os: operation_semantics) : string =
   | OpSem_call_frame_cfa              -> "OpSem_call_frame_cfa"
   | OpSem_skip                        -> "OpSem_skip"
   | OpSem_bra                         -> "OpSem_bra"
+  | OpSem_addrx                       -> "OpSem_addrx"
+  | OpSem_constx                      -> "OpSem_constx"
+  | OpSem_const_type                  -> "OpSem_const_type"
+  | OpSem_regval_type                 -> "OpSem_regval_type"
+  | OpSem_deref_type                  -> "OpSem_deref_type"
+  | OpSem_convert                     -> "OpSem_convert"
+  | OpSem_reinterpret                 -> "OpSem_reinterpret"
   end
 
 let pp_operation_semantics_brief (os: operation_semantics) : string =
@@ -2762,6 +2797,9 @@ let parser_of_operation_argument_type c cuh oat =
     | OAT_SLEB128 -> pr_map2 (fun n -> OAV_integer n) parse_SLEB128
     | OAT_block   ->
       (fun pc -> pr_bind (parse_ULEB128 pc) (fun n pc' ->
+        pr_map (fun bs -> OAV_block n bs) (parse_n_bytes n pc')))
+    | OAT_block1  ->
+      (fun pc -> pr_bind (parse_uint8 pc) (fun n pc' ->
         pr_map (fun bs -> OAV_block n bs) (parse_n_bytes n pc')))
   end
 
@@ -3163,6 +3201,7 @@ let unit_context_of_sections (c: p_context) (secs: dwarf_sections) (loc: locatio
   uc_ranges = ranges;
   uc_cuh = cuh;
   uc_tables = empty_unit_tables;
+  uc_index = Map.empty;
   uc_str_offsets_base = Nothing;
   uc_addr_base = Nothing;
   uc_rnglists_base = Nothing;
@@ -3170,7 +3209,7 @@ let unit_context_of_sections (c: p_context) (secs: dwarf_sections) (loc: locatio
   uc_base_address = 0;
   |>
 
-let unit_context_of_die_tables (d: dwarf) (cuh: compilation_unit_header) (tables: unit_tables) (die: die) : unit_context =
+let unit_context_of_die_tables (d: dwarf) (cuh: compilation_unit_header) (tables: unit_tables) (index: die_index) (die: die) : unit_context =
   let c = <| endianness = d.d_endianness |> in
   let str0 =
     <|
@@ -3180,6 +3219,7 @@ let unit_context_of_die_tables (d: dwarf) (cuh: compilation_unit_header) (tables
     uc_ranges = d.d_ranges;
     uc_cuh = cuh;
     uc_tables = tables;
+    uc_index = index;
     uc_str_offsets_base = sec_offset_attribute_of_die "DW_AT_str_offsets_base" die;
     uc_addr_base = sec_offset_attribute_of_die "DW_AT_addr_base" die;
     uc_rnglists_base = sec_offset_attribute_of_die "DW_AT_rnglists_base" die;
@@ -3195,13 +3235,13 @@ let unit_context_of_die_tables (d: dwarf) (cuh: compilation_unit_header) (tables
 
 (* for a DIE without its parsed unit to hand: the tables are read afresh *)
 let unit_context_of_die (d: dwarf) (cuh: compilation_unit_header) (die: die) : unit_context =
-  unit_context_of_die_tables d cuh (unit_tables_of_die <| endianness = d.d_endianness |> d.d_sections cuh die) die
+  unit_context_of_die_tables d cuh (unit_tables_of_die <| endianness = d.d_endianness |> d.d_sections cuh die) Map.empty die
 
 let unit_context_of_cu (d: dwarf) (cu: compilation_unit) : unit_context =
-  unit_context_of_die_tables d cu.cu_header cu.cu_tables cu.cu_die
+  unit_context_of_die_tables d cu.cu_header cu.cu_tables cu.cu_index cu.cu_die
 
 let unit_context_of_tu (d: dwarf) (tu: type_unit) : unit_context =
-  unit_context_of_die_tables d tu.tu_header.tuh_cuh tu.tu_tables tu.tu_die
+  unit_context_of_die_tables d tu.tu_header.tuh_cuh tu.tu_tables Map.empty tu.tu_die
 
 (* Claude: for the few places that print without a unit to hand: the first unit's
    context *)
@@ -3461,7 +3501,12 @@ let rec pp_die_tree (st:die_style) (cuh:compilation_unit_header) (descend:bool) 
   ^ String.concat "" (List.map (st.ds_attribute cuh level die) (List.zip ad.ad_attribute_specifications die.die_attribute_values))
   ^ (if descend && ad.ad_has_children then
        String.concat "" (List.map (pp_die_tree st cuh descend (level + 1)) die.die_children)
-       ^ st.ds_terminator level die
+       (* Claude: no terminator is shown when none was present: the unit's data
+          ended the sibling list right after the last child *)
+       ^ (match List.reverse die.die_children with
+          | last :: _ -> if last.die_end = die.die_end then "" else st.ds_terminator level die
+          | [] -> st.ds_terminator level die
+          end)
      else "")
 
 (** linksem's own view: each attribute with its form and the parsed value *)
@@ -3557,6 +3602,10 @@ val parse_die : p_context -> unit_context -> compilation_unit_header -> (sym_nat
 let rec parse_die c str cuh find_abbreviation_declaration =
   fun (pc: parse_context) ->
     let _ = my_debug3 ("parse_die called at " ^ pp_parse_context pc ^ "\n") in
+    (* Claude: the end of the unit's data ends a sibling list even without the
+       null entry that should end it (some hand-written test inputs omit it;
+       readelf and objdump accept them) *)
+    if sym_bs_length pc.pc_bytes = 0 then PR_success Nothing pc else
     pr_bind (parse_ULEB128 pc) (fun abbreviation_code pc' ->
       if abbreviation_code = 0 then PR_success Nothing pc'
       else
@@ -5040,6 +5089,7 @@ type od_op_shape =
   | OdOp_deref_type        (* "name: %d <%#x>" *)
   | OdOp_bit_piece         (* "name: size: %u offset: %u " *)
   | OdOp_implicit_value    (* "name N byte block: .." *)
+  | OdOp_const_type        (* "name: <%#x> N byte block: .." *)
   | OdOp_nested            (* "name: (" nested expression ")" *)
   | OdOp_fixed of string   (* a fixed text *)
 
@@ -5057,10 +5107,10 @@ let od_op_shapes : list (natural * natural * od_op_shape) = [
   (147, 149, OdOp_unsigned);                                (* piece, deref_size, xderef_size *)
   (152, 153, OdOp_cu_ref); (154, 154, OdOp_abs_ref);        (* call2, call4, call_ref *)
   (157, 157, OdOp_bit_piece); (158, 158, OdOp_implicit_value);
-  (160, 160, OdOp_implicit_pointer); (161, 162, OdOp_index_ref); (163, 163, OdOp_nested);
+  (160, 160, OdOp_implicit_pointer); (161, 162, OdOp_index_ref); (163, 163, OdOp_nested); (164, 164, OdOp_const_type);
   (165, 165, OdOp_regval_type); (166, 167, OdOp_deref_type); (168, 169, OdOp_convert);
   (224, 224, OdOp_fixed "DW_OP_GNU_push_tls_address or DW_OP_HP_unknown");
-  (242, 242, OdOp_implicit_pointer); (243, 243, OdOp_nested); (245, 245, OdOp_regval_type);
+  (242, 242, OdOp_implicit_pointer); (243, 243, OdOp_nested); (244, 244, OdOp_const_type); (245, 245, OdOp_regval_type);
   (246, 246, OdOp_deref_type); (247, 247, OdOp_convert); (249, 249, OdOp_convert);
   (250, 250, OdOp_cu_ref); (251, 252, OdOp_index_ref); (253, 253, OdOp_abs_ref)
 ]
@@ -5091,6 +5141,7 @@ let rec od_op c cuh regname (op:operation) : string =
     | OdOp_deref_type -> name ^ ": " ^ show (od_arg_int args 0) ^ " <" ^ od_hx (cu_off + od_arg_nat args 1) ^ ">"
     | OdOp_bit_piece -> name ^ ": size: " ^ show (od_arg_nat args 0) ^ " offset: " ^ show (od_arg_nat args 1) ^ " "
     | OdOp_implicit_value -> name ^ (match od_arg_block args 0 with Just (n, bs) -> " " ^ od_block c n bs | Nothing -> "" end)
+    | OdOp_const_type -> name ^ ": <" ^ od_hx (cu_off + od_arg_nat args 0) ^ "> " ^ (match od_arg_block args 1 with Just (n, bs) -> " " ^ od_block c n bs | Nothing -> "" end)
     | OdOp_nested ->
         name ^ ": ("
         ^ (match od_arg_block args 0 with
@@ -5276,7 +5327,7 @@ let od_attribute_value c cuh str regname have_frame_base (at:sym_natural) (af:sy
     (* Claude: DWARF 5, as readelf prints them *)
     | AV_strx i -> "(indexed string: " ^ od_hx_sym i ^ "): " ^ strx_string str i
     | AV_addrx i -> "(index: " ^ od_hx_sym i ^ "): "
-        ^ (match addrx_address str i with Just a -> od_hx_sym a | Nothing -> "<no DW_AT_addr_base>" end)
+        ^ (match addrx_address str i with Just a -> od_hx_sym a | Nothing -> "0" end)   (* Claude: readelf prints 0 (and warns) for an index beyond the table *)
     | AV_line_strp n -> "(indirect line string, offset: " ^ od_hx_sym n ^ "): " ^ line_strp_string str n
     | AV_data16 bs -> od_hex_bytes bs
     | AV_implicit_const i -> show (sym_integer_expect_const i)
@@ -5355,6 +5406,10 @@ let od_compilation_unit c str regname have_frame_base (cu:compilation_unit) : st
      end)
   ^ "   Abbrev Offset: " ^ od_hx_sym h.cuh_debug_abbrev_offset ^ "\n"
   ^ "   Pointer Size:  " ^ od_dec_sym h.cuh_address_size ^ "\n"
+  ^ (match h.cuh_dwo_id with   (* Claude: DWARF 5 skeleton and split units *)
+     | Just id -> "   DWO ID:        " ^ od_hx_sym id ^ "\n"
+     | Nothing -> ""
+     end)
   ^ pp_die_tree (style_objdump c str regname have_frame_base) h true 0 cu.cu_die
 
 let od_abbreviation_declaration (x:abbreviation_declaration) : string =
@@ -5723,6 +5778,76 @@ DW_OP_call_frame_cfa   go off to 6.4 and pull info out of .debug_frame (possibly
 
 
 
+(** Claude: DWARF 5 typed stack support (section 2.5.1) *)
+
+let vDW_ATE_complex_float : natural = 3
+let vDW_ATE_float : natural = 4
+let vDW_ATE_signed : natural = 5
+let vDW_ATE_signed_char : natural = 6
+
+(* the type an operand of a typed operation names: 0 is the generic type,
+   otherwise the unit-relative offset of a DW_TAG_base_type DIE *)
+let stack_type_of_offset (str: unit_context) (off: sym_natural) : maybe stack_type =
+  if off = 0 then Just ST_generic else
+  match Map.lookup (off + str.uc_cuh.cuh_offset) str.uc_index with
+  | Just (_, die) ->
+      if die.die_abbreviation_declaration.ad_tag <> tag_encode "DW_TAG_base_type" then Nothing else
+      match (find_natural_attribute_value_of_die str.uc_c "DW_AT_byte_size" die, find_natural_attribute_value_of_die str.uc_c "DW_AT_encoding" die) with
+      | (Just sz, Just enc) -> Just (ST_base <| bt_offset = off; bt_size = sym_natural_offset_part sz; bt_encoding = sym_natural_offset_part enc |>)
+      | _ -> Nothing
+      end
+  | Nothing -> Nothing
+  end
+
+let stack_type_size (cuh: compilation_unit_header) (t: stack_type) : natural =
+  match t with ST_generic -> sym_natural_offset_part cuh.cuh_address_size | ST_base bt -> bt.bt_size end
+
+let stack_type_signed (t: stack_type) : bool =
+  match t with ST_generic -> false | ST_base bt -> bt.bt_encoding = vDW_ATE_signed || bt.bt_encoding = vDW_ATE_signed_char end
+
+let stack_type_integral (t: stack_type) : bool =
+  match t with ST_generic -> true | ST_base bt -> not (bt.bt_encoding = vDW_ATE_float || bt.bt_encoding = vDW_ATE_complex_float) end
+
+let same_stack_type (t1: stack_type) (t2: stack_type) : bool =
+  match (t1, t2) with
+  | (ST_generic, ST_generic) -> true
+  | (ST_base b1, ST_base b2) -> b1.bt_offset = b2.bt_offset
+  | _ -> false
+  end
+
+let pp_stack_type (t: stack_type) : string =
+  match t with
+  | ST_generic -> "generic"
+  | ST_base bt -> "base type <" ^ pphex_sym bt.bt_offset ^ "> size " ^ show bt.bt_size ^ " encoding " ^ show bt.bt_encoding
+  end
+
+(* the arithmetic of a type: modulo 2^(8*size), the signed operations by its
+   encoding; the generic type's arithmetic is the unit's, with div and the
+   comparisons signed as before DWARF 5 *)
+let ac_of_stack_type (ac: arithmetic_context) (t: stack_type) : arithmetic_context =
+  match t with
+  | ST_generic -> ac
+  | ST_base bt ->
+      let bits = 8 * bt.bt_size in
+      let nbits = natFromNatural bits in
+      <| ac_bitwidth = sym_natural_const bits;
+         ac_half = symNaturalPow 2 (nbits - 1);
+         ac_all = symNaturalPow 2 nbits;
+         ac_max = symNaturalPow 2 nbits - 1;
+         ac_signed = stack_type_signed t |>
+  end
+
+(* the value of a typed entry as an integer: signed base types by two's
+   complement, the others (the generic type included, as gdb has it) unsigned *)
+let stack_entry_integer (ac: arithmetic_context) (v: sym_natural) (t: stack_type) : sym_integer =
+  let ac' = ac_of_stack_type ac t in
+  if stack_type_signed t && v >= ac'.ac_half then symIntegerFromNatural v - symIntegerFromNatural ac'.ac_all else symIntegerFromNatural v
+
+(* DW_OP_convert: the integer value re-represented in the target type, modulo its size *)
+let convert_stack_entry (ac: arithmetic_context) (v: sym_natural) (t: stack_type) (t': stack_type) : sym_natural =
+  let ac'' = ac_of_stack_type ac t' in
+  partialSymNaturalFromInteger ((stack_entry_integer ac v t) mod (symIntegerFromNatural ac''.ac_all))
+
 let initial_state =
   <|
   s_stack = [];
@@ -5752,6 +5877,7 @@ let arithmetic_context_of_cuh cuh =
       ac_half = symNaturalPow 2 63;  (* Claude: was 2^32; ac_half is the sign boundary, 2^(bitwidth-1) *)
       ac_all = symNaturalPow 2 64;
       ac_max = (symNaturalPow 2 64) - 1;
+    ac_signed = true;   (* Claude: the generic type: div and the comparisons are signed *)
     |>
   | 4 ->
       <|
@@ -5759,6 +5885,7 @@ let arithmetic_context_of_cuh cuh =
       ac_half = symNaturalPow 2 31;  (* Claude: was 2^16 *)
       ac_all = symNaturalPow 2 32;
       ac_max = (symNaturalPow 2 32) - 1;
+    ac_signed = true;   (* Claude: the generic type: div and the comparisons are signed *)
     |>
   | _ -> Assert_extra.failwith "arithmetic_context_of_cuh given non-4/8 size"
   end
@@ -5787,7 +5914,16 @@ let rec evaluate_operation_list (c:p_context) (str: unit_context) (evaluated_fra
      a suffix of it; the branch operations continue from another suffix.  [fuel]
      bounds the number of operations executed. *)
 
-  let push_memory_address v vs' = Success <| s with s_stack = v :: vs'; s_value = SL_memory_address v |>  in
+  let push_memory_address v vs' = Success <| s with s_stack = (v, ST_generic) :: vs'; s_value = SL_memory_address v |>  in
+  (* Claude: a typed push; the location a stack denotes (its top's value); and the
+     type an operand of a typed operation names *)
+  let push_typed v t vs' = Success <| s with s_stack = (v, t) :: vs'; s_value = SL_memory_address v |>  in
+  let value_of_stack (vs: operation_stack) : simple_location = match vs with [] -> SL_empty | (v',_)::_ -> SL_memory_address v' end in
+  let typed_type toff k =
+    match stack_type_of_offset str toff with
+    | Just t -> k t
+    | Nothing -> Fail ("typed operation: no DW_TAG_base_type at unit offset " ^ pphex_sym toff)
+    end in
 
   let push_memory_address_maybe (mv: maybe sym_natural) vs' (err:string) op =
     match mv with
@@ -5804,7 +5940,7 @@ let rec evaluate_operation_list (c:p_context) (str: unit_context) (evaluated_fra
 
   let deref_size n =
     match s.s_stack with
-    | v::vs' ->
+    | (v,_)::vs' ->
         match ev.read_memory v n with
         | MRR_result v' -> push_memory_address v' vs'
         | MRR_not_currently_available -> Fail "MRR_not_currently_available"
@@ -5855,8 +5991,8 @@ let rec evaluate_operation_list (c:p_context) (str: unit_context) (evaluated_fra
       | (OpSem_skip, [OAV_integer i]) -> branch i s
       | (OpSem_bra, [OAV_integer i]) ->
           match s.s_stack with
-          | v::vs' ->
-              let s' = <| s with s_stack = vs'; s_value = (match vs' with [] -> SL_empty | v'::_ -> SL_memory_address v' end) |> in
+          | (v,_)::vs' ->
+              let s' = <| s with s_stack = vs'; s_value = value_of_stack vs' |> in
               if v <> 0 then branch i s' else continue_with s' ops'
           | [] -> Fail "DW_OP_bra not given an element on stack"
           end
@@ -5873,10 +6009,11 @@ let rec evaluate_operation_list (c:p_context) (str: unit_context) (evaluated_fra
         | (OpSem_stack f, _) ->
             (* Claude: the stack-manipulation semantics take the operands themselves
                (DW_OP_pick and DW_OP_plus_uconst have one), so match any operand list *)
-            match f ac s.s_stack op.op_argument_values with
+            (* Claude: with the arithmetic of the top entry's type (for DW_OP_plus_uconst) *)
+            let ac' = match s.s_stack with (_,t)::_ -> ac_of_stack_type ac t | [] -> ac end in
+            match f ac' s.s_stack op.op_argument_values with
             | Just stack' ->
-                let value' : simple_location = match stack' with [] -> SL_empty | v'::_ -> SL_memory_address v' end in
-                Success <| s with s_stack = stack'; s_value = value' |>
+                Success <| s with s_stack = stack'; s_value = value_of_stack stack' |>
             | Nothing -> Fail "OpSem_stack failed"
             end
         | (OpSem_not_supported, []) ->
@@ -5884,13 +6021,27 @@ let rec evaluate_operation_list (c:p_context) (str: unit_context) (evaluated_fra
         | (OpSem_binary f, []) ->
             (* Claude: DWARF 4 section 2.5.1.4: the binary operations apply to (former
                second entry, former top entry), so [f] takes the second entry first *)
+            (* Claude: DWARF 5 section 2.5.1.4: the operands must have the same type,
+               and the result has it, except that the comparisons (2.5.1.5) push a
+               generic 0 or 1; the arithmetic is that type's *)
             match s.s_stack with
-            | top::second::vs' -> push_memory_address_maybe (f ac second top) vs' "OpSem_binary error: " op
+            | (top,t1)::(second,t2)::vs' ->
+                if not (same_stack_type t1 t2) then Fail ("OpSem_binary: operands of different types (" ^ pp_stack_type t2 ^ ", " ^ pp_stack_type t1 ^ "): " ^ pp_operation op)
+                else
+                  let comparison = op.op_code >= vDW_OP_eq && op.op_code <= vDW_OP_ne in
+                  match f (ac_of_stack_type ac t2) second top with
+                  | Just v -> push_typed v (if comparison then ST_generic else t2) vs'
+                  | Nothing -> Fail ("OpSem_binary error: " ^ pp_operation op)
+                  end
             | _ -> Fail "OpSem binary not given two elements on stack"
             end
         | (OpSem_unary f, []) ->
             match s.s_stack with
-            | v1::vs' -> push_memory_address_maybe (f ac v1) vs' "OpSem_unary error: " op
+            | (v1,t1)::vs' ->
+                match f (ac_of_stack_type ac t1) v1 with
+                | Just v -> push_typed v t1 vs'
+                | Nothing -> Fail ("OpSem_unary error: " ^ pp_operation op)
+                end
             | _ -> Fail "OpSem unary not given an element on stack"
             end
         | (OpSem_opcode_lit base, []) ->
@@ -5901,10 +6052,10 @@ let rec evaluate_operation_list (c:p_context) (str: unit_context) (evaluated_fra
         | (OpSem_reg, []) ->
             (* TODO: unclear whether this should push the register id or not *)
             let r = op.op_code - vDW_OP_reg0 in
-            Success <| s with s_stack = r :: s.s_stack; s_value = SL_register r |>
+            Success <| s with s_stack = (r, ST_generic) :: s.s_stack; s_value = SL_register r |>
         | (OpSem_reg, [OAV_natural r]) ->
             (* Claude: DW_OP_regx, the register number as a ULEB128 operand *)
-            Success <| s with s_stack = r :: s.s_stack; s_value = SL_register r |>
+            Success <| s with s_stack = (r, ST_generic) :: s.s_stack; s_value = SL_register r |>
         | (OpSem_breg, [OAV_integer i]) ->
             let r = op.op_code - vDW_OP_breg0 in
             bregxi r i
@@ -5977,9 +6128,10 @@ let rec evaluate_operation_list (c:p_context) (str: unit_context) (evaluated_fra
                does not? *)
             (* why doesn't DW_OP_stack_value have a size argument? *)
             match s.s_stack with
-            | v::vs' ->
+            | (v,t)::vs' ->
                 let stack' = [] in
-                let value' = SL_implicit (bytes_of_sym_natural c.endianness cuh.cuh_address_size v) in
+                (* Claude: the value's bytes are those of its type's size (the address size for the generic type) *)
+                let value' = SL_implicit (bytes_of_sym_natural c.endianness (sym_natural_const (stack_type_size cuh t)) v) in
                 Success <| s with s_stack = stack'; s_value = value' |>
 
             | _ -> Fail "OpSem_stack_value not given an element on stack"
@@ -5996,6 +6148,56 @@ let rec evaluate_operation_list (c:p_context) (str: unit_context) (evaluated_fra
                 (*TODO: fix result type - not this evaluate_location_description_bytes c str evaluated_frame_info cuh ac ev mfbloc pc bs*)
                   (* TODO: restrict allowed OpSem_* in that recursive call *)
             end
+        (* Claude: the DWARF 5 operations *)
+        | (OpSem_addrx, [OAV_natural i]) ->
+            match addrx_address str i with
+            | Just a -> push_memory_address a s.s_stack
+            | Nothing -> Fail ("DW_OP_addrx: no address table entry for index " ^ pphex_sym i)
+            end
+        | (OpSem_constx, [OAV_natural i]) ->
+            match addrx_address str i with
+            | Just a -> push_memory_address a s.s_stack
+            | Nothing -> Fail ("DW_OP_constx: no address table entry for index " ^ pphex_sym i)
+            end
+        | (OpSem_const_type, [OAV_natural toff; OAV_block n bs]) ->
+            typed_type toff (fun t ->
+              let ac' = ac_of_stack_type ac t in
+              push_typed ((sym_natural_of_bytes c.endianness bs) mod ac'.ac_all) t s.s_stack)
+        | (OpSem_regval_type, [OAV_natural r; OAV_natural toff]) ->
+            typed_type toff (fun t ->
+              match ev.read_register r with
+              | RRR_result v -> let ac' = ac_of_stack_type ac t in push_typed (v mod ac'.ac_all) t s.s_stack
+              | RRR_not_currently_available -> Fail "RRR_not_currently_available"
+              | RRR_bad_register_number -> Fail ("RRR_bad_register_number " ^ show r)
+              end)
+        | (OpSem_deref_type, [OAV_natural n; OAV_natural toff]) ->
+            typed_type toff (fun t ->
+              match s.s_stack with
+              | (a,ta)::vs' ->
+                  if not (stack_type_integral ta) then Fail ("DW_OP_deref_type: address of a non-integral type: " ^ pp_operation op) else
+                  match ev.read_memory a n with
+                  | MRR_result v -> let ac' = ac_of_stack_type ac t in push_typed (v mod ac'.ac_all) t vs'
+                  | MRR_not_currently_available -> Fail "MRR_not_currently_available"
+                  | MRR_bad_address -> Fail "MRR_bad_address"
+                  end
+              | [] -> Fail "DW_OP_deref_type not given an element on stack"
+              end)
+        | (OpSem_convert, [OAV_natural toff]) ->
+            typed_type toff (fun t' ->
+              match s.s_stack with
+              | (v,t)::vs' ->
+                  if not (stack_type_integral t && stack_type_integral t') then Fail ("DW_OP_convert: floating-point base types are not supported: " ^ pp_operation op)
+                  else push_typed (convert_stack_entry ac v t t') t' vs'
+              | [] -> Fail "DW_OP_convert not given an element on stack"
+              end)
+        | (OpSem_reinterpret, [OAV_natural toff]) ->
+            typed_type toff (fun t' ->
+              match s.s_stack with
+              | (v,t)::vs' ->
+                  if stack_type_size cuh t <> stack_type_size cuh t' then Fail ("DW_OP_reinterpret: types of different sizes: " ^ pp_operation op)
+                  else push_typed v t' vs'
+              | [] -> Fail "DW_OP_reinterpret not given an element on stack"
+              end)
         | (_, _) ->
             Fail ("bad OpSem invocation: op=" ^ pp_operation op ^ " arguments=" ^ String.concat "" (List.map pp_operation_argument_value op.op_argument_values))
         end

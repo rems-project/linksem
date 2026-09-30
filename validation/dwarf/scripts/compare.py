@@ -25,20 +25,30 @@ def dwarf_ok(c): return not any(v >= 5 for v in c["dwarf_versions"])
 def elf64(c): return c["class"] == "ELF64"
 
 def dwarf_applicable(c):
-    """DWARF comparisons: ELF64 only, DWARF <= 4, .debug_info present, and for
+    """DWARF comparisons: ELF64 only, .debug_info present, and for
     relocatable objects only AArch64 (the only machine with a data-relocation
-    interpreter in linksem)."""
+    interpreter in linksem).  DWARF 5 files are included since linksem's
+    DWARF 5 support (notes008)."""
     if not elf64(c): return "elf32"
     if not has_info(c): return "no .debug_info"
-    if not dwarf_ok(c): return "dwarf5"
     if is_rel(c) and not is_aarch64(c): return "relocatable non-AArch64"
     if c["compressed_debug"]: return "compressed debug sections"
+    return None
+
+def objdump_dwarf_applicable(c):
+    """objdump does not apply the relocations of .debug_str_offsets (and
+    .debug_addr) in a relocatable object, so its DWARF 5 indexed strings and
+    addresses come out wrong there; those files are compared against readelf
+    only."""
+    r = dwarf_applicable(c)
+    if r: return r
+    if is_rel(c) and not dwarf_ok(c): return "dwarf5 relocatable (objdump does not relocate .debug_str_offsets)"
     return None
 
 # name -> (row, oracle argv, linksem argv, applicability -> skip reason or None)
 COMPARISONS = {
     # parsing row: byte-faithful dumps
-    "objdump-abbrev-info": ("parse", [OBJDUMP, "--dwarf=abbrev,info"], [LINKSEM, "readelf", "--debug-dump=info<objdump>"], dwarf_applicable),
+    "objdump-abbrev-info": ("parse", [OBJDUMP, "--dwarf=abbrev,info"], [LINKSEM, "readelf", "--debug-dump=info<objdump>"], objdump_dwarf_applicable),
     "readelf-abbrev-info": ("parse", [READELF, "--debug-dump=abbrev,info"], [LINKSEM, "readelf", "--debug-dump=abbrev,info<readelf>"], dwarf_applicable),
     # ELF structure against readelf -W
     "readelf-h":   ("elf", [READELF, "-W", "-h"], [LINKSEM, "readelf", "-h"], lambda c: None),
