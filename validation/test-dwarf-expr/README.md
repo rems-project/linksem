@@ -144,10 +144,11 @@ binutils 2.42, qemu 8.2.2, on an x86_64 host):
 | random-seed1        |        1000 |   958 |           28 |           0 |        14 |            0 |
 | random-frames-seed1 |        1000 |   922 |           70 |           0 |         8 |            0 |
 
-(The 42 extra lldb differences of `random-frames-seed1` over `random-seed1`
-are the CFA artefact described above; the 6 fewer gdb crashes are expressions
-that gdb no longer evaluates once they are location lists whose non-matching
-entries it skips.)
+(Of the 42 extra lldb differences of `random-frames-seed1` over
+`random-seed1`, 41 are the CFA artefact described above and one is a former
+gdb crash now counted against lldb.  The 6 fewer gdb crashes are the same
+expressions attached as location lists: gdb's pre-pass that asserts on a
+`DW_OP_bra` join is not run for location-list entries, so they evaluate.)
 
 Larger runs: `make validate SEED=11 N=8000 MAXOPS=12` (50 seconds as one
 program, 20 seconds as four batches) gave 7308 agree, 456 lldb-differs, 228

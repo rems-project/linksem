@@ -30,7 +30,10 @@ evaluate to 1 (the branch is taken, the `DW_OP_not` skipped).
 
 In a random sample of 2000 well-formed DWARF 4 expressions with `DW_OP_bra`
 and `DW_OP_skip` over single operations, 58 (2.9%) crash gdb this way.  lldb
-18.1.3 evaluates all of them.
+18.1.3 evaluates all of them.  The same expressions given as the entry of a
+`.debug_loc` location list rather than as an exprloc do not crash gdb (the
+pre-pass is apparently not applied to location-list entries) and evaluate to
+the expected values.
 
 **Reproducer.**  `gdb-bra-join-example/prog.s` is a self-contained x86-64
 program (no libc): `_start` loads known values into the registers and stops at
