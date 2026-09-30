@@ -1,5 +1,5 @@
 <!-- Claude: drafted by Claude (19 September 2026) for appending to linksem's LICENCE; wording of the last sentence by Peter Sewell. -->
-The scripts under `validation/dwarf/` (and `validation/common/`) fetch, at run time and to a local cache
+The scripts under `validation/dwarf/` fetch, at run time and to a local cache
 only, test inputs from the GNU binutils and elfutils repositories (GPLv3 or
 later), the LLVM project (Apache-2.0 with LLVM exception) and
 libdwarf-regressiontests (BSD-style, per its COPYING).  None of that

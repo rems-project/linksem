@@ -4,9 +4,9 @@
 # fetch.sh NAME URL REF PATH...
 #
 # Sparse, blobless, depth-1 clone of REF (a tag or branch) of URL into
-# validation/cache/src/NAME, checking out only the given PATHs.  Idempotent:
+# validation/dwarf/cache/src/NAME, checking out only the given PATHs.  Idempotent:
 # an existing clone is reused (re-run with FETCH_REFRESH=1 to re-fetch).
-# Nothing fetched is ever checked in; see the licence note in README.md.
+# Nothing fetched is ever checked in; see ../LICENCE-NOTE.md.
 set -eu
 name=$1; url=$2; ref=$3; shift 3
 here=$(cd "$(dirname "$0")/.." && pwd)

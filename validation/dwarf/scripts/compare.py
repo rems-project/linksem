@@ -9,7 +9,7 @@ differing line (numbers masked), which report.py uses to cluster them."""
 import difflib, json, os, re, subprocess, sys, time, pathlib
 
 READELF, OBJDUMP = "aarch64-linux-gnu-readelf", "aarch64-linux-gnu-objdump"
-LINKSEM = os.environ.get("LINKSEM", str(pathlib.Path(__file__).resolve().parents[2] / "src_ocaml" / "linksem"))
+LINKSEM = os.environ.get("LINKSEM", str(pathlib.Path(__file__).resolve().parents[3] / "src_ocaml" / "linksem"))
 TIMEOUT = int(os.environ.get("COMPARE_TIMEOUT", "180"))
 # Claude: files above this size are skipped outright.  elfutils' testfile-dwp-5-cu-index-overflow.dwp
 # is 4 GiB (a deliberate index overflow), and `hexdump -v` of it alone is 20 GB of output.

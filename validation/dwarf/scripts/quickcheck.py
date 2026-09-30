@@ -6,9 +6,9 @@ more earlier runs, so that a fix can be checked on the files it concerns (and
 a few it should not affect) without a full run.  Exit status 2 if anything
 got worse (identical or skipped -> differ, differ -> linksem failed, ...).
 
-    common/quickcheck.py 'strip-1[345]|^testfile$'                 # all corpora
-    common/quickcheck.py --corpora binutils,elfutils 'dw2-3'
-    common/quickcheck.py --against results/run2 --against results/run4 REGEX
+    scripts/quickcheck.py 'strip-1[345]|^testfile$'                 # all corpora
+    scripts/quickcheck.py --corpora binutils,elfutils 'dw2-3'
+    scripts/quickcheck.py --against results/run2 --against results/run4 REGEX
 
 The baseline defaults to results/baseline/comparisons.json (or, if that does
 not exist, the most recent results/*/comparisons.json).  Results of the
@@ -18,7 +18,7 @@ at in results/quickcheck/objects/<object>/<comparison>/."""
 import argparse, collections, json, os, pathlib, subprocess, sys
 
 HERE = pathlib.Path(__file__).resolve().parent
-VALIDATION = HERE.parent
+HARNESS = HERE.parent   # validation/dwarf, where cache/ and results/ live
 RANK = {"identical": 0, "skipped": 0, "(new)": 0, "differ": 1, "oracle_failed": 1, "linksem_failed": 2, "timeout": 3}
 
 def main():
@@ -26,14 +26,14 @@ def main():
     ap.add_argument("regex", help="regular expression over object names (Python re.search)")
     ap.add_argument("--against", action="append", default=[], metavar="DIR", help="results directory to compare against (repeatable)")
     ap.add_argument("--corpora", default=None, help="comma-separated corpus names (default: every cache/objects/* directory)")
-    ap.add_argument("--results", default=str(VALIDATION / "results" / "quickcheck"), metavar="DIR")
+    ap.add_argument("--results", default=str(HARNESS / "results" / "quickcheck"), metavar="DIR")
     ap.add_argument("-v", "--verbose", action="store_true", help="also list comparisons that became identical")
     args = ap.parse_args()
 
     if not args.against:
-        base = VALIDATION / "results" / "baseline"
+        base = HARNESS / "results" / "baseline"
         if not (base / "comparisons.json").exists():
-            runs = sorted((p for p in (VALIDATION / "results").glob("*/comparisons.json")), key=lambda p: p.stat().st_mtime)
+            runs = sorted((p for p in (HARNESS / "results").glob("*/comparisons.json")), key=lambda p: p.stat().st_mtime)
             if not runs:
                 sys.exit("no earlier results to compare against; pass --against")
             base = runs[-1].parent
@@ -43,12 +43,12 @@ def main():
         for r in json.load(open(pathlib.Path(d) / "comparisons.json")):
             baseline[(r["corpus"], r["object"], r["comparison"])] = r["status"]
 
-    corpora = args.corpora.split(",") if args.corpora else sorted(p.name for p in (VALIDATION / "cache" / "objects").iterdir() if p.is_dir())
+    corpora = args.corpora.split(",") if args.corpora else sorted(p.name for p in (HARNESS / "cache" / "objects").iterdir() if p.is_dir())
     results = pathlib.Path(args.results); results.mkdir(parents=True, exist_ok=True)
     records = []
     for c in corpora:
         env = dict(os.environ, COMPARE_ONLY=args.regex)
-        p = subprocess.run([sys.executable, str(HERE / "compare.py"), str(VALIDATION / "cache" / "objects" / c), str(results), c],
+        p = subprocess.run([sys.executable, str(HERE / "compare.py"), str(HARNESS / "cache" / "objects" / c), str(results), c],
                            env=env, capture_output=True, text=True)
         if p.returncode:
             sys.exit(f"compare.py failed for {c}:\n{p.stdout[-500:]}\n{p.stderr[-2000:]}")

@@ -18,10 +18,9 @@ to this directory (`validation/dwarf/`).
     make -C ../../src && make -C ../../src_ocaml   # the library and the tool
     ./run.sh binutils                              # one corpus ...
     ./run.sh binutils llvm elfutils                # ... or several
-    AGAINST=../results/<earlier> ./run.sh ...      # and list regressions/fixes
+    AGAINST=results/<earlier> ./run.sh ...         # and list regressions/fixes
 
-Results go to `../results/<timestamp>/` (in `validation/`, beside the
-shared `../common/` scripts):
+Results go to `results/<timestamp>/`:
 
 - `summary.md` / `summary.json`: the matrix of outcomes per corpus, file kind
   (object, executable, shared object) and comparison: identical, differ,
@@ -31,14 +30,14 @@ shared `../common/` scripts):
 - `objects/<file>/<comparison>/`: `oracle.out`, `linksem.out`, `diff`,
   `commands`, `stderr` for every run, so any row can be repeated by hand.
 
-`../cache/` holds the fetched sources and built objects
-(`../cache/objects/<corpus>/` with `manifest.json` describing every build
-attempt and `classes.json` the classification of every ELF file).
-`../cache/`, `../results/` and `../tools/` are not checked in.
+`cache/` holds the fetched sources and built objects (`cache/objects/<corpus>/`
+with `manifest.json` describing every build attempt and `classes.json` the
+classification of every ELF file).  `cache/`, `results/` and `tools/` are
+not checked in.  The scripts `run.sh` drives are in `scripts/`.
 
 ## What is compared
 
-`../common/compare.py` defines the matrix.  The parsing row compares
+`scripts/compare.py` defines the matrix.  The parsing row compares
 byte-faithful dumps: `objdump --dwarf=abbrev,info` against
 `linksem readelf --debug-dump='info<objdump>'` and `readelf
 --debug-dump=abbrev,info` against `--debug-dump='abbrev,info<readelf>'`.
@@ -62,7 +61,7 @@ machines).
 
 Tool versions are pinned to match the installed oracles; override with
 `BINUTILS_REF`, `LLVM_REF`, `ELFUTILS_REF`.  Corpora are fetched as shallow,
-blobless, sparse clones into `../cache/src/`, and used in place.
+blobless, sparse clones into `cache/src/`, and used in place.
 
 ## Licensing
 
@@ -71,16 +70,16 @@ See `LICENCE-NOTE.md`.  Nothing fetched is distributed with linksem.  (The
 
 ## Checking one fix
 
-    ../common/quickcheck.py 'strip-1[345]|^testfile$'
+    scripts/quickcheck.py 'strip-1[345]|^testfile$'
 
 re-runs the comparisons on the objects whose names match, reports every
-comparison whose status changed against `../results/baseline/` (or the most
+comparison whose status changed against `results/baseline/` (or the most
 recent run; `--against DIR` chooses), and exits with status 2 if anything got
 worse.  This is how each fix was checked before it was committed.
 
 ## Name tables by observation
 
-`../common/mkreloc.py` and `../common/mkhdr.py` generate an object carrying every
+`scripts/mkreloc.py` and `scripts/mkhdr.py` generate an object carrying every
 relocation type in a range, and a bare header with a given machine, OS/ABI
 and version, so that readelf's name tables can be read off its output and
 linksem's checked against them (`diff <(readelf -W -r gen.o) <(linksem
