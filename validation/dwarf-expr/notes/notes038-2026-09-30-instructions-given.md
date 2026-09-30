@@ -80,6 +80,6 @@ answers to its choice points.
     include in additional notes files the same as what I said above: the
     prompts and general rules as given to you"
 
-The harness directory is `validation/test-dwarf-expr` rather than
-`validate/test-dwarf-expr`: `validation/` is the existing directory of
+The harness directory is `validation/dwarf-expr` (named `validation/test-dwarf-expr`
+until it was renamed on 30 September 2026) rather than `validate/test-dwarf-expr`: `validation/` is the existing directory of
 linksem's validation harnesses, and the instruction is taken to mean it.

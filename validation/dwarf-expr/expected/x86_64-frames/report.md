@@ -1,6 +1,6 @@
 # Claude: DWARF expression cross-check report
 
-Run directory: `/home/pes20/linksem/validation/test-dwarf-expr/output/x86_64-frames`; evaluators: linksem, gdb, lldb.
+Run directory: `/home/pes20/linksem/validation/dwarf-expr/output/x86_64-frames`; evaluators: linksem, gdb, lldb.
 
 Tools: as: GNU assembler (GNU Binutils for Ubuntu) 2.42; gdb: GNU gdb (Ubuntu 15.1-1ubuntu1~24.04.1) 15.1; lldb: lldb version 18.1.3.
 

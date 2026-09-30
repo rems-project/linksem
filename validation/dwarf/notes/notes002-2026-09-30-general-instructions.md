@@ -1,6 +1,6 @@
 # Claude: general instructions the linksem validation harnesses were built under
 
-Claude: this note (a copy of `../../test-dwarf-expr/notes/notes039-2026-09-30-general-instructions.md`) records, in anonymised form, the standing instructions the
+Claude: this note (a copy of `../../dwarf-expr/notes/notes039-2026-09-30-general-instructions.md`) records, in anonymised form, the standing instructions the
 project owner gave that shaped this harness and the linksem fixes made with
 it.  Another agent instance doing similar work (a validation harness for a
 formal model against external tools, and fixing the model from its findings)

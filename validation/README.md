@@ -14,7 +14,7 @@ Three kinds of validation live here, each in its own directory:
   it has found, what was fixed and what remains are in
   `../notes/notes007-2026-09-19-linksem-issues-from-validation.md`; the
   instructions it was built under are in `dwarf/notes/`.
-- `test-dwarf-expr/`: a DWARF expression evaluation harness.  It generates
+- `dwarf-expr/`: a DWARF expression evaluation harness.  It generates
   programs whose variables have chosen or random DWARF 4 location expressions,
   evaluates them with linksem's interpreter, gdb and lldb, and reports where
   they differ; it has its own README, Makefile, committed regression results

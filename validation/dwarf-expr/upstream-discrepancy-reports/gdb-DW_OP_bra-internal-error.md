@@ -85,5 +85,5 @@ saturate (`DW_OP_shl`/`shr` to 0, `DW_OP_shra` to the sign fill) with a
 have adopted in linksem.
 
 **Context.**  Found by linksem's DWARF expression cross-check
-(`linksem/validation/test-dwarf-expr`), which evaluates the same expressions
+(`linksem/validation/dwarf-expr`), which evaluates the same expressions
 with linksem's interpreter, gdb and lldb and compares the results.

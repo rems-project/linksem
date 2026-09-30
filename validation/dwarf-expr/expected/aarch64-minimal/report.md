@@ -1,6 +1,6 @@
 # Claude: DWARF expression cross-check report
 
-Run directory: `/home/pes20/linksem/validation/test-dwarf-expr/output/aarch64-minimal`; evaluators: linksem, gdb, lldb.
+Run directory: `/home/pes20/linksem/validation/dwarf-expr/output/aarch64-minimal`; evaluators: linksem, gdb, lldb.
 
 Tools: aarch64-linux-gnu-as: GNU assembler (GNU Binutils for Ubuntu) 2.42; gdb-multiarch: GNU gdb (Ubuntu 15.1-1ubuntu1~24.04.1) 15.1; lldb: lldb version 18.1.3; qemu-aarch64: qemu-aarch64 version 8.2.2 (Debian 1:8.2.2+ds-0ubuntu1.18).
 

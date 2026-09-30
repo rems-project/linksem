@@ -4,7 +4,7 @@
    operations by name from linksem's [operation_encodings] table, and checks
    the round trip parse (encode ops) = ops.
 
-   Written for the DWARF expression cross-check harness in validation/test-dwarf-expr
+   Written for the DWARF expression cross-check harness in validation/dwarf-expr
    (28 September 2026). *)
 
 open import Basic_classes
