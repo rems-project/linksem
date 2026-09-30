@@ -46,3 +46,31 @@ The general rules in `notes002-2026-09-30-general-instructions.md` applied.
   sections) passes on the corpus files with those sections except the llvm
   `debug-names-verify-*` and `dwarfdump-debug-names` inputs, which are
   deliberately broken and which it catches.
+
+## The run of 30 September 2026 (results/20260930-184201, now the baseline)
+
+Against the previous baseline: 0 regressions, 44 fixed.  The new comparisons,
+over the files that have the section (identical / differ / linksem failed /
+oracle failed):
+
+| comparison          | identical | differ | linksem failed | oracle failed |
+|---------------------|-----------|--------|----------------|---------------|
+| readelf-aranges     |        91 |      4 |              5 |             0 |
+| readelf-addr        |        90 |      2 |              2 |             7 |
+| readelf-str-offsets |        62 |      2 |              0 |             0 |
+| readelf-macro       |         7 |      4 |              0 |             3 |
+| readelf-names       |        33 |     12 |              0 |             3 |
+
+The differences left: readelf's macro `strx` quirk (2), its dump of all the
+COMDAT `.debug_macro` sections of an object where linksem reads the first (1),
+its "Extension opcode arguments" table for a vendor macro opcode (1); dwz
+supplementary files (3); llvm's deliberately truncated or misaligned name
+indexes, which linksem does not print at all where readelf prints the part it
+could read (10 after the empty-hash-table fix that followed this run); and
+two hand-written string-offsets sections with a DWARF 64 contribution that
+readelf 2.42 itself misreads.
+
+The run had to be made in two parts: this machine's memory watchdog killed the
+whole-corpus run twice during elfutils, so that corpus was compared on its own
+under `ulimit -v 8000000` (an 8 GB address-space cap per tool process, which
+no file hit).

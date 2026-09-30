@@ -5725,6 +5725,8 @@ let rec od_str_offsets_contributions c (sec: sym_byte_sequence) (str: sym_byte_s
       match parse_unit_length c <| pc_bytes = bs; pc_offset = pos |> with
       | PR_fail _ _ -> ""
       | PR_success (df, ul) pc1 ->
+          (* zero words between contributions are alignment padding *)
+          if sym_natural_offset_part ul = 0 then od_str_offsets_contributions c sec str (pos + 4) else
           match parse_pair (parse_uint16 c) (parse_uint16 c) pc1 with
           | PR_fail _ _ -> ""
           | PR_success (v, _) pc2 ->
@@ -5849,7 +5851,7 @@ let od_names_index (d: dwarf) (ni: names_index) : string =
   ^ "CU table:\n" ^ String.concat "" (List.map (fun (i, off) -> "[" ^ left_space_padded_to 3 (show i) ^ "] " ^ od_hx_sym off ^ "\n") (index_list 0 ni.ni_comp_units)) ^ "\n"
   ^ "TU table:\n" ^ String.concat "" (List.map (fun (i, off) -> "[" ^ left_space_padded_to 3 (show i) ^ "] " ^ od_hx_sym off ^ "\n") (index_list 0 ni.ni_local_type_units)) ^ "\n"
   ^ "Foreign TU table:\n" ^ String.concat "" (List.map (fun (i, sg) -> "[" ^ left_space_padded_to 3 (show i) ^ "] " ^ od_hex_width 8 sg ^ "\n") (index_list 0 ni.ni_foreign_type_units)) ^ "\n"
-  ^ (if bc = 0 then "" else
+  ^ (if bc = 0 then "Used 0 of 0 buckets.\n\n" else
        "Used " ^ show used ^ " of " ^ show bc ^ " bucket" ^ (if bc = 1 then "" else "s") ^ ".\n"
        ^ "Out of " ^ od_dec_sym ni.ni_name_count ^ " items there are " ^ show clashes ^ " bucket clashes (longest of " ^ show longest ^ " entries).\n\n")
   ^ "Symbol table:\n"
