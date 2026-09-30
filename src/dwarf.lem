@@ -1419,7 +1419,7 @@ let operation_encodings = [
 ("DW_OP_GNU_push_tls_address", sym_natural_of_hex "0xe0", []                        , OpSem_not_supported); (*0*)
 ("DW_OP_GNU_uninit",           sym_natural_of_hex "0xf0", []                        , OpSem_not_supported); (*0*)
 ("DW_OP_GNU_implicit_pointer", sym_natural_of_hex "0xf2", [OAT_dwarf_format_t; OAT_SLEB128], OpSem_not_supported); (*2*)
-("DW_OP_GNU_entry_value",      sym_natural_of_hex "0xf3", [OAT_block]               , OpSem_not_supported); (*1*)
+("DW_OP_GNU_entry_value",      sym_natural_of_hex "0xf3", [OAT_block]               , OpSem_not_supported); (*1*) (* ULEB128 size followed by DWARF expression block of that size*)
 ("DW_OP_GNU_regval_type",      sym_natural_of_hex "0xf5", [OAT_ULEB128; OAT_ULEB128], OpSem_not_supported); (*2*)
 ("DW_OP_GNU_deref_type",       sym_natural_of_hex "0xf6", [OAT_uint8; OAT_ULEB128]  , OpSem_not_supported); (*2*)
 ("DW_OP_GNU_convert",          sym_natural_of_hex "0xf7", [OAT_ULEB128]             , OpSem_not_supported); (*1*)
@@ -1436,7 +1436,6 @@ let operation_encodings = [
 (* GCC also produces these for our example:
 https://fedorahosted.org/elfutils/wiki/DwarfExtensions
 http://dwarfstd.org/ShowIssue.php?issue=100909.1 *)
-("DW_OP_GNU_entry_value" (* Claude: was misspelt DW_GNU_OP_entry_value *),     sym_natural_of_hex "0xf3", [OAT_block], OpSem_not_supported); (*2*) (* ULEB128 size followed by DWARF expression block of that size*)
 ("DW_OP_GNU_implicit_pointer", sym_natural_of_hex "0xf2", [OAT_dwarf_format_t;OAT_SLEB128], OpSem_not_supported);
 (* Claude: DWARF 5 and GNU operators, added so that expressions using them parse;
    none of them are evaluated (OpSem_not_supported) *)
