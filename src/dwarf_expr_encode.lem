@@ -1,0 +1,216 @@
+(* Claude: [dwarf_expr_encode.lem] encodes DWARF expressions, as lists of
+   [Dwarf.operation], to the byte form used in DW_FORM_exprloc attributes and
+   location lists: the inverse of [Dwarf.parse_operations].  It also builds
+   operations by name from linksem's [operation_encodings] table, and checks
+   the round trip parse (encode ops) = ops.
+
+   Written for the DWARF expression cross-check harness in validation/test-dwarf-expr
+   (28 September 2026). *)
+
+open import Basic_classes
+open import Bool
+open import Function
+open import Maybe
+open import List
+open import Num
+open import String
+open import Tuple
+
+open import Byte_sequence
+open import Error
+open import Missing_pervasives
+open import Show
+open import Assert_extra
+
+open import Endianness
+open import Sym
+open import Dwarf_byte_sequence
+open import Dwarf
+
+(** fixed-size encodings *)
+
+val bytes_le : nat -> natural -> list byte
+let rec bytes_le size n =
+  match size with
+  | 0 -> []
+  | _ -> byte_of_natural (n mod 256) :: bytes_le (size - 1) (n / 256)
+  end
+
+val bytes_fixed : endianness -> nat -> natural -> list byte
+let bytes_fixed en size n =
+  match en with
+  | Little -> bytes_le size n
+  | Big -> List.reverse (bytes_le size n)
+  end
+
+(** [twos_complement bits i] is the [bits]-bit two's complement representation of
+    [i], which must lie in [-2^(bits-1), 2^(bits-1)) *)
+val twos_complement : nat -> integer -> error natural
+let twos_complement bits i =
+  let half = integerFromNatural (naturalPow 2 (bits - 1)) in
+  if i >= 0 && i < half then return (naturalFromInteger i)
+  else if i < 0 && i >= 0 - half then return (naturalFromInteger (i + half + half))
+  else Fail ("twos_complement: " ^ show i ^ " does not fit in " ^ show bits ^ " bits")
+
+val fits_unsigned : nat -> natural -> bool
+let fits_unsigned bits n = n < naturalPow 2 bits
+
+(** LEB128 *)
+
+val encode_ULEB128 : natural -> list byte
+let rec encode_ULEB128 n =
+  let b = n mod 128 in
+  let n' = n / 128 in
+  if n' = 0 then [byte_of_natural b] else byte_of_natural (b + 128) :: encode_ULEB128 n'
+
+(* the number of 7-bit groups needed to hold [i] in two's complement *)
+val sleb128_groups : integer -> nat -> nat
+let rec sleb128_groups i k =
+  let half = integerFromNatural (naturalPow 2 (7*k - 1)) in
+  if i >= 0 - half && i < half then k else sleb128_groups i (k+1)
+
+(* [n] as exactly [k] little-endian 7-bit groups, continuation bits on all but the last *)
+val sleb128_emit : natural -> nat -> list byte
+let rec sleb128_emit n k =
+  if k <= 1 then [byte_of_natural (n mod 128)]
+  else byte_of_natural ((n mod 128) + 128) :: sleb128_emit (n / 128) (k - 1)
+
+val encode_SLEB128 : integer -> list byte
+let encode_SLEB128 i =
+  let k = sleb128_groups i 1 in
+  let n = if i >= 0 then naturalFromInteger i
+          else naturalFromInteger (i + integerFromNatural (naturalPow 2 (7*k))) in
+  sleb128_emit n k
+
+(** operation arguments *)
+
+let dwarf_format_size (cuh: compilation_unit_header) : nat =
+  match cuh.cuh_dwarf_format with Dwarf32 -> 4 | Dwarf64 -> 8 end
+
+val encode_fixed_unsigned : endianness -> nat -> sym_natural -> error (list byte)
+let encode_fixed_unsigned en size n =
+  let n' = sym_natural_expect_const n in
+  if fits_unsigned (8*size) n' then return (bytes_fixed en size n')
+  else Fail ("encode: " ^ show n' ^ " does not fit in " ^ show size ^ " bytes")
+
+val encode_fixed_signed : endianness -> nat -> sym_integer -> error (list byte)
+let encode_fixed_signed en size i =
+  twos_complement (8*size) (sym_integer_expect_const i) >>= fun n ->
+  return (bytes_fixed en size n)
+
+val encode_operation_argument : endianness -> compilation_unit_header -> operation_argument_type -> operation_argument_value -> error (list byte)
+let encode_operation_argument en cuh oat oav =
+  match (oat, oav) with
+  | (OAT_addr,           OAV_natural n) -> encode_fixed_unsigned en (natFromNatural (sym_natural_expect_const cuh.cuh_address_size)) n
+  | (OAT_dwarf_format_t, OAV_natural n) -> encode_fixed_unsigned en (dwarf_format_size cuh) n
+  | (OAT_uint8,          OAV_natural n) -> encode_fixed_unsigned en 1 n
+  | (OAT_uint16,         OAV_natural n) -> encode_fixed_unsigned en 2 n
+  | (OAT_uint32,         OAV_natural n) -> encode_fixed_unsigned en 4 n
+  | (OAT_uint64,         OAV_natural n) -> encode_fixed_unsigned en 8 n
+  | (OAT_sint8,          OAV_integer i) -> encode_fixed_signed en 1 i
+  | (OAT_sint16,         OAV_integer i) -> encode_fixed_signed en 2 i
+  | (OAT_sint32,         OAV_integer i) -> encode_fixed_signed en 4 i
+  | (OAT_sint64,         OAV_integer i) -> encode_fixed_signed en 8 i
+  | (OAT_ULEB128,        OAV_natural n) -> return (encode_ULEB128 (sym_natural_expect_const n))
+  | (OAT_SLEB128,        OAV_integer i) -> return (encode_SLEB128 (sym_integer_expect_const i))
+  | (OAT_block,          OAV_block n bs) ->
+      let bl = byte_list_of_sym_byte_sequence bs in
+      if naturalFromNat (List.length bl) = sym_natural_expect_const n then
+        return (encode_ULEB128 (sym_natural_expect_const n) ++ bl)
+      else Fail "encode: block length does not match its contents"
+  | (_, _) -> Fail ("encode: argument value of the wrong kind: " ^ pp_operation_argument_value oav)
+  end
+
+(** operations *)
+
+(* the table entry for an operation name: (code, argument types, semantics) *)
+val operation_encoding_of_name : string -> maybe (sym_natural * list operation_argument_type * operation_semantics)
+let operation_encoding_of_name name =
+  match List.find (fun (s,_,_,_) -> s = name) operation_encodings with
+  | Just (_,code,oats,opsem) -> Just (code,oats,opsem)
+  | Nothing -> Nothing
+  end
+
+(* the table entry for an opcode: (name, argument types, semantics) *)
+val operation_encoding_of_code : sym_natural -> maybe (string * list operation_argument_type * operation_semantics)
+let operation_encoding_of_code code = lookup_aBcd_acd code operation_encodings
+
+val argument_kind_ok : operation_argument_type -> operation_argument_value -> bool
+let argument_kind_ok oat oav =
+  match (oat, oav) with
+  | (OAT_sint8, OAV_integer _) -> true
+  | (OAT_sint16, OAV_integer _) -> true
+  | (OAT_sint32, OAV_integer _) -> true
+  | (OAT_sint64, OAV_integer _) -> true
+  | (OAT_SLEB128, OAV_integer _) -> true
+  | (OAT_block, OAV_block _ _) -> true
+  | (OAT_addr, OAV_natural _) -> true
+  | (OAT_dwarf_format_t, OAV_natural _) -> true
+  | (OAT_uint8, OAV_natural _) -> true
+  | (OAT_uint16, OAV_natural _) -> true
+  | (OAT_uint32, OAV_natural _) -> true
+  | (OAT_uint64, OAV_natural _) -> true
+  | (OAT_ULEB128, OAV_natural _) -> true
+  | (_, _) -> false
+  end
+
+(** [operation_of_name name args] is the operation record for [name] with
+    argument values [args], as [parse_operation] would build it *)
+val operation_of_name : string -> list operation_argument_value -> error operation
+let operation_of_name name args =
+  match operation_encoding_of_name name with
+  | Nothing -> Fail ("unknown DWARF operation " ^ name)
+  | Just (code, oats, opsem) ->
+      if List.length oats <> List.length args then
+        Fail (name ^ " takes " ^ show (List.length oats) ^ " argument(s), given " ^ show (List.length args))
+      else if not (List.all (fun (oat,oav) -> argument_kind_ok oat oav) (List.zip oats args)) then
+        Fail (name ^ ": argument of the wrong kind")
+      else
+        return <| op_code = code; op_string = name; op_argument_values = args; op_semantics = opsem; op_offset = 0; op_end = 0 |>
+  end
+
+val encode_operation : endianness -> compilation_unit_header -> operation -> error (list byte)
+let encode_operation en cuh op =
+  match operation_encoding_of_code op.op_code with
+  | Nothing -> Fail ("encode_operation: opcode not in the table: " ^ pphex_sym op.op_code)
+  | Just (_, oats, _) ->
+      if List.length oats <> List.length op.op_argument_values then
+        Fail ("encode_operation: " ^ op.op_string ^ " has the wrong number of arguments")
+      else
+        mapM (fun (oat,oav) -> encode_operation_argument en cuh oat oav) (List.zip oats op.op_argument_values) >>= fun argbytes ->
+        return (byte_of_natural (sym_natural_expect_const op.op_code) :: List.concat argbytes)
+  end
+
+val encode_operations : endianness -> compilation_unit_header -> list operation -> error (list byte)
+let encode_operations en cuh ops =
+  mapM (encode_operation en cuh) ops >>= fun bss -> return (List.concat bss)
+
+(** round trip: parse what was encoded and compare the pretty-printed forms
+    (operation records contain functions, so they cannot be compared directly) *)
+
+val decode_operations : p_context -> compilation_unit_header -> list byte -> error (list operation)
+let decode_operations c cuh bs =
+  let pc = <| pc_bytes = sym_byte_sequence_of_byte_list bs; pc_offset = 0 |> in
+  match parse_operations c cuh pc with
+  | PR_fail s pc' -> Fail ("decode_operations: " ^ pp_parse_fail s pc')
+  | PR_success ops pc' ->
+      if sym_bs_length pc'.pc_bytes <> 0 then Fail "decode_operations: trailing bytes"
+      else return ops
+  end
+
+val round_trip_ok : p_context -> compilation_unit_header -> list operation -> error bool
+let round_trip_ok c cuh ops =
+  encode_operations c.endianness cuh ops >>= fun bs ->
+  decode_operations c cuh bs >>= fun ops' ->
+  return (pp_operations ops = pp_operations ops')
+
+(** a DWARF 4, 32-bit-format, 8-byte-address compilation unit header, for use
+    when encoding an expression outside any real unit *)
+val cuh_dwarf4_addr8 : compilation_unit_header
+let cuh_dwarf4_addr8 =
+  <| cuh_offset = sym_natural_const 0;
+     cuh_dwarf_format = Dwarf32;
+     cuh_unit_length = sym_natural_const 0;
+     cuh_version = sym_natural_const 4;
+     cuh_debug_abbrev_offset = sym_natural_const 0;
+     cuh_address_size = sym_natural_const 8 |>

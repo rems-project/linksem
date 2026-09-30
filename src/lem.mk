@@ -60,7 +60,7 @@ LEM_ELF_SRC := byte_sequence.lem byte_pattern.lem byte_pattern_extra.lem \
 	elf_symbolic.lem \
 	report_format.lem symbolic_resolution.lem generated_arm64_cpucaps.lem \
 	dwarf_byte_sequence.lem \
-	dwarf_ctypes.lem dwarf.lem ldconfig.lem
+	dwarf_ctypes.lem dwarf.lem dwarf_expr_encode.lem ldconfig.lem
 
 LEM_ABI_SRC := \
 	abis/abi_classes.lem memory_image.lem memory_image_orderings.lem \
