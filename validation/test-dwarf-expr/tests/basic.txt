@@ -1,0 +1,81 @@
+# Claude: hand-written DWARF expressions exercising each operation at least once.
+# Registers (DWARF numbers) at dw_here: 0 = dw_mem, 1 = 0x10, 2 = -1, 3 = 0x8000000000000000,
+# 4 = 0x7fffffffffffffff, 5 = dw_mem+128, 8 = 1, 9 = 0x0101010101010101, 10 = 0x1234567890abcdef,
+# 11 = 0, 12 = 63, 13 = 64, 14 = -16, 15 = dw_mem+255; CFA = fake frame pointer + 16.
+# dw_mem[i] = (37 i + 11) mod 256.
+lit: DW_OP_lit5
+lit31: DW_OP_lit31
+addr: DW_OP_addr dw_mem+16
+const1u: DW_OP_const1u 200
+const1s: DW_OP_const1s -100
+const2u: DW_OP_const2u 60000
+const2s: DW_OP_const2s -30000
+const4u: DW_OP_const4u 0xfffffffe
+const4s: DW_OP_const4s -2
+const8u: DW_OP_const8u 0xfedcba9876543210
+const8s: DW_OP_const8s -3
+constu: DW_OP_constu 0x123456789
+consts: DW_OP_consts -123456789
+breg0: DW_OP_breg0 24
+breg1neg: DW_OP_breg1 -8
+bregx: DW_OP_bregx 5 -128
+fbreg: DW_OP_fbreg -32
+cfa: DW_OP_call_frame_cfa
+reg3: DW_OP_reg3
+regx: DW_OP_regx 12
+deref: DW_OP_addr dw_mem+8; DW_OP_deref
+deref_size1: DW_OP_addr dw_mem+8; DW_OP_deref_size 1
+deref_size4: DW_OP_breg0 4; DW_OP_deref_size 4
+plus: DW_OP_lit7; DW_OP_lit9; DW_OP_plus
+plus_wrap: DW_OP_breg2 0; DW_OP_lit3; DW_OP_plus
+minus: DW_OP_lit7; DW_OP_lit9; DW_OP_minus
+mul: DW_OP_breg10 0; DW_OP_lit3; DW_OP_mul
+div_pos: DW_OP_lit20; DW_OP_lit3; DW_OP_div
+div_neg: DW_OP_breg14 0; DW_OP_lit3; DW_OP_div
+div_zero: DW_OP_lit20; DW_OP_lit0; DW_OP_div
+mod_pos: DW_OP_lit20; DW_OP_lit3; DW_OP_mod
+mod_neg: DW_OP_breg14 0; DW_OP_lit3; DW_OP_mod
+mod_zero: DW_OP_lit20; DW_OP_lit0; DW_OP_mod
+neg: DW_OP_lit5; DW_OP_neg
+neg_min: DW_OP_breg3 0; DW_OP_neg
+abs: DW_OP_breg2 0; DW_OP_abs
+abs_min: DW_OP_breg3 0; DW_OP_abs
+not: DW_OP_lit5; DW_OP_not
+and: DW_OP_breg10 0; DW_OP_const2u 0xff00; DW_OP_and
+or: DW_OP_lit5; DW_OP_lit10; DW_OP_or
+xor: DW_OP_breg10 0; DW_OP_breg9 0; DW_OP_xor
+shl: DW_OP_lit1; DW_OP_lit4; DW_OP_shl
+shl_63: DW_OP_lit1; DW_OP_breg12 0; DW_OP_shl
+shl_64: DW_OP_lit1; DW_OP_breg13 0; DW_OP_shl
+shl_big: DW_OP_lit1; DW_OP_breg2 0; DW_OP_shl
+shr: DW_OP_breg2 0; DW_OP_lit4; DW_OP_shr
+shr_64: DW_OP_breg2 0; DW_OP_breg13 0; DW_OP_shr
+shra: DW_OP_breg2 0; DW_OP_lit4; DW_OP_shra
+shra_pos: DW_OP_breg4 0; DW_OP_lit4; DW_OP_shra
+shra_64: DW_OP_breg2 0; DW_OP_breg13 0; DW_OP_shra
+shra_65: DW_OP_breg2 0; DW_OP_const1u 65; DW_OP_shra
+eq: DW_OP_lit5; DW_OP_lit5; DW_OP_eq
+ne: DW_OP_lit5; DW_OP_lit6; DW_OP_ne
+lt_signed: DW_OP_breg2 0; DW_OP_lit0; DW_OP_lt
+lt_unsigned_view: DW_OP_lit0; DW_OP_breg2 0; DW_OP_lt
+le: DW_OP_lit5; DW_OP_lit5; DW_OP_le
+gt: DW_OP_breg3 0; DW_OP_breg4 0; DW_OP_gt
+ge: DW_OP_lit5; DW_OP_lit6; DW_OP_ge
+dup: DW_OP_lit5; DW_OP_dup; DW_OP_plus
+drop: DW_OP_lit5; DW_OP_lit6; DW_OP_drop
+over: DW_OP_lit5; DW_OP_lit6; DW_OP_over; DW_OP_minus
+pick0: DW_OP_lit5; DW_OP_lit6; DW_OP_pick 0; DW_OP_plus
+pick1: DW_OP_lit5; DW_OP_lit6; DW_OP_pick 1; DW_OP_plus
+swap: DW_OP_lit5; DW_OP_lit6; DW_OP_swap; DW_OP_minus
+rot: DW_OP_lit1; DW_OP_lit2; DW_OP_lit3; DW_OP_rot; DW_OP_minus; DW_OP_minus
+plus_uconst: DW_OP_lit5; DW_OP_plus_uconst 1000
+nop: DW_OP_lit5; DW_OP_nop
+skip: DW_OP_lit5; DW_OP_skip 1; DW_OP_lit6
+bra_taken: DW_OP_lit5; DW_OP_lit1; DW_OP_bra 1; DW_OP_lit7
+bra_not_taken: DW_OP_lit5; DW_OP_lit0; DW_OP_bra 1; DW_OP_lit7
+stack_value: DW_OP_lit5; DW_OP_stack_value
+stack_value_neg: DW_OP_breg2 0; DW_OP_stack_value
+implicit_value: DW_OP_implicit_value {01,02,03,04,05,06,07,08}
+piece: DW_OP_reg1; DW_OP_piece 4; DW_OP_reg2; DW_OP_piece 4
+empty_stack_plus: DW_OP_lit5; DW_OP_plus
+empty: DW_OP_nop

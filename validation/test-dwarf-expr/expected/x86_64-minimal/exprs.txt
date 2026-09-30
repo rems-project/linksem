@@ -1,0 +1,77 @@
+# Claude: minimal expressions isolating the gdb/lldb/linksem differences seen in the random runs.
+# Expected values follow the DWARF 4 text (section 2.5.1.4): signed div and comparisons,
+# unsigned mod, second-operand-op-top for the non-commutative operations.
+m_abs_neg: DW_OP_const1s -5; DW_OP_abs                                  # 5
+m_abs_pos: DW_OP_lit5; DW_OP_abs                                        # 5
+m_abs_neg_big: DW_OP_const8s -1000000; DW_OP_abs                        # 1000000
+m_abs_min: DW_OP_constu 0x8000000000000000; DW_OP_abs                   # unrepresentable: wraps to itself or errors
+m_abs_2_32: DW_OP_constu 0x100000000; DW_OP_abs                         # 0x100000000
+m_neg_pos: DW_OP_lit5; DW_OP_neg                                        # -5
+m_neg_min: DW_OP_constu 0x8000000000000000; DW_OP_neg                   # 0x8000000000000000
+m_lt_mixed: DW_OP_lit0; DW_OP_const1s -1; DW_OP_lt                      # 0 < -1 : 0 (signed)
+m_lt_mixed2: DW_OP_const1s -1; DW_OP_lit0; DW_OP_lt                     # -1 < 0 : 1
+m_gt_mixed: DW_OP_lit0; DW_OP_const1s -1; DW_OP_gt                      # 1
+m_le_mixed: DW_OP_lit0; DW_OP_const1s -1; DW_OP_le                      # 0
+m_ge_mixed: DW_OP_lit0; DW_OP_const1s -1; DW_OP_ge                      # 1
+m_eq_not: DW_OP_lit1; DW_OP_lit1; DW_OP_eq; DW_OP_not; DW_OP_stack_value       # ~1 = -2
+m_ne_not: DW_OP_lit1; DW_OP_lit2; DW_OP_eq; DW_OP_not; DW_OP_stack_value       # ~0 = -1
+m_lt_neg: DW_OP_lit1; DW_OP_lit2; DW_OP_lt; DW_OP_neg; DW_OP_stack_value       # -1
+m_shra_neg16_4: DW_OP_const1s -16; DW_OP_lit4; DW_OP_shra               # -1
+m_shra_neg1_4: DW_OP_const1s -1; DW_OP_lit4; DW_OP_shra                 # -1
+m_shra_256_4: DW_OP_const2u 256; DW_OP_lit4; DW_OP_shra                 # 16
+m_shra_256_64: DW_OP_const2u 256; DW_OP_const1u 64; DW_OP_shra          # count >= width: 0 if saturating, 256 if masked
+m_shra_neg16_64: DW_OP_const1s -16; DW_OP_const1u 64; DW_OP_shra        # -1 if saturating, -16 if masked
+m_shra_neg16_68: DW_OP_const1s -16; DW_OP_const1u 68; DW_OP_shra        # -1 if saturating, -1 if masked (68 mod 64 = 4)
+m_shl_1_64: DW_OP_lit1; DW_OP_const1u 64; DW_OP_shl                     # 0 if saturating, 1 if masked
+m_shl_1_65: DW_OP_lit1; DW_OP_const1u 65; DW_OP_shl                     # 0 if saturating, 2 if masked
+m_shl_1_63: DW_OP_lit1; DW_OP_const1u 63; DW_OP_shl                     # 0x8000000000000000
+m_shr_neg1_64: DW_OP_const1s -1; DW_OP_const1u 64; DW_OP_shr            # 0 if saturating, -1 if masked
+m_shr_neg1_65: DW_OP_const1s -1; DW_OP_const1u 65; DW_OP_shr            # 0 if saturating, 0x7fff... if masked
+m_shr_neg1_4: DW_OP_const1s -1; DW_OP_lit4; DW_OP_shr                   # 0x0fffffffffffffff
+m_deref3: DW_OP_addr dw_mem+8; DW_OP_deref_size 3                       # 0x9b6f33
+m_deref5: DW_OP_addr dw_mem+8; DW_OP_deref_size 5                       # 0xf5c99b6f33
+m_deref6: DW_OP_addr dw_mem+8; DW_OP_deref_size 6                       # 0x1af5c99b6f33
+m_deref7: DW_OP_addr dw_mem+8; DW_OP_deref_size 7                       # 0x401af5c99b6f33
+m_deref6_sv: DW_OP_addr dw_mem+8; DW_OP_deref_size 6; DW_OP_stack_value
+m_addr_minus1: DW_OP_const1s -1                                         # address 0xffffffffffffffff
+m_mod0: DW_OP_lit20; DW_OP_lit0; DW_OP_mod                              # undefined; error expected
+m_div0: DW_OP_lit20; DW_OP_lit0; DW_OP_div                              # undefined; error expected
+m_div_signed: DW_OP_const1s -7; DW_OP_lit2; DW_OP_div                   # -3 (signed, truncating)
+m_div_signed2: DW_OP_lit7; DW_OP_const1s -2; DW_OP_div                  # -3
+m_mod_unsigned: DW_OP_const1s -7; DW_OP_lit2; DW_OP_mod                 # (2^64-7) mod 2 = 1
+m_mod_unsigned2: DW_OP_lit7; DW_OP_const1s -2; DW_OP_mod                # 7 mod (2^64-2) = 7
+m_bra_join_nop: DW_OP_lit1; DW_OP_lit1; DW_OP_bra 1; DW_OP_not; DW_OP_nop      # 1; gdb 15.1 internal error
+m_bra_join_lit: DW_OP_lit1; DW_OP_lit1; DW_OP_bra 1; DW_OP_not; DW_OP_lit5     # 5
+m_bra_end: DW_OP_lit1; DW_OP_lit1; DW_OP_bra 1; DW_OP_not                      # 1
+m_bra_not_taken_join: DW_OP_lit1; DW_OP_lit0; DW_OP_bra 1; DW_OP_not; DW_OP_nop  # -2
+m_skip_join: DW_OP_lit1; DW_OP_skip 1; DW_OP_not; DW_OP_nop             # 1
+m_pick_deep: DW_OP_lit1; DW_OP_pick 5                                   # error: stack too shallow
+m_over_1: DW_OP_lit1; DW_OP_over                                        # error
+m_plus_uconst_wrap: DW_OP_const1s -1; DW_OP_plus_uconst 2               # 1
+m_implicit4: DW_OP_implicit_value {01,02,03,04}                         # 4-byte value for an 8-byte variable
+m_regx16: DW_OP_regx 16                                                 # register 16 by the regx form (rip / x16)
+m_sv_max: DW_OP_constu 0xffffffffffffffff; DW_OP_stack_value            # -1
+m_sv_min: DW_OP_const8u 0x8000000000000000; DW_OP_stack_value           # 0x8000000000000000
+m_consts_big_neg: DW_OP_consts -4294967297                              # -(2^32+1)
+m_constu_2_32: DW_OP_constu 0x100000000                                 # 2^32
+m_const8s_big: DW_OP_const8s 0x72143e07cbe650cd                         # positive, > 2^32
+# operand "types": lldb keeps a signed/unsigned type per stack entry (from how the value was produced)
+t_abs_unsigned_reg: DW_OP_breg2 0; DW_OP_abs                            # -1 from a register: 1
+t_abs_unsigned_const: DW_OP_constu 0xfffffffffffffffb; DW_OP_abs        # -5 as constu: 5
+t_abs_signed_const: DW_OP_const1s -5; DW_OP_abs                         # 5
+t_shra_unsigned: DW_OP_constu 0xfffffffffffffff0; DW_OP_lit4; DW_OP_shra    # -1 (arithmetic shift of -16)
+t_shra_reg: DW_OP_breg14 0; DW_OP_lit4; DW_OP_shra                      # register 14 = -16: -1
+t_shra_count_2_32_4: DW_OP_const1s -16; DW_OP_constu 0x100000004; DW_OP_shra   # count >= 64: -1 saturating; -1 if count masked to 4
+t_shl_count_2_32_4: DW_OP_lit1; DW_OP_constu 0x100000004; DW_OP_shl    # count >= 64: 0 saturating; 16 if count truncated to 32 bits
+t_shr_count_2_32_4: DW_OP_const1s -1; DW_OP_constu 0x100000004; DW_OP_shr      # 0 saturating; 0x0fff... if truncated
+t_shra_count_neg: DW_OP_const1s -16; DW_OP_const2s -188; DW_OP_shra    # count = 2^64-188 >= 64: -1 saturating
+t_shl_count_neg: DW_OP_lit1; DW_OP_const2s -188; DW_OP_shl             # 0 saturating
+t_lt_unsigned_const: DW_OP_constu 0xffffffffffffffff; DW_OP_lit0; DW_OP_lt   # -1 < 0 signed: 1
+t_lt_reg: DW_OP_breg2 0; DW_OP_lit0; DW_OP_lt                          # register 2 = -1: 1
+t_lt_neg_addr: DW_OP_lit1; DW_OP_lit2; DW_OP_lt; DW_OP_neg              # -1 as an address
+t_eq_plus: DW_OP_lit1; DW_OP_lit1; DW_OP_eq; DW_OP_const4u 0xffffffff; DW_OP_plus   # 1 + 0xffffffff = 0x100000000
+t_mod_signed_top: DW_OP_lit7; DW_OP_const1s -2; DW_OP_mod              # unsigned: 7
+t_mod_neg_second: DW_OP_const1s -7; DW_OP_lit2; DW_OP_mod              # unsigned: 1
+t_div_neg_both: DW_OP_const1s -7; DW_OP_const1s -2; DW_OP_div          # 3
+t_mul_signed: DW_OP_const1s -3; DW_OP_lit2; DW_OP_mul                  # -6
+t_deref_then_neg: DW_OP_addr dw_mem+8; DW_OP_deref_size 1; DW_OP_neg   # -0x33

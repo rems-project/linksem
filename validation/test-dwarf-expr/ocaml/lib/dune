@@ -1,0 +1,5 @@
+; Claude: the dwexpr library: textual expressions, encoding via linksem's Dwarf_expr_encode,
+; architectures, DWARF 4 assembly emission, and the evaluation-state file
+(library
+ (name dwexpr)
+ (libraries linksem zarith str))

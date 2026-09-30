@@ -1,0 +1,4 @@
+; Claude: the harness executables (see ../../README.md)
+(executables
+ (names dwexpr_build dwexpr_eval dwexpr_gen)
+ (libraries dwexpr linksem zarith))
