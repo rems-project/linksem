@@ -66,7 +66,7 @@ blobless, sparse clones into `../cache/src/`, and used in place.
 
 ## Licensing
 
-See `../LICENCE-NOTE.md`.  Nothing fetched is distributed with linksem.  (The
+See `LICENCE-NOTE.md`.  Nothing fetched is distributed with linksem.  (The
 `../test-dwarf-expr/` harness fetches nothing; its test programs are generated.)
 
 ## Checking one fix
