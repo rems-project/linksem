@@ -3102,6 +3102,21 @@ let bool_of_flag_attribute_value av : bool =
   | _ -> Assert_extra.failwith ("bool_of_maybe_flag_attribute_value fail")
   end
 
+val add_die_to_index : die_index -> list die -> die -> die_index
+let rec add_die_to_index acc parents die =
+  let nacc : die_index = Map.insert die.die_offset (parents,die) acc in
+  List.foldl (fun acc ndie -> add_die_to_index acc (die::parents) ndie) nacc die.die_children
+
+(* Claude: a type unit viewed as a compilation unit, for the DIE-tree functions *)
+let compilation_unit_of_type_unit (tu: type_unit) : compilation_unit =
+  <|
+  cu_header = tu.tu_header.tuh_cuh;
+  cu_abbreviations_table = tu.tu_abbreviations_table;
+  cu_die = tu.tu_die;
+  cu_tables = tu.tu_tables;
+  cu_index = add_die_to_index Map.empty [] tu.tu_die
+  |>
+
 let reference_of_reference_attribute_value c d cu str av : maybe (compilation_unit * (list die) * die) =
   match av with
   (* "offset from the first byte of the compilation header for the compilation unit containing the reference" *)
@@ -3116,6 +3131,16 @@ let reference_of_reference_attribute_value c d cu str av : maybe (compilation_un
      match find_die_by_offset_in_all n d with
      | Just (cu',parents',die') -> Just (cu',parents',die')
      | Nothing -> Nothing (*Fail ("find_reference_attribute_of_die AV_ref_addr failed\n"^ppd())*)
+     end
+  (* Claude: a type signature (DWARF 4 .debug_types, DWARF 5 DW_UT_type units in
+     .debug_info): the type unit with that signature, and the DIE at its type
+     offset, which is relative to the unit's header *)
+  | AV_ref_sig8 sg ->
+     match List.find (fun tu -> sym_eq tu.tu_header.tuh_type_signature sg) d.d_type_units with
+     | Just tu ->
+        let cu' = compilation_unit_of_type_unit tu in
+        find_die_by_offset_in_cu (tu.tu_header.tuh_cuh.cuh_offset + tu.tu_header.tuh_type_offset) cu'
+     | Nothing -> Nothing
      end
   | _ ->
      Nothing (*Fail ("reference_of_reference_attribute AV ("^pp_attribute_value c cu.cu_header str (attribute_encode an) av^") not supported\n"^ppd() )*)
@@ -3678,11 +3703,6 @@ let pp_compilation_unit_abbrev c (str: unit_context) cu =
 let pp_compilation_units_abbrev c (d: dwarf) (compilation_units: list compilation_unit) : string =
   String.concat "" (List.map (fun cu -> pp_compilation_unit_abbrev c (unit_context_of_cu d cu) cu) compilation_units)
 
-val add_die_to_index : die_index -> list die -> die -> die_index
-let rec add_die_to_index acc parents die =
-  let nacc : die_index = Map.insert die.die_offset (parents,die) acc in
-  List.foldl (fun acc ndie -> add_die_to_index acc (die::parents) ndie) nacc die.die_children
-
 (* Claude: one unit of .debug_info: a compilation unit, or in DWARF 5 a type unit
    (DW_UT_type / DW_UT_split_type, whose header continues with the type signature
    and the offset of the type's DIE) *)
@@ -3783,14 +3803,6 @@ let type_units_of_units (us: list dwarf_unit) : list type_unit =
   List.mapMaybe (fun u -> match u with Unit_type tu -> Just tu | Unit_compilation _ -> Nothing end) us
 
 (* Claude: a type unit viewed as a compilation unit, for the DIE accessors *)
-let compilation_unit_of_type_unit (tu: type_unit) : compilation_unit =
-  <|
-  cu_header = tu.tu_header.tuh_cuh;
-  cu_abbreviations_table = tu.tu_abbreviations_table;
-  cu_die = tu.tu_die;
-  cu_tables = tu.tu_tables;
-  cu_index = add_die_to_index Map.empty [] tu.tu_die
-  |>
 
 
 (** type units: pp and parsing *)
@@ -5374,6 +5386,9 @@ let od_attribute_value c cuh str regname have_frame_base (at:sym_natural) (af:sy
 
 let od_tag_name (t:sym_natural) : string =
   match lookup_aB_a t tag_encodings with
+  (* Claude: readelf's names for these two are the pre-DWARF-3 short forms *)
+  | Just "DW_TAG_template_type_parameter" -> "DW_TAG_template_type_param"
+  | Just "DW_TAG_template_value_parameter" -> "DW_TAG_template_value_param"
   | Just s -> s
   | Nothing ->
       let n = sym_natural_offset_part t in
@@ -5395,8 +5410,8 @@ let style_objdump c (str:unit_context) (regname: natural -> string) (have_frame_
        " <" ^ show (level + 1) ^ "><" ^ pphexplain (sym_natural_offset_part die.die_end - 1) ^ ">: Abbrev Number: 0\n")
   |>
 
-let od_compilation_unit c str regname have_frame_base (cu:compilation_unit) : string =
-  let h = cu.cu_header in
+(* Claude: the unit header lines, shared by compilation and type units *)
+let od_unit_header (h: compilation_unit_header) : string =
   "  Compilation Unit @ offset " ^ od_hx_sym h.cuh_offset ^ ":\n"
   ^ "   Length:        " ^ od_hx_sym h.cuh_unit_length ^ " " ^ pp_dwarf_format h.cuh_dwarf_format ^ "\n"
   ^ "   Version:       " ^ od_dec_sym h.cuh_version ^ "\n"
@@ -5410,7 +5425,31 @@ let od_compilation_unit c str regname have_frame_base (cu:compilation_unit) : st
      | Just id -> "   DWO ID:        " ^ od_hx_sym id ^ "\n"
      | Nothing -> ""
      end)
-  ^ pp_die_tree (style_objdump c str regname have_frame_base) h true 0 cu.cu_die
+
+let od_compilation_unit c str regname have_frame_base (cu:compilation_unit) : string =
+  od_unit_header cu.cu_header
+  ^ pp_die_tree (style_objdump c str regname have_frame_base) cu.cu_header true 0 cu.cu_die
+
+(* Claude: a DWARF 5 type unit in .debug_info, as readelf prints it: the header
+   with its signature and type offset, then the DIE tree *)
+let od_type_unit c str regname have_frame_base (tu:type_unit) : string =
+  let h = tu.tu_header.tuh_cuh in
+  od_unit_header h
+  ^ "   Signature:     " ^ od_hx_sym tu.tu_header.tuh_type_signature ^ "\n"
+  ^ "   Type Offset:   " ^ od_hx_sym tu.tu_header.tuh_type_offset ^ "\n"
+  ^ pp_die_tree (style_objdump c str regname have_frame_base) h true 0 tu.tu_die
+
+(* the units of .debug_info in section order: the two lists are each in that order *)
+let rec od_units_in_order c d regname have_frame_base (cus: list compilation_unit) (tus: list type_unit) : string =
+  match (cus, tus) with
+  | ([], []) -> ""
+  | (cu :: cus', []) -> od_compilation_unit c (unit_context_of_cu d cu) regname have_frame_base cu ^ od_units_in_order c d regname have_frame_base cus' []
+  | ([], tu :: tus') -> od_type_unit c (unit_context_of_tu d tu) regname have_frame_base tu ^ od_units_in_order c d regname have_frame_base [] tus'
+  | (cu :: cus', tu :: tus') ->
+      if cu.cu_header.cuh_offset < tu.tu_header.tuh_cuh.cuh_offset
+      then od_compilation_unit c (unit_context_of_cu d cu) regname have_frame_base cu ^ od_units_in_order c d regname have_frame_base cus' tus
+      else od_type_unit c (unit_context_of_tu d tu) regname have_frame_base tu ^ od_units_in_order c d regname have_frame_base cus tus'
+  end
 
 let od_abbreviation_declaration (x:abbreviation_declaration) : string =
   "   " ^ od_dec_sym x.ad_abbreviation_code ^ "      " ^ od_tag_name x.ad_tag ^ "    "
@@ -5458,7 +5497,7 @@ let od_debug_info_section regname (d:dwarf) : string =
   let c = p_context_of_d d in
   let have_frame_base = od_file_has_frame_base d in
   "Contents of the .debug_info section:\n\n"
-  ^ String.concat "" (List.map (fun cu -> od_compilation_unit c (unit_context_of_cu d cu) regname have_frame_base cu) d.d_compilation_units)
+  ^ od_units_in_order c d regname have_frame_base d.d_compilation_units d.d_type_units
 
 let pp_dwarf_like_objdump abbrev_first regname (d:dwarf) : string =
   (* Claude: objdump prints the two sections in the order of the section
