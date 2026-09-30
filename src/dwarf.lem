@@ -3305,6 +3305,18 @@ let read_index_table (c: p_context) (df: dwarf_format) (entry_size: natural) (p:
       end
   end
 
+let read_index_table_headerless (c: p_context) (entry_size: natural) (p: parser sym_natural) (sec: sym_byte_sequence) (base: sym_natural) : Map.map natural sym_natural =
+  let b = sym_natural_offset_part base in
+  let count = if sym_bs_length sec > b then (sym_bs_length sec - b) div entry_size else 0 in
+  match sym_dropbytes b sec with
+  | Fail _ -> Map.empty
+  | Success bs ->
+      match parse_replicate count p <| pc_bytes = bs; pc_offset = b |> with
+      | PR_success es _ -> Map.fromList (index_list 0 es)
+      | PR_fail _ _ -> Map.empty
+      end
+  end
+
 let unit_tables_of_die (c: p_context) (secs: dwarf_sections) (cuh: compilation_unit_header) (die: die) : unit_tables =
   let df = cuh.cuh_dwarf_format in
   let str_offsets =
@@ -3315,9 +3327,15 @@ let unit_tables_of_die (c: p_context) (secs: dwarf_sections) (cuh: compilation_u
         read_index_table c df (offset_size df) (pr_map2 (fun n -> sym_natural_const (sym_natural_offset_part n)) (parse_uintDwarfN c df)) secs.sec_str_offsets base
     | Nothing -> Map.empty
     end in
+  (* the pre-standard DWARF 4 split-DWARF table (DW_AT_GNU_addr_base) has no
+     header, so its entries run to the end of the section *)
+  let base_attr = match sec_offset_attribute_of_die "DW_AT_addr_base" die with Just b -> Just b | Nothing -> sec_offset_attribute_of_die "DW_AT_GNU_addr_base" die end in
   let addrs =
-    match sec_offset_attribute_of_die "DW_AT_addr_base" die with
-    | Just base -> read_index_table c df (sym_natural_offset_part cuh.cuh_address_size) (parse_uint_address_size c cuh.cuh_address_size) secs.sec_addr base
+    match base_attr with
+    | Just base ->
+        if sym_natural_offset_part cuh.cuh_version < 5 then
+          read_index_table_headerless c (sym_natural_offset_part cuh.cuh_address_size) (parse_uint_address_size c cuh.cuh_address_size) secs.sec_addr base
+        else read_index_table c df (sym_natural_offset_part cuh.cuh_address_size) (parse_uint_address_size c cuh.cuh_address_size) secs.sec_addr base
     | Nothing -> Map.empty
     end in
   <| ut_str_offsets = str_offsets; ut_addrs = addrs |>
@@ -5675,16 +5693,27 @@ let rec index_table_entries (m: Map.map natural sym_natural) (i: natural) : list
   end
 
 (* the address table of each unit that has one, in unit order *)
+let addr_base_of_cu (cu: compilation_unit) : maybe natural =
+  match sec_offset_attribute_of_die "DW_AT_addr_base" cu.cu_die with
+  | Just b -> Just (sym_natural_offset_part b)
+  | Nothing -> (match sec_offset_attribute_of_die "DW_AT_GNU_addr_base" cu.cu_die with Just b -> Just (sym_natural_offset_part b) | Nothing -> Nothing end)
+  end
+
 let od_debug_addr_section (d: dwarf) : string =
   if sym_bs_length d.d_sections.sec_addr = 0 then "" else
+  let bases = List.mapMaybe addr_base_of_cu d.d_compilation_units in
   "Contents of the .debug_addr section:\n\n"
   ^ String.concat "" (List.mapMaybe (fun cu ->
-      match sec_offset_attribute_of_die "DW_AT_addr_base" cu.cu_die with
+      match addr_base_of_cu cu with
       | Nothing -> Nothing
-      | Just _ ->
+      | Just base ->
           let as' = sym_natural_offset_part cu.cu_header.cuh_address_size in
+          (* a headerless (DWARF 4) table runs to the next unit's base, as readelf shows it *)
+          let limit = List.foldl (fun acc b -> if b > base && b < acc then b else acc) (sym_bs_length d.d_sections.sec_addr) bases in
+          let count = (limit - base) div as' in
           Just ("  For compilation unit at offset " ^ od_hx_sym cu.cu_header.cuh_offset ^ ":\n\tIndex\tAddress\n"
-                ^ String.concat "" (List.map (fun (i, a) -> "\t" ^ show i ^ ":\t" ^ od_hex_width as' a ^ "\n") (index_table_entries cu.cu_tables.ut_addrs 0)))
+                ^ String.concat "" (List.map (fun (i, a) -> "\t" ^ show i ^ ":\t" ^ od_hex_width as' a ^ "\n")
+                     (List.filter (fun (i, _) -> sym_natural_offset_part cu.cu_header.cuh_version >= 5 || i < count) (index_table_entries cu.cu_tables.ut_addrs 0))))
       end) d.d_compilation_units)
 
 (* the string offsets contributions, one after another through the section *)
@@ -5775,7 +5804,7 @@ let od_debug_macro_section (d: dwarf) : string =
   ^ String.concat "" (List.map (od_macro_unit d) d.d_macro))
 
 (* .debug_names as readelf prints it under --debug-dump=gdb_index *)
-let od_names_attribute (a: sym_natural) (av: attribute_value) : string =
+let od_names_attribute (en: endianness) (a: sym_natural) (av: attribute_value) : string =
   let name =
     let n = sym_natural_offset_part a in
     if n = vDW_IDX_compile_unit then "DW_IDX_compile_unit"
@@ -5789,16 +5818,17 @@ let od_names_attribute (a: sym_natural) (av: attribute_value) : string =
     | AV_ref r -> "<" ^ od_hx_sym r ^ ">"
     | AV_ref_addr r -> "<" ^ od_hx_sym r ^ ">"
     | AV_flag b -> if b then "1" else "0"
-    | AV_constantN _ bs -> show (natural_of_bytes Little bs)
+    | AV_constantN _ bs -> show (natural_of_bytes en bs)
+    | AV_block n bs -> if n = 1 then show (natural_of_bytes en bs) else od_hx (natural_of_bytes en bs)   (* the data forms parse as blocks; readelf shows data1 in decimal, the wider ones in hex *)
     | AV_constant_ULEB128 n -> od_dec_sym n
     | AV_constant_SLEB128 i -> show (sym_integer_expect_const i)
     | _ -> pp_attribute_value_plain av
     end in
   name ^ "=" ^ value
 
-let od_names_entry (e: names_entry) : string =
+let od_names_entry (en: endianness) (e: names_entry) : string =
   "<" ^ od_dec_sym e.ne_abbreviation.na_code ^ "> " ^ od_tag_name e.ne_abbreviation.na_tag
-  ^ String.concat "" (List.map (fun (a, av) -> " " ^ od_names_attribute a av) e.ne_values)
+  ^ String.concat "" (List.map (fun (a, av) -> " " ^ od_names_attribute en a av) e.ne_values)
 
 let od_names_index (d: dwarf) (ni: names_index) : string =
   let n (x: sym_natural) : natural = sym_natural_offset_part x in
@@ -5814,12 +5844,11 @@ let od_names_index (d: dwarf) (ni: names_index) : string =
         end) (0, 0, 0, Nothing) (if bc = 0 then [] else ni.ni_hashes) in
   let aug = byte_list_of_sym_byte_sequence ni.ni_augmentation in
   "Version " ^ od_dec_sym ni.ni_version ^ "\n"
-  ^ (if aug = [] then "" else
-       "Augmentation string: " ^ String.concat "" (List.map (fun b -> unsafe_hex_string_of_natural 2 (natural_of_byte b) ^ " ") aug)
-       ^ " (\"" ^ string_of_sym_byte_sequence (null_terminated_bs ni.ni_augmentation) ^ "\")\n")
+  ^ "Augmentation string: " ^ String.concat "" (List.map (fun b -> unsafe_hex_string_of_natural 2 (natural_of_byte b) ^ " ") aug)
+  ^ " (\"" ^ string_of_sym_byte_sequence (null_terminated_bs ni.ni_augmentation) ^ "\")\n"
   ^ "CU table:\n" ^ String.concat "" (List.map (fun (i, off) -> "[" ^ left_space_padded_to 3 (show i) ^ "] " ^ od_hx_sym off ^ "\n") (index_list 0 ni.ni_comp_units)) ^ "\n"
   ^ "TU table:\n" ^ String.concat "" (List.map (fun (i, off) -> "[" ^ left_space_padded_to 3 (show i) ^ "] " ^ od_hx_sym off ^ "\n") (index_list 0 ni.ni_local_type_units)) ^ "\n"
-  ^ "Foreign TU table:\n" ^ String.concat "" (List.map (fun (i, sg) -> "[" ^ left_space_padded_to 3 (show i) ^ "] " ^ od_hx_sym sg ^ "\n") (index_list 0 ni.ni_foreign_type_units)) ^ "\n"
+  ^ "Foreign TU table:\n" ^ String.concat "" (List.map (fun (i, sg) -> "[" ^ left_space_padded_to 3 (show i) ^ "] " ^ od_hex_width 8 sg ^ "\n") (index_list 0 ni.ni_foreign_type_units)) ^ "\n"
   ^ (if bc = 0 then "" else
        "Used " ^ show used ^ " of " ^ show bc ^ " bucket" ^ (if bc = 1 then "" else "s") ^ ".\n"
        ^ "Out of " ^ od_dec_sym ni.ni_name_count ^ " items there are " ^ show clashes ^ " bucket clashes (longest of " ^ show longest ^ " entries).\n\n")
@@ -5829,8 +5858,8 @@ let od_names_index (d: dwarf) (ni: names_index) : string =
       let hash = match nth_maybe i ni.ni_hashes with Just h -> "#" ^ od_hex_width 4 h ^ " " | Nothing -> "" end in
       "[" ^ left_space_padded_to 3 (show (i + 1)) ^ "] " ^ hash ^ name ^ ":"
       ^ (match es with
-         | [e] -> " " ^ od_names_entry e ^ "\n"
-         | _ -> "\n" ^ String.concat "" (List.map (fun e -> "\t" ^ od_names_entry e ^ "\n") es)
+         | [e] -> " " ^ od_names_entry d.d_endianness e ^ "\n"
+         | _ -> "\n" ^ String.concat "" (List.map (fun e -> "\t" ^ od_names_entry d.d_endianness e ^ "\n") es)
          end)) (index_list 0 (List.zip ni.ni_string_offsets ni.ni_entries)))
 
 let od_debug_names_section (d: dwarf) : string =
@@ -8643,6 +8672,26 @@ let strict_msvfp x e s z =
      Assert_extra.failwith ("mk_sdt_variable_or_formal_parameter strict failure " ^ e ^ " on \n" ^ s z ^ "\n")
   end
  *)
+(* Claude: for the analysed (resolved) views, DW_OP_addrx and DW_OP_constx are
+   replaced by the DW_OP_addr / DW_OP_constu they stand for, with the address from
+   the unit's address table, so that the location prints as an address (symbolic in
+   a relocatable file) rather than as an index; an index the table lacks is left *)
+let resolve_address_indices (str: unit_context) (ops: list operation) : list operation =
+  List.map (fun op ->
+    match (op.op_semantics, op.op_argument_values) with
+    | (OpSem_addrx, [OAV_natural i]) ->
+        (match addrx_address str i with
+         | Just a -> <| op with op_code = sym_natural_of_hex "0x03"; op_string = "DW_OP_addr"; op_argument_values = [OAV_natural a]; op_semantics = OpSem_lit |>
+         | Nothing -> op
+         end)
+    | (OpSem_constx, [OAV_natural i]) ->
+        (match addrx_address str i with
+         | Just a -> <| op with op_code = sym_natural_of_hex "0x10"; op_string = "DW_OP_constu"; op_argument_values = [OAV_natural a]; op_semantics = OpSem_lit |>
+         | Nothing -> op
+         end)
+    | _ -> op
+    end) ops
+
 let rec mk_sdt_variable_or_formal_parameter (d:dwarf) subprogram_line_extents cu parents die : maybe sdt_variable_or_formal_parameter =
   if not(List.elem die.die_abbreviation_declaration.ad_tag [tag_encode "DW_TAG_variable"; tag_encode "DW_TAG_formal_parameter"])
   then Nothing
@@ -8678,11 +8727,11 @@ let rec mk_sdt_variable_or_formal_parameter (d:dwarf) subprogram_line_extents cu
     svfp_locations_frame_base =
       let frame_base = closest_enclosing_frame_base (die::parents) in
       let interpreted_frame_base = interpreted_location c (unit_context_of_cu d cu) (die::parents) frame_base in
-      Maybe.map (fun nnbss -> List.map (fun (n1,n2,bs) -> (n1,n2,parse_operations_bs c cu.cu_header bs)) nnbss) interpreted_frame_base;
+      Maybe.map (fun nnbss -> List.map (fun (n1,n2,bs) -> (n1,n2,resolve_address_indices (unit_context_of_cu d cu) (parse_operations_bs c cu.cu_header bs))) nnbss) interpreted_frame_base;
     svfp_locations =
       let interpreted_locations : maybe (list (sym_natural * sym_natural * single_location_description)) =
         interpreted_location_of_die c (unit_context_of_cu d cu) parents die in
-      Maybe.map (fun nnbss -> List.map (fun (n1,n2,bs) -> (n1,n2,parse_operations_bs c cu.cu_header bs)) nnbss) interpreted_locations;
+      Maybe.map (fun nnbss -> List.map (fun (n1,n2,bs) -> (n1,n2,resolve_address_indices (unit_context_of_cu d cu) (parse_operations_bs c cu.cu_header bs))) nnbss) interpreted_locations;
     svfp_decl = decl_of_die d subprogram_line_extents cu die;
     |> )
    
