@@ -1,8 +1,8 @@
 (* Claude: dwexpr_eval PROG STATE.txt EXPRS.txt
    Evaluates the DW_AT_location of each variable named in EXPRS.txt, in the linked
    program PROG, with linksem's DWARF expression interpreter (Dwarf.evaluate_location_description),
-   in the register state of STATE.txt at the pc of its symbol, reading memory from the
-   ELF image.  Prints one line per variable:
+   in the register state of STATE.txt at the stop label of the variable's function,
+   reading memory from the ELF image.  Prints one line per variable:
 
      v3 = addr 0x4010a0       a memory location
      v4 = reg 5               a register location
@@ -50,7 +50,16 @@ let () =
       | Some v -> Dwarf.RRR_result (sym_of_z v)
       | None -> Dwarf.RRR_bad_register_number in
     let ev : Dwarf.evaluation_context = { Dwarf.read_register; read_memory } in
-    let pc = sym_of_z (sym st.pc) in
+    (* the pc for a variable is the stop label of the subprogram it belongs to *)
+    let tag_subprogram = Dwarf.tag_encode "DW_TAG_subprogram" in
+    let pc_of_parents d (parents : Dwarf.die list) =
+      let func = List.find_map (fun (die : Dwarf.die) ->
+          if Sym_ocaml.Num.to_num die.die_abbreviation_declaration.ad_tag = Sym_ocaml.Num.to_num tag_subprogram
+          then Dwarf.find_name_of_die d.Dwarf.d_str die else None) parents in
+      let label = match func with
+        | Some f -> (match List.assoc_opt f st.stops with Some l -> l | None -> failwith ("no stop label for function " ^ f))
+        | None -> st.pc in
+      sym_of_z (sym label) in
     (* the DWARF *)
     let d = match Dwarf.extract_dwarf (Elf_file.ELF_File_64 f) Abi_aarch64_symbolic_relocation.aarch64_data_relocation_interpreter with
       | Some d -> d | None -> failwith "extract_dwarf failed" in
@@ -91,7 +100,7 @@ let () =
             match Dwarf.find_attribute_value "DW_AT_location" die with
             | None -> "error: no DW_AT_location"
             | Some loc ->
-              (try match Dwarf.evaluate_location_description c d.d_loc efi cu.cu_header ac ev mfbloc pc loc with
+              (try match Dwarf.evaluate_location_description c d.d_loc (Dwarf.cu_base_address cu) efi cu.cu_header ac ev mfbloc (pc_of_parents d parents) loc with
                  | Error.Success sl -> render sl
                  | Error.Fail m -> "error: " ^ m
                with Failure m -> "error: exception " ^ m

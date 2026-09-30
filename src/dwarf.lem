@@ -3366,7 +3366,8 @@ let parse_location_list_item c (cuh: compilation_unit_header) : parser (maybe lo
           if a1=0 && a2=0 then
             PR_success Nothing pc'
           else if a1 = max_address cuh.cuh_address_size then
-            let x = LLI_base <| (*base_offset=pc.pc_offset;*) base_address=a1 |> in
+            (* Claude: the base address is the second word (the first is the all-ones marker) *)
+            let x = LLI_base <| (*base_offset=pc.pc_offset;*) base_address=a2 |> in
             PR_success (Just x (*(pc.pc_offset, x)*)) pc'
           else
             pr_bind (parse_uint16 c pc') (fun n pc'' ->
@@ -4980,7 +4981,7 @@ let find_cfa_table_row_for_pc (evaluated_frame_info: evaluated_frame_info) (pc: 
   end
 
 
-let rec evaluate_operation_list (c:p_context) (dloc: location_list_list) (evaluated_frame_info: evaluated_frame_info) (cuh: compilation_unit_header) (ac: arithmetic_context) (ev: evaluation_context) (mfbloc: maybe attribute_value) (pc: sym_natural) (all_ops: list operation) (fuel: nat) (s: state) (ops: list operation) : error single_location =
+let rec evaluate_operation_list (c:p_context) (dloc: location_list_list) (base_address: sym_natural) (evaluated_frame_info: evaluated_frame_info) (cuh: compilation_unit_header) (ac: arithmetic_context) (ev: evaluation_context) (mfbloc: maybe attribute_value) (pc: sym_natural) (all_ops: list operation) (fuel: nat) (s: state) (ops: list operation) : error single_location =
   (* Claude: [all_ops] is the whole expression and [ops] the operations still to run,
      a suffix of it; the branch operations continue from another suffix.  [fuel]
      bounds the number of operations executed. *)
@@ -5014,7 +5015,7 @@ let rec evaluate_operation_list (c:p_context) (dloc: location_list_list) (evalua
   let expression_end : natural = List.foldl (fun acc o -> o.op_end) 0 all_ops in
 
   let continue_with (s': state) (ops'': list operation) : error single_location =
-    evaluate_operation_list c dloc evaluated_frame_info cuh ac ev mfbloc pc all_ops (fuel - 1) s' ops'' in
+    evaluate_operation_list c dloc base_address evaluated_frame_info cuh ac ev mfbloc pc all_ops (fuel - 1) s' ops'' in
 
   match ops with
   | [] ->
@@ -5116,7 +5117,7 @@ let rec evaluate_operation_list (c:p_context) (dloc: location_list_list) (evalua
             match mfbloc with
             | Just fbloc ->
                 (*let _ = my_debug5 ("OpSem_fbreg (" ^ show i ^ ")\n") in*)
-                match evaluate_location_description c dloc evaluated_frame_info  cuh ac ev (*mfbloc*)Nothing pc fbloc with
+                match evaluate_location_description c dloc base_address evaluated_frame_info  cuh ac ev (*mfbloc*)Nothing pc fbloc with
                 (* what to do if the recursive call also uses fbreg?  for now assume that's not allowed *)
                 | Success l ->
                     match l with
@@ -5180,7 +5181,7 @@ let rec evaluate_operation_list (c:p_context) (dloc: location_list_list) (evalua
                 bregxi r i  (* same behaviour as an OpSem_bregx *)
             | CR_expression bs ->
                 Assert_extra.failwith "CR_expression"
-                (*TODO: fix result type - not this evaluate_location_description_bytes c dloc evaluated_frame_info cuh ac ev mfbloc pc bs*)
+                (*TODO: fix result type - not this evaluate_location_description_bytes c dloc base_address evaluated_frame_info cuh ac ev mfbloc pc bs*)
                   (* TODO: restrict allowed OpSem_* in that recursive call *)
             end
         | (_, _) ->
@@ -5194,7 +5195,7 @@ let rec evaluate_operation_list (c:p_context) (dloc: location_list_list) (evalua
       end
   end
 
-and evaluate_location_description_bytes (c:p_context) (dloc: location_list_list) (evaluated_frame_info: evaluated_frame_info) (cuh: compilation_unit_header) (ac: arithmetic_context) (ev: evaluation_context) (mfbloc: maybe attribute_value) (pc: sym_natural) (bs: sym_byte_sequence) : error single_location =
+and evaluate_location_description_bytes (c:p_context) (dloc: location_list_list) (base_address: sym_natural) (evaluated_frame_info: evaluated_frame_info) (cuh: compilation_unit_header) (ac: arithmetic_context) (ev: evaluation_context) (mfbloc: maybe attribute_value) (pc: sym_natural) (bs: sym_byte_sequence) : error single_location =
   let parse_context = <|pc_bytes = bs; pc_offset = 0  |> in
   match parse_operations c cuh parse_context with
   | PR_fail s pc' -> Fail ("evaluate_location_description_bytes: parse_operations fail: " ^ pp_parse_fail s pc')
@@ -5202,28 +5203,25 @@ and evaluate_location_description_bytes (c:p_context) (dloc: location_list_list)
       if sym_bs_length pc'.pc_bytes <> 0 then
         Fail "evaluate_location_description_bytes: extra non-parsed bytes"
       else
-        evaluate_operation_list c dloc evaluated_frame_info  cuh ac ev mfbloc pc ops evaluation_fuel initial_state ops
+        evaluate_operation_list c dloc base_address evaluated_frame_info  cuh ac ev mfbloc pc ops evaluation_fuel initial_state ops
   end
 
-and evaluate_location_description (c:p_context) (dloc: location_list_list) (evaluated_frame_info: evaluated_frame_info) (cuh: compilation_unit_header) (ac: arithmetic_context) (ev: evaluation_context) (mfbloc: maybe attribute_value) (pc: sym_natural) (loc:attribute_value) : error single_location =
+and evaluate_location_description (c:p_context) (dloc: location_list_list) (base_address: sym_natural) (evaluated_frame_info: evaluated_frame_info) (cuh: compilation_unit_header) (ac: arithmetic_context) (ev: evaluation_context) (mfbloc: maybe attribute_value) (pc: sym_natural) (loc:attribute_value) : error single_location =
   match loc with
   | AV_exprloc n bs ->
-      evaluate_location_description_bytes c dloc evaluated_frame_info  cuh ac ev mfbloc pc bs
+      evaluate_location_description_bytes c dloc base_address evaluated_frame_info  cuh ac ev mfbloc pc bs
   | AV_block n bs ->
-      evaluate_location_description_bytes c dloc evaluated_frame_info  cuh ac ev mfbloc pc bs
+      evaluate_location_description_bytes c dloc base_address evaluated_frame_info  cuh ac ev mfbloc pc bs
   | AV_sec_offset n ->
+      (* Claude: the entries' offsets are relative to the compilation unit's base
+         address (DW_AT_low_pc), or to the address of the last base address selection
+         entry; interpret_location_list applies them *)
       let location_list = find_location_list dloc n in
       let (offset,(llis:list location_list_item)) = location_list in
-      let f (lli:location_list_item) : maybe single_location_description =
-        match lli with
-        | LLI_lle lle ->
-           if pc >= lle.lle_beginning_address_offset && pc < lle.lle_ending_address_offset then Just lle.lle_single_location_description else Nothing
-        | LLI_base _ ->
-           Nothing  (* TODO: either refactor to do offset during parsing or update base offsets here. Should refactor to use "interpreted". *)
-        end in
-        match myfindmaybe f llis with
-        | Just bs ->
-            evaluate_location_description_bytes c dloc evaluated_frame_info  cuh ac ev mfbloc pc bs
+      let ranges = interpret_location_list base_address llis in
+        match myfind (fun (lo,hi,_) -> pc >= lo && pc < hi) ranges with
+        | Just (_,_,bs) ->
+            evaluate_location_description_bytes c dloc base_address evaluated_frame_info  cuh ac ev mfbloc pc bs
         | Nothing ->
             Fail "evaluate_location_description didn't find pc in location list ranges"
         end
@@ -6227,7 +6225,7 @@ let analysed_locations_at_pc
          List.map
            (fun (n1,n2,sld) ->
              let el : error single_location =
-               evaluate_location_description_bytes c ds.ds_dwarf.d_loc ds.ds_evaluated_frame_info cu.cu_header ac ev mfbloc pc sld in
+               evaluate_location_description_bytes c ds.ds_dwarf.d_loc base_address ds.ds_evaluated_frame_info cu.cu_header ac ev mfbloc pc sld in
              ((cu,parents,die),(n1,n2,sld,el))
            )
            nns
