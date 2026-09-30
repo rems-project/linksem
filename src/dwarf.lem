@@ -4993,7 +4993,9 @@ let rec evaluate_operation_list (c:p_context) (dloc: location_list_list) (evalua
             push_memory_address n s.s_stack
         | (OpSem_lit, [OAV_integer i]) ->
             push_memory_address (partialTwosComplementNaturalFromInteger i ac.ac_half (symIntegerFromNatural ac.ac_all)) s.s_stack
-        | (OpSem_stack f, []) ->
+        | (OpSem_stack f, _) ->
+            (* Claude: the stack-manipulation semantics take the operands themselves
+               (DW_OP_pick and DW_OP_plus_uconst have one), so match any operand list *)
             match f ac s.s_stack op.op_argument_values with
             | Just stack' ->
                 let value' : simple_location = match stack' with [] -> SL_empty | v'::_ -> SL_memory_address v' end in
