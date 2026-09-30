@@ -1,7 +1,7 @@
 <!-- Claude: this file is written by Claude (30 September 2026). -->
 # Cross-checking DWARF expression evaluation: linksem against gdb and lldb
 
-This harness evaluates the same DWARF 4 location expressions with three
+This harness evaluates DWARF 4 location expressions with three
 evaluators, linksem's interpreter (`Dwarf.evaluate_location_description` in
 `src/dwarf.lem`), gdb and lldb, and reports where they differ.  It found the
 eleven linksem defects fixed in the commits of 30 September 2026 (see
@@ -10,6 +10,9 @@ gdb crash and a family of lldb deviations from the DWARF 4 text
 (`upstream-discrepancy-reports/`).  It serves as a regression test for
 linksem's evaluator, as an extensive random validation, and as a way to try a
 single expression against all three.
+
+It's produced by Claude based on an initial prompt by Peter Sewell and
+Stephen Kell, and later prompting by PS, recorded in the notes/.
 
 ## Running
 
