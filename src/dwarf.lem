@@ -275,6 +275,8 @@ type operation_semantics =
   | OpSem_implicit_value
   | OpSem_stack_value
   | OpSem_call_frame_cfa
+  | OpSem_skip   (* Claude: DW_OP_skip, unconditional branch *)
+  | OpSem_bra    (* Claude: DW_OP_bra, conditional branch *)
 
 type operation =
     <|
@@ -282,6 +284,8 @@ type operation =
     op_string: string;
     op_argument_values: list operation_argument_value;
     op_semantics: operation_semantics;
+    op_offset: natural;  (** Claude: byte offset of the opcode within its expression *)
+    op_end: natural;     (** Claude: byte offset just after the operation (the branch operands of DW_OP_skip/DW_OP_bra are relative to this) *)
   |>
 
 
@@ -1312,8 +1316,8 @@ let operation_encodings = [
 ("DW_OP_shr",                 sym_natural_of_hex "0x25", []                         , OpSem_binary (fun ac v1 v2 -> if v2 >= ac.ac_bitwidth then Just 0 else Just (sym_natural_nat_shift_right v1 (natFromSymNatural v2)))); (*0*)
 ("DW_OP_shra",                sym_natural_of_hex "0x26", []                         , OpSem_binary (fun ac v1 v2 -> if v1 < ac.ac_half then (if v2 >= ac.ac_bitwidth then Just 0 else Just (sym_natural_nat_shift_right v1 (natFromSymNatural v2))) else (if v2 >= ac.ac_bitwidth then Just ac.ac_max  else Just (ac.ac_max - (sym_natural_nat_shift_right (ac.ac_max - v1) (natFromSymNatural v2)))))); (*0*)
 ("DW_OP_xor",                 sym_natural_of_hex "0x27", []                         , OpSem_binary (fun ac v1 v2 -> Just (sym_natural_lxor v1 v2))); (*0*)
-("DW_OP_skip",                sym_natural_of_hex "0x2f", [OAT_sint16]               , OpSem_not_supported); (*1*) (* signed 2-byte constant *)
-("DW_OP_bra",                 sym_natural_of_hex "0x28", [OAT_sint16]               , OpSem_not_supported); (*1*) (* signed 2-byte constant *)
+("DW_OP_skip",                sym_natural_of_hex "0x2f", [OAT_sint16]               , OpSem_skip); (*1*) (* signed 2-byte constant *)
+("DW_OP_bra",                 sym_natural_of_hex "0x28", [OAT_sint16]               , OpSem_bra); (*1*) (* signed 2-byte constant *)
 ("DW_OP_eq",                  sym_natural_of_hex "0x29", []                         , OpSem_binary (fun ac v1 v2 -> Just (stack_value_of_bool (stack_value_signed ac v1 = stack_value_signed ac v2)))); (*0*) (* Claude: the six comparisons are signed (section 2.5.1.5) *)
 ("DW_OP_ge",                  sym_natural_of_hex "0x2a", []                         , OpSem_binary (fun ac v1 v2 -> Just (stack_value_of_bool (stack_value_signed ac v1 >= stack_value_signed ac v2)))); (*0*)
 ("DW_OP_gt",                  sym_natural_of_hex "0x2b", []                         , OpSem_binary (fun ac v1 v2 -> Just (stack_value_of_bool (stack_value_signed ac v1 > stack_value_signed ac v2)))); (*0*)
@@ -2445,6 +2449,8 @@ let pp_operation_semantics (os: operation_semantics) : string =
   | OpSem_implicit_value              -> "OpSem_implicit_value"
   | OpSem_stack_value                 -> "OpSem_stack_value"
   | OpSem_call_frame_cfa              -> "OpSem_call_frame_cfa"
+  | OpSem_skip                        -> "OpSem_skip"
+  | OpSem_bra                         -> "OpSem_bra"
   end
 
 let pp_operation_semantics_brief (os: operation_semantics) : string =
@@ -2490,11 +2496,12 @@ let parse_operation c cuh pc =
       | Nothing -> PR_fail ("encoding not found: " ^ pphex_sym code) pc
       | Just (s,oats,opsem) ->
           let ps = List.map (parser_of_operation_argument_type c cuh) oats in
-          (pr_post_map
-            (parse_parser_list ps)
-            (fun oavs -> Just <| op_code = code; op_string = s; op_argument_values = oavs; op_semantics = opsem |>)
-          )
-            pc'
+          (* Claude: record the operation's byte offsets, for the branch operations *)
+          pr_bind (parse_parser_list ps pc') (fun oavs pc'' ->
+            PR_success
+              (Just <| op_code = code; op_string = s; op_argument_values = oavs; op_semantics = opsem;
+                       op_offset = pc.pc_offset; op_end = pc''.pc_offset |>)
+              pc'')
       end
   end
 
@@ -4921,6 +4928,10 @@ let initial_state =
   s_location_pieces = [];
 |>
 
+(* Claude: the most operations one evaluation may execute; DW_OP_skip and DW_OP_bra
+   can loop, and DWARF gives no bound, so this is our own limit *)
+let evaluation_fuel : nat = 100000
+
 (* the main location expression evaluation function *)
 
 (* location expression evaluation is basically a recursive function
@@ -4969,7 +4980,10 @@ let find_cfa_table_row_for_pc (evaluated_frame_info: evaluated_frame_info) (pc: 
   end
 
 
-let rec evaluate_operation_list (c:p_context) (dloc: location_list_list) (evaluated_frame_info: evaluated_frame_info) (cuh: compilation_unit_header) (ac: arithmetic_context) (ev: evaluation_context) (mfbloc: maybe attribute_value) (pc: sym_natural) (s: state) (ops: list operation) : error single_location =
+let rec evaluate_operation_list (c:p_context) (dloc: location_list_list) (evaluated_frame_info: evaluated_frame_info) (cuh: compilation_unit_header) (ac: arithmetic_context) (ev: evaluation_context) (mfbloc: maybe attribute_value) (pc: sym_natural) (all_ops: list operation) (fuel: nat) (s: state) (ops: list operation) : error single_location =
+  (* Claude: [all_ops] is the whole expression and [ops] the operations still to run,
+     a suffix of it; the branch operations continue from another suffix.  [fuel]
+     bounds the number of operations executed. *)
 
   let push_memory_address v vs' = Success <| s with s_stack = v :: vs'; s_value = SL_memory_address v |>  in
 
@@ -4997,10 +5011,20 @@ let rec evaluate_operation_list (c:p_context) (dloc: location_list_list) (evalua
     | _ -> Fail "OpSem unary not given an element on stack"
     end in
 
+  let expression_end : natural = List.foldl (fun acc o -> o.op_end) 0 all_ops in
+
+  let continue_with (s': state) (ops'': list operation) : error single_location =
+    evaluate_operation_list c dloc evaluated_frame_info cuh ac ev mfbloc pc all_ops (fuel - 1) s' ops'' in
+
   match ops with
   | [] ->
       if s.s_location_pieces = [] then
-        Success (SL_simple s.s_value)
+        if s.s_value = SL_empty && all_ops <> [] then
+          (* Claude: a non-empty expression that leaves nothing on the stack has no
+             result (gdb and lldb also fail) *)
+          Fail "expression leaves an empty stack"
+        else
+          Success (SL_simple s.s_value)
       else if s.s_value = SL_empty then
         Success (SL_composite s.s_location_pieces)
       else
@@ -5008,6 +5032,34 @@ let rec evaluate_operation_list (c:p_context) (dloc: location_list_list) (evalua
         Fail "unfinished part of composite expression"
 
   | op::ops' ->
+      if fuel = 0 then Fail ("evaluate_operation_list: more than " ^ show evaluation_fuel ^ " operations executed (a looping expression?)") else
+
+      (* Claude: DW_OP_skip and DW_OP_bra: the operand is a byte offset from the end of
+         the operation; the target must be the start of an operation (or the end of the
+         expression) *)
+      let branch (i: sym_integer) (s': state) : error single_location =
+        let target = integerFromNatural op.op_end + sym_integer_expect_const i in
+        if target < 0 then Fail ("branch before the start of the expression: " ^ pp_operation op)
+        else
+          let t = naturalFromInteger target in
+          if t = expression_end then continue_with s' []
+          else
+            match List.dropWhile (fun o -> o.op_offset <> t) all_ops with
+            | [] -> Fail ("branch target " ^ show t ^ " is not at an operation boundary: " ^ pp_operation op)
+            | ops'' -> continue_with s' ops''
+            end in
+
+      match (op.op_semantics, op.op_argument_values) with
+      | (OpSem_skip, [OAV_integer i]) -> branch i s
+      | (OpSem_bra, [OAV_integer i]) ->
+          match s.s_stack with
+          | v::vs' ->
+              let s' = <| s with s_stack = vs'; s_value = (match vs' with [] -> SL_empty | v'::_ -> SL_memory_address v' end) |> in
+              if v <> 0 then branch i s' else continue_with s' ops'
+          | [] -> Fail "DW_OP_bra not given an element on stack"
+          end
+      | _ ->
+
       let es' =
         match (op.op_semantics, op.op_argument_values)  with
         | (OpSem_nop, []) ->
@@ -5136,10 +5188,9 @@ let rec evaluate_operation_list (c:p_context) (dloc: location_list_list) (evalua
         end
       in
       match es' with
-      | Success s' ->
-          evaluate_operation_list c dloc evaluated_frame_info  cuh ac ev mfbloc pc s' ops'
-      | Fail e ->
-          Fail e
+      | Success s' -> continue_with s' ops'
+      | Fail e -> Fail e
+      end
       end
   end
 
@@ -5151,7 +5202,7 @@ and evaluate_location_description_bytes (c:p_context) (dloc: location_list_list)
       if sym_bs_length pc'.pc_bytes <> 0 then
         Fail "evaluate_location_description_bytes: extra non-parsed bytes"
       else
-        evaluate_operation_list c dloc evaluated_frame_info  cuh ac ev mfbloc pc initial_state ops
+        evaluate_operation_list c dloc evaluated_frame_info  cuh ac ev mfbloc pc ops evaluation_fuel initial_state ops
   end
 
 and evaluate_location_description (c:p_context) (dloc: location_list_list) (evaluated_frame_info: evaluated_frame_info) (cuh: compilation_unit_header) (ac: arithmetic_context) (ev: evaluation_context) (mfbloc: maybe attribute_value) (pc: sym_natural) (loc:attribute_value) : error single_location =
