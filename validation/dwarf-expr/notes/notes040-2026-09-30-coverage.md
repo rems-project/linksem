@@ -4,7 +4,7 @@ Claude: this note (30 September 2026) assesses the coverage of the harness's
 tests from four viewpoints: the DWARF 4 specification (`doc/DWARF4.pdf`,
 section 2.5.1 and the table in section 7.7.1), linksem's `src/dwarf.lem`, and
 the gdb and lldb implementations.  The figures are from the 100000-expression
-run (`make validate SEED=17 N=100000 MAXOPS=12`) and the committed sets.
+run (`make check-random SEED=17 N=100000 MAXOPS=12`) and the committed sets.
 
 ## Against the DWARF 4 specification
 

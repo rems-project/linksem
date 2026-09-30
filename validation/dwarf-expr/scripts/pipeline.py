@@ -247,7 +247,7 @@ def cmd_check(arch, names):
         expected = os.path.join(ROOT, "expected", "%s-%s" % (arch, name))
         run(arch, exprs_for(arch, name), rundir, tools)
         if not os.path.isdir(expected):
-            print("  no expected results in %s (run: make accept ARCH=%s SET=%s)" % (expected, arch, name)); failed += 1; continue
+            print("  no expected results in %s (run: make fix-expected-results ARCH=%s SET=%s)" % (expected, arch, name)); failed += 1; continue
         for f in RESULT_FILES:
             got, want = strip_comments(os.path.join(rundir, f)), strip_comments(os.path.join(expected, f))
             if want is None: continue

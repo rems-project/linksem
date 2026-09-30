@@ -7,18 +7,19 @@
 #   make check-native-arch        regression: the basic, minimal and random-seed1 sets on
 #                                 the host architecture, compared with expected/
 #   make check-all-archs          the same for both architectures (the other one under qemu)
-#   make validate SEED=7 N=2000 MAXOPS=12 [BATCH=2000 JOBS=4 MINIMIZE=no]
+#   make check-random SEED=7 N=2000 MAXOPS=12 [BATCH=2000 JOBS=4 MINIMIZE=no]
 #                                 an extensive random run, with minimal examples of every
-#                                 disagreement, in output/$(ARCH)-validate-seed7/; sets larger
+#                                 disagreement, in output/$(ARCH)-random-seed7-check/; sets larger
 #                                 than BATCH are split into several programs, run JOBS at a time
-#   make one EXPR='DW_OP_lit1; DW_OP_lit2; DW_OP_minus'
+#   make check-one EXPR='DW_OP_lit1; DW_OP_lit2; DW_OP_minus'
 #                                 a single expression, all three evaluators, and its
-#                                 standalone example, in output/$(ARCH)-one/
+#                                 standalone example, in output/$(ARCH)-check-one/
 #   make minimize RUN=output/x86_64-random-seed1
 #                                 minimal standalone examples of a run's disagreements
 #   make diff A=output/x86_64-basic B=expected/x86_64-basic
 #                                 expressions whose results or class differ between two runs
-#   make accept SET=basic         adopt output/$(ARCH)-$(SET) as the expected results
+#   make fix-expected-results SET=basic
+#                                 adopt output/$(ARCH)-$(SET) as the expected results
 #   make clean
 #
 # ARCH defaults to the host's architecture (x86_64 or aarch64).
@@ -36,7 +37,7 @@ OPAM   ?= opam exec --switch ocaml551 --
 P       = scripts/pipeline.py
 BIN     = ocaml/_build/default/bin
 
-.PHONY: tools build check-native-arch check-all-archs validate one minimize diff accept clean
+.PHONY: tools build check-native-arch check-all-archs check-random check-one minimize diff fix-expected-results clean
 
 tools:
 	$(P) tools
@@ -50,19 +51,19 @@ check-native-arch: build
 check-all-archs: build
 	$(P) check $(ARCH) $(SETS); $(P) check $(OTHER) $(SETS)
 
-validate: build
-	mkdir -p output/$(ARCH)-validate-seed$(SEED)
-	$(BIN)/dwexpr_gen.exe $(ARCH) $(N) $(SEED) $(MAXOPS) > output/$(ARCH)-validate-seed$(SEED)/exprs.txt
-	$(P) run $(ARCH) output/$(ARCH)-validate-seed$(SEED)/exprs.txt output/$(ARCH)-validate-seed$(SEED) $(BATCH) $(JOBS)
-	if [ "$(MINIMIZE)" = yes ]; then $(P) minimize output/$(ARCH)-validate-seed$(SEED); fi
+check-random: build
+	mkdir -p output/$(ARCH)-check-random-seed$(SEED)
+	$(BIN)/dwexpr_gen.exe $(ARCH) $(N) $(SEED) $(MAXOPS) > output/$(ARCH)-check-random-seed$(SEED)/exprs.txt
+	$(P) run $(ARCH) output/$(ARCH)-check-random-seed$(SEED)/exprs.txt output/$(ARCH)-check-random-seed$(SEED) $(BATCH) $(JOBS)
+	if [ "$(MINIMIZE)" = yes ]; then $(P) minimize output/$(ARCH)-check-random-seed$(SEED); fi
 
-one: build
-	mkdir -p output/$(ARCH)-one
-	echo "one: $(EXPR)" > output/$(ARCH)-one/exprs.txt
-	$(P) run $(ARCH) output/$(ARCH)-one/exprs.txt output/$(ARCH)-one
-	@cat output/$(ARCH)-one/linksem.txt output/$(ARCH)-one/gdb.txt output/$(ARCH)-one/lldb.txt
-	@$(P) minimize output/$(ARCH)-one > /dev/null 2>&1 || true
-	@test -d output/$(ARCH)-one/discrepancies && echo "standalone example: output/$(ARCH)-one/discrepancies/one/README.md" || true
+check-one: build
+	mkdir -p output/$(ARCH)-check-one
+	echo "one: $(EXPR)" > output/$(ARCH)-check-one/exprs.txt
+	$(P) run $(ARCH) output/$(ARCH)-check-one/exprs.txt output/$(ARCH)-check-one
+	@cat output/$(ARCH)-check-one/linksem.txt output/$(ARCH)-check-one/gdb.txt output/$(ARCH)-check-one/lldb.txt
+	@$(P) minimize output/$(ARCH)-check-one > /dev/null 2>&1 || true
+	@test -d output/$(ARCH)-check-one/discrepancies && echo "standalone example: output/$(ARCH)-check-one/discrepancies/one/README.md" || true
 
 minimize:
 	$(P) minimize $(RUN)
@@ -70,7 +71,7 @@ minimize:
 diff:
 	$(P) diff $(A) $(B)
 
-accept:
+fix-expected-results:
 	$(P) accept $(ARCH) $(SET)
 
 clean:
