@@ -2,7 +2,7 @@
 
 Run directory: `/home/pes20/linksem/validation/dwarf-expr/output/aarch64-minimal`; evaluators: linksem, gdb, lldb.
 
-Tools: aarch64-linux-gnu-as: GNU assembler (GNU Binutils for Ubuntu) 2.42; gdb-multiarch: GNU gdb (Ubuntu 15.1-1ubuntu1~24.04.1) 15.1; lldb: lldb version 18.1.3; qemu-aarch64: qemu-aarch64 version 8.2.2 (Debian 1:8.2.2+ds-0ubuntu1.18).
+Tools: aarch64-linux-gnu-as: GNU assembler (GNU Binutils for Ubuntu) 2.42; gdb-multiarch: GNU gdb (Ubuntu 15.1-1ubuntu1~24.04.1) 15.1; lldb: lldb version 18.1.3; qemu-aarch64: qemu-aarch64 version 8.2.2 (Debian 1:8.2.2+ds-0ubuntu1.18); linksem: 0.8-189-gf36dd5f-dirty.
 
 ## Summary
 
@@ -11,20 +11,20 @@ Tools: aarch64-linux-gnu-as: GNU assembler (GNU Binutils for Ubuntu) 2.42; gdb-m
 | agree               |    50 |
 | linksem-unsupported |     0 |
 | linksem-differs     |     0 |
-| gdb-differs         |     3 |
+| gdb-differs         |     4 |
 | lldb-differs        |    22 |
 | all-differ          |     0 |
 | gdb-crash           |     3 |
-| incomparable        |     1 |
+| incomparable        |     0 |
 | not-run             |     0 |
 
-gdb and lldb differ from each other on 28 expression(s) (see the last section).
+gdb and lldb differ from each other on 29 expression(s) (see the last section).
 
 ## Operations involved in disagreements
 
-- **lldb-differs**: DW_OP_const1s (11), DW_OP_shra (8), DW_OP_lit2 (5), DW_OP_mod (5), DW_OP_lit1 (4), DW_OP_lt (4), DW_OP_lit4 (4), DW_OP_constu (4), DW_OP_stack_value (3), DW_OP_lit0 (3), DW_OP_not (2), DW_OP_eq (2), DW_OP_neg (2), DW_OP_const1u (2), DW_OP_lit7 (2), DW_OP_breg2 (2), DW_OP_abs (2), DW_OP_lit20 (1), DW_OP_breg14 (1), DW_OP_const2s (1)
-- **gdb-crash**: DW_OP_not (3), DW_OP_lit1 (3), DW_OP_bra (3), DW_OP_nop (2), DW_OP_lit5 (1), DW_OP_lit0 (1)
-- **gdb-differs**: DW_OP_const8u (2), DW_OP_mul (2), DW_OP_const8s (1), DW_OP_shl (1), DW_OP_const2s (1), DW_OP_consts (1)
+- **lldb-differs**: DW_OP_const1s (11), DW_OP_shra (8), DW_OP_lit2 (5), DW_OP_mod (5), DW_OP_lit1 (4), DW_OP_lt (4), DW_OP_lit4 (4), DW_OP_constu (4), DW_OP_stack_value (3), DW_OP_lit0 (3), DW_OP_not (2), DW_OP_eq (2), DW_OP_neg (2), DW_OP_const1u (2), DW_OP_lit7 (2), DW_OP_abs (2), DW_OP_breg2 (2), DW_OP_lit20 (1), DW_OP_breg14 (1), DW_OP_const2s (1)
+- **gdb-crash**: DW_OP_bra (3), DW_OP_not (3), DW_OP_lit1 (3), DW_OP_nop (2), DW_OP_lit5 (1), DW_OP_lit0 (1)
+- **gdb-differs**: DW_OP_mul (2), DW_OP_const8u (2), DW_OP_implicit_value (1), DW_OP_const8s (1), DW_OP_consts (1), DW_OP_shl (1), DW_OP_const2s (1)
 
 ## Disagreements
 
@@ -44,7 +44,7 @@ gdb and lldb differ from each other on 28 expression(s) (see the last section).
 | m_bra_join_nop | gdb-crash | `DW_OP_lit1; DW_OP_lit1; DW_OP_bra 1; DW_OP_not; DW_OP_nop` | addr 0x1 | error: gdb aborted | addr 0x1 |
 | m_bra_join_lit | gdb-crash | `DW_OP_lit1; DW_OP_lit1; DW_OP_bra 1; DW_OP_not; DW_OP_lit5` | addr 0x5 | error: gdb aborted | addr 0x5 |
 | m_bra_not_taken_join | gdb-crash | `DW_OP_lit1; DW_OP_lit0; DW_OP_bra 1; DW_OP_not; DW_OP_nop` | addr 0xfffffffffffffffe | error: gdb aborted | addr 0xfffffffffffffffe |
-| m_implicit4 | incomparable | `DW_OP_implicit_value {01,02,03,04}` | implicit {01,02,03,04} | error: access outside bounds of object referenced via synthetic pointer | value 0x4030201 |
+| m_implicit4 | gdb-differs | `DW_OP_implicit_value {01,02,03,04}` | value 0x4030201 | error: access outside bounds of object referenced via synthetic pointer | value 0x4030201 |
 | t_abs_unsigned_reg | lldb-differs | `DW_OP_breg2 0; DW_OP_abs` | addr 0x1 | addr 0x1 | error: invalid load address |
 | t_abs_unsigned_const | lldb-differs | `DW_OP_constu 0xfffffffffffffffb; DW_OP_abs` | addr 0x5 | addr 0x5 | addr 0xfffffffffffffffb |
 | t_shra_unsigned | lldb-differs | `DW_OP_constu 0xfffffffffffffff0; DW_OP_lit4; DW_OP_shra` | addr 0xffffffffffffffff | addr 0xffffffffffffffff | error: invalid load address |
@@ -78,6 +78,7 @@ gdb and lldb differ from each other on 28 expression(s) (see the last section).
 | m_bra_join_nop | `DW_OP_lit1; DW_OP_lit1; DW_OP_bra 1; DW_OP_not; DW_OP_nop` | error: gdb aborted | addr 0x1 | addr 0x1 |
 | m_bra_join_lit | `DW_OP_lit1; DW_OP_lit1; DW_OP_bra 1; DW_OP_not; DW_OP_lit5` | error: gdb aborted | addr 0x5 | addr 0x5 |
 | m_bra_not_taken_join | `DW_OP_lit1; DW_OP_lit0; DW_OP_bra 1; DW_OP_not; DW_OP_nop` | error: gdb aborted | addr 0xfffffffffffffffe | addr 0xfffffffffffffffe |
+| m_implicit4 | `DW_OP_implicit_value {01,02,03,04}` | error: access outside bounds of object referenced via synthetic pointer | value 0x4030201 | value 0x4030201 |
 | t_abs_unsigned_reg | `DW_OP_breg2 0; DW_OP_abs` | addr 0x1 | error: invalid load address | addr 0x1 |
 | t_abs_unsigned_const | `DW_OP_constu 0xfffffffffffffffb; DW_OP_abs` | addr 0x5 | addr 0xfffffffffffffffb | addr 0x5 |
 | t_shra_unsigned | `DW_OP_constu 0xfffffffffffffff0; DW_OP_lit4; DW_OP_shra` | addr 0xffffffffffffffff | error: invalid load address | addr 0xffffffffffffffff |
