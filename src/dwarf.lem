@@ -936,9 +936,32 @@ let dwarf_macro (d: dwarf) : list macro_unit = match d.d_macro with Just l -> l 
 
 (* analysed location data *)
 
-type analysed_location_data       = list ((compilation_unit * (list die) * die) * maybe (list (sym_natural * sym_natural * single_location_description)))
+(* Claude: a DIE with its compilation unit and its parents (innermost first) *)
+type cupdie = compilation_unit * (list die) * die
 
-type analysed_location_data_at_pc = list ((compilation_unit * (list die) * die) *             (sym_natural * sym_natural * single_location_description * error single_location))
+(* Claude: the analysed location of a variable or formal-parameter DIE: the
+   pc ranges of its DW_AT_location, each with its single location description,
+   or Nothing when that attribute could not be interpreted *)
+type analysed_location =
+    <|
+    al_cupdie: cupdie;
+    al_locations: maybe (list (sym_natural * sym_natural * single_location_description));
+  |>
+
+type analysed_location_data = list analysed_location
+
+(* Claude: the same at one pc: the range of the variable's location list that
+   contains the pc, its description, and that description's evaluation there *)
+type analysed_location_at_pc =
+    <|
+    alpc_cupdie: cupdie;
+    alpc_lo: sym_natural;
+    alpc_hi: sym_natural;
+    alpc_location: single_location_description;
+    alpc_evaluation: error single_location;
+  |>
+
+type analysed_location_data_at_pc = list analysed_location_at_pc
 
 (* evaluated line data *)
 
@@ -991,7 +1014,6 @@ type unit_context =
 (* type descriptions *)
 (* NB these do not cover all the DWARF-expressible types; only some common C cases *)
 (* ignore base type DW_endianity and DW_bitsize for now *)
-type cupdie = compilation_unit * (list die) * die
 
 type decl =
   <|
@@ -8017,7 +8039,7 @@ let analyse_locations (d: dwarf) : analysed_location_data =
     (fun (((cu:compilation_unit), (parents: list die), (die: die)) as x) ->
       let interpreted_locations : maybe (list (sym_natural * sym_natural * single_location_description)) =
         interpreted_location_of_die c (unit_context_of_cu d cu) parents die in
-      (x,interpreted_locations)
+      <| al_cupdie = x; al_locations = interpreted_locations |>
     )
     dies
 
@@ -8059,7 +8081,9 @@ let pp_analysed_location_data (d: dwarf) (als: analysed_location_data) : string 
 
 let pp_analysed_locations3 c d (removed:bool) (als: analysed_location_data) : list (bool(*removed?*) * (string(*name*) * string(*offset*) * string(*kind*)) * (unit->string)(*string*)(*type*) * string(*locations*) * (unit->string)(*parents*)) = 
   List.map
-    (fun ((cu,parents,die1),mnnls) ->
+    (fun al ->
+      let (cu,parents,die1) = al.al_cupdie in
+      let mnnls = al.al_locations in
       let str = unit_context_of_cu d cu in
       (removed,
        pp_die_abbrev_var c d cu str false parents die1, (*4.5s for only this*)
@@ -8127,14 +8151,15 @@ let pp_analysed_location_data_diff (d: dwarf) (als_old: analysed_location_data) 
 
 let pp_analysed_location_data_at_pc (d: dwarf) (alspc: analysed_location_data_at_pc) : string =
   String.concat "" (List.map
-    (fun ((cu,parents,die),(n1,n2,sld,esl)) ->
+    (fun alpc ->
+      let (cu,parents,die) = alpc.alpc_cupdie in
       "          " ^
       let name =
         match find_name_of_die (unit_context_of_cu d cu) die with
         | Just s ->  s
         | Nothing -> "<no name>\n"
         end in
-      match esl with
+      match alpc.alpc_evaluation with
       | Success sl ->
           name ^ " @ " ^ pp_single_location sl ^"\n"
 
@@ -8157,14 +8182,14 @@ let analysed_locations_at_pc
   
   let xs =
     List.mapMaybe
-      (fun (cupd,mnns) ->
-        match mnns with
+      (fun al ->
+        match al.al_locations with
         | Nothing -> Nothing
         | Just nns ->
             let nns' = List.filter (fun (n1,n2,sld) -> pc >= n1 && pc < n2) nns in
             match nns' with
             | [] -> Nothing
-            | _ -> Just (cupd,nns')
+            | _ -> Just (al.al_cupdie,nns')
             end
         end)
       ds.ds_analysed_location_data
@@ -8172,7 +8197,7 @@ let analysed_locations_at_pc
   
   List.concat
     (List.map
-       (fun ((cu,parents,die),nns) ->
+       (fun (((cu,parents,die) as cupd),nns) ->
          let ac = arithmetic_context_of_cuh cu.cu_header in
          let str = unit_context_of_cu ds.ds_dwarf cu in
          let mfbloc : maybe attribute_value =
@@ -8181,7 +8206,7 @@ let analysed_locations_at_pc
            (fun (n1,n2,sld) ->
              let el : error single_location =
                evaluate_location_description_bytes c str ds.ds_evaluated_frame_info cu.cu_header ac ev mfbloc pc sld in
-             ((cu,parents,die),(n1,n2,sld,el))
+             <| alpc_cupdie = cupd; alpc_lo = n1; alpc_hi = n2; alpc_location = sld; alpc_evaluation = el |>
            )
            nns
        )
@@ -8195,8 +8220,9 @@ let names_of_address
     : list string
     =
   List.mapMaybe
-    (fun ((cu,parents,die),(n1,n2,sld,esl)) ->
-      match esl with
+    (fun alpc ->
+      let (cu,parents,die) = alpc.alpc_cupdie in
+      match alpc.alpc_evaluation with
       | Success (SL_simple (SL_memory_address a)) ->
           if a=address then
             match find_name_of_die (unit_context_of_cu d cu) die with
@@ -8215,14 +8241,14 @@ let names_of_address
 val filtered_analysed_location_data : dwarf_static -> sym_natural -> analysed_location_data
 let filtered_analysed_location_data ds pc = 
   List.mapMaybe
-    (fun (cupd,mnns) ->
-      match mnns with
+    (fun al ->
+      match al.al_locations with
       | Nothing -> Nothing
       | Just nns ->
          let nns' = List.filter (fun (n1,n2,sld) -> pc >= n1 && pc < n2) nns in
          match nns' with
-         | [] -> Nothing (*Just (cupd,Nothing)*)
-         | _::_ -> Just (cupd,Just nns')
+         | [] -> Nothing
+         | _::_ -> Just <| al with al_locations = Just nns' |>
          end
      end)
     ds.ds_analysed_location_data
@@ -9197,7 +9223,7 @@ let pp_inlined_subroutine_const_params d is =
      String.concat ""
        (List.map
           (fun iscp ->
-            let fake_als : analysed_location_data = [(iscp.iscp_abstract_origin,Nothing)] in
+            let fake_als : analysed_location_data = [<| al_cupdie = iscp.iscp_abstract_origin; al_locations = Nothing |>] in
             let fake_diff = pp_analysed_locations3_diff c d [] fake_als in
             let const_in_place_of_locs = 
               List.map
