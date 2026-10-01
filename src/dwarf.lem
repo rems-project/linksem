@@ -911,15 +911,28 @@ type dwarf =
     d_sections: dwarf_sections;          (** Claude: the raw sections *)
     d_compilation_units: compilation_units;
     d_type_units: type_units;
-    d_loc: location_list_list;
-    d_ranges: range_list_list;
-    d_frame_info: frame_info;
-    d_line_info: list line_number_program;
-    d_aranges: list aranges_set;         (** Claude: .debug_aranges *)
-    d_names: list names_index;           (** Claude: .debug_names *)
-    d_macro: list macro_unit;            (** Claude: .debug_macro *)
+    (* Claude: the parts read from sections the file may lack are option types,
+       Nothing when the section is absent (and Just [] when it is present but
+       empty, or none of it could be parsed) *)
+    d_loc: maybe location_list_list;             (* .debug_loc *)
+    d_ranges: maybe range_list_list;             (* .debug_ranges *)
+    d_frame_info: maybe frame_info;              (* .debug_frame *)
+    d_line_info: maybe (list line_number_program);   (* .debug_line *)
+    d_aranges: maybe (list aranges_set);         (* .debug_aranges *)
+    d_names: maybe (list names_index);           (* .debug_names *)
+    d_macro: maybe (list macro_unit);            (* .debug_macro *)
     d_diagnostics: list string;   (** Claude: what could not be parsed, as readelf would warn *)
   |>
+
+(* Claude: those parts as lists, empty when the section is absent, for the
+   many uses to which an absent section is an empty one *)
+let dwarf_loc_lists (d: dwarf) : location_list_list = match d.d_loc with Just l -> l | Nothing -> [] end
+let dwarf_range_lists (d: dwarf) : range_list_list = match d.d_ranges with Just l -> l | Nothing -> [] end
+let dwarf_frame_info (d: dwarf) : frame_info = match d.d_frame_info with Just l -> l | Nothing -> [] end
+let dwarf_line_programs (d: dwarf) : list line_number_program = match d.d_line_info with Just l -> l | Nothing -> [] end
+let dwarf_aranges (d: dwarf) : list aranges_set = match d.d_aranges with Just l -> l | Nothing -> [] end
+let dwarf_names (d: dwarf) : list names_index = match d.d_names with Just l -> l | Nothing -> [] end
+let dwarf_macro (d: dwarf) : list macro_unit = match d.d_macro with Just l -> l | Nothing -> [] end
 
 (* analysed location data *)
 
@@ -3375,8 +3388,8 @@ let unit_context_of_die_tables (d: dwarf) (cuh: compilation_unit_header) (tables
     <|
     uc_c = c;
     uc_sections = d.d_sections;
-    uc_loc = d.d_loc;
-    uc_ranges = d.d_ranges;
+    uc_loc = (dwarf_loc_lists d);
+    uc_ranges = (dwarf_range_lists d);
     uc_cuh = cuh;
     uc_tables = tables;
     uc_index = index;
@@ -3408,7 +3421,7 @@ let unit_context_of_tu (d: dwarf) (tu: type_unit) : unit_context =
 let unit_context_of_d (d: dwarf) : unit_context =
   match d.d_compilation_units with
   | cu :: _ -> unit_context_of_cu d cu
-  | [] -> unit_context_of_sections <| endianness = d.d_endianness |> d.d_sections d.d_loc d.d_ranges
+  | [] -> unit_context_of_sections <| endianness = d.d_endianness |> d.d_sections (dwarf_loc_lists d) (dwarf_range_lists d)
             <| cuh_offset = 0; cuh_dwarf_format = Dwarf32; cuh_unit_length = 0; cuh_version = 4; cuh_debug_abbrev_offset = 0;
                cuh_address_size = 8; cuh_unit_type = Nothing; cuh_dwo_id = Nothing |>
   end
@@ -5022,7 +5035,7 @@ let line_number_program_of_compilation_unit d cu =
   match line_number_offset_of_compilation_unit c cu with
   | Nothing -> Assert_extra.failwith ("compilation unit did not have a DW_AT_stmt_list attribute\n" ^ pp_compilation_unit_header cu.cu_header ^ "\n")
   | Just offset ->
-    match List.find (fun lnp -> sym_eq lnp.lnp_header.lnh_offset offset) d.d_line_info with
+    match List.find (fun lnp -> sym_eq lnp.lnp_header.lnh_offset offset) (dwarf_line_programs d) with
     | Nothing -> Assert_extra.failwith "compilation unit line number offset not found"
     | Just lnp ->lnp
     end
@@ -5699,7 +5712,7 @@ let od_debug_aranges_section (d: dwarf) : string =
       ^ "  Segment Size:             " ^ od_dec_sym ar.ar_segment_selector_size ^ "\n"
       ^ "\n    Address            Length\n"
       ^ String.concat "" (List.map (fun (_, a, l) -> "    " ^ od_hex_width as' a ^ " " ^ od_hex_width as' l ^ "\n") ar.ar_ranges)
-      ^ "    " ^ od_hex_width as' 0 ^ " " ^ od_hex_width as' 0 ^ "\n") d.d_aranges)
+      ^ "    " ^ od_hex_width as' 0 ^ " " ^ od_hex_width as' 0 ^ "\n") (dwarf_aranges d))
 
 (* the entries of an index table, whose indices are contiguous from 0 *)
 let rec index_table_entries (m: Map.map natural sym_natural) (i: natural) : list (natural * sym_natural) =
@@ -5779,7 +5792,7 @@ let od_macro_unit (d: dwarf) (mu: macro_unit) : string =
   let mstr = match mcu with Just cu -> Just (unit_context_of_cu d cu) | Nothing -> Nothing end in
   let mlnp = match mcu with
     | Just cu -> (match line_number_offset_of_compilation_unit c cu with
-                  | Just off -> List.find (fun lnp -> sym_eq lnp.lnp_header.lnh_offset off) d.d_line_info
+                  | Just off -> List.find (fun lnp -> sym_eq lnp.lnp_header.lnh_offset off) (dwarf_line_programs d)
                   | Nothing -> Nothing end)
     | Nothing -> Nothing end in
   let strp off = pp_debug_str_entry_bytes d.d_sections.sec_str off in
@@ -5821,7 +5834,7 @@ let od_macro_unit (d: dwarf) (mu: macro_unit) : string =
 let od_debug_macro_section (d: dwarf) : string =
   if d.d_sections.sec_macro = Nothing then "" else
   chop_final_newline ("Contents of the .debug_macro section:\n\n"
-  ^ String.concat "" (List.map (od_macro_unit d) d.d_macro))
+  ^ String.concat "" (List.map (od_macro_unit d) (dwarf_macro d)))
 
 (* .debug_names as readelf prints it under --debug-dump=gdb_index *)
 let od_names_attribute (en: endianness) (a: sym_natural) (av: attribute_value) : string =
@@ -5885,7 +5898,7 @@ let od_names_index (d: dwarf) (ni: names_index) : string =
 let od_debug_names_section (d: dwarf) : string =
   if d.d_sections.sec_names = Nothing then "" else
   chop_final_newline ("Contents of the .debug_names section:\n\n"
-  ^ String.concat "" (List.map (od_names_index d) d.d_names))
+  ^ String.concat "" (List.map (od_names_index d) (dwarf_names d)))
 
 let pp_dwarf_like_objdump abbrev_first regname (d:dwarf) : string =
   (* Claude: objdump prints the two sections in the order of the section
@@ -5908,14 +5921,14 @@ let pp_dwarf d =
      | cu :: _ ->
        let (cuh_default : compilation_unit_header) = cu.cu_header in
        "\n************** .debug_loc section: location lists ****************\n"
-       ^ pp_loc c cuh_default d.d_loc
+       ^ pp_loc c cuh_default (dwarf_loc_lists d)
        ^ "\n************** .debug_ranges section: range lists ****************\n"
-       ^ pp_ranges c cuh_default d.d_ranges
+       ^ pp_ranges c cuh_default (dwarf_range_lists d)
        ^ "\n************** .debug_frame section: frame info   ****************\n"
-       ^ pp_frame_info c cuh_default d.d_frame_info
+       ^ pp_frame_info c cuh_default (dwarf_frame_info d)
      end)
   ^ "\n************** .debug_line section: line number info   ****************\n"
-  ^ pp_line_info d.d_line_info
+  ^ pp_line_info (dwarf_line_programs d)
 
 
 (* TODO: don't use lists of bytes here! *)
@@ -6111,6 +6124,11 @@ let parse_macro_unit c : parser (maybe macro_unit) =
         PR_success (Just <| mu_offset = pc.pc_offset; mu_version = v; mu_flags = flags; mu_dwarf_format = df;
                             mu_debug_line_offset = mlo; mu_opcode_operands = table; mu_entries = entries |>) pc5)))))
 
+(* Claude: a part of the dwarf record is Just what was parsed when its section
+   is present, else Nothing *)
+val present : forall 'a. maybe sym_byte_sequence -> 'a -> maybe 'a
+let present sec x = match sec with Just _ -> Just x | Nothing -> Nothing end
+
 let parse_dwarf c (secs: dwarf_sections) : dwarf =
 
   let debug_info_section_body = section_or_empty secs.sec_info in
@@ -6156,13 +6174,13 @@ let parse_dwarf c (secs: dwarf_sections) : dwarf =
         d_sections = secs;
         d_compilation_units = compilation_units;
         d_type_units = type_units;
-        d_loc = loc;
-        d_ranges = ranges;
-        d_frame_info = fi;
-        d_line_info = [];
-        d_aranges = [];
-        d_names = [];
-        d_macro = [];
+        d_loc = present secs.sec_loc loc;
+        d_ranges = present secs.sec_ranges ranges;
+        d_frame_info = present secs.sec_frame fi;
+        d_line_info = Nothing;
+        d_aranges = Nothing;
+        d_names = Nothing;
+        d_macro = Nothing;
         d_diagnostics = [];
         |> in
       let li = parse_line_number_infos c d0 compilation_units in
@@ -6181,13 +6199,13 @@ let parse_dwarf c (secs: dwarf_sections) : dwarf =
    d_sections = secs;
    d_compilation_units = compilation_units;
    d_type_units = type_units;
-   d_loc = loc;
-   d_ranges = ranges;
-   d_frame_info = fi;
-   d_line_info = li;
-   d_aranges = aranges;
-   d_names = names;
-   d_macro = macro;
+   d_loc = present secs.sec_loc loc;
+   d_ranges = present secs.sec_ranges ranges;
+   d_frame_info = present secs.sec_frame fi;
+   d_line_info = present secs.sec_line li;
+   d_aranges = present secs.sec_aranges aranges;
+   d_names = present secs.sec_names names;
+   d_macro = present secs.sec_macro macro;
    d_diagnostics = diags ++ diag ".debug_aranges: " aranges_diag ++ diag ".debug_names: " names_diag ++ diag ".debug_macro: " macro_diag;
   |>
 
@@ -7177,7 +7195,7 @@ let evaluate_fde (fi: frame_info) (fde:fde) : list cfa_table_row =
 
 val evaluate_frame_info : dwarf -> evaluated_frame_info
 let evaluate_frame_info (d: dwarf) : evaluated_frame_info =
-  List.mapMaybe (fun fie -> match fie with FIE_fde fde -> Just (fde, (evaluate_fde d.d_frame_info fde)) | FIE_cie _ -> Nothing end) d.d_frame_info
+  List.mapMaybe (fun fie -> match fie with FIE_fde fde -> Just (fde, (evaluate_fde (dwarf_frame_info d) fde)) | FIE_cie _ -> Nothing end) (dwarf_frame_info d)
 
 let pp_evaluated_frame_info (efi: evaluated_frame_info) =
   String.concat "\n" (List.map pp_evaluated_fde efi)
@@ -7575,7 +7593,7 @@ let analyse_locations_raw c (d: dwarf) =
            | AV_exprloc n bs -> "    "^parse_and_pp_operations c cuh_default bs^"\n"
            | AV_block n bs -> "    "^parse_and_pp_operations c cuh_default bs^"\n"
            | AV_sec_offset n ->
-               let location_list = myfindNonPure (fun (n',_)-> sym_eq n' n) d.d_loc in
+               let location_list = myfindNonPure (fun (n',_)-> sym_eq n' n) (dwarf_loc_lists d) in
                pp_location_list c cuh_default location_list
            | _ -> "av_location AV not understood"
            end in
@@ -7700,7 +7718,7 @@ let check_aranges (d: dwarf) : list string =
                 if List.any (fun (lo, hi) -> sym_range_within lo hi a l) pcs
                    || List.any (fun va -> sym_range_within a (sym_natural_add a l) va (sym_natural_const 1)) var_addrs then Nothing
                 else Just (pre ^ "address range " ^ pphex_sym a ^ " length " ^ pphex_sym l ^ " lies outside the unit's ranges " ^ String.concat " " (List.map (fun (lo, hi) -> "[" ^ pphex_sym lo ^ "," ^ pphex_sym hi ^ ")") pcs) ^ " and covers none of its variables")) ar.ar_ranges)
-    end) d.d_aranges)
+    end) (dwarf_aranges d))
 
 (* the DJB hash of a name (section 7.33), on the name folded to lower case (6.1.1.4.5;
    ASCII folding only here) *)
@@ -7824,7 +7842,7 @@ let check_names (d: dwarf) : list string =
           end) es)) (index_list 0 (List.zip name_bytes ni.ni_entries))) in
     let count_msgs =
       (if List.length ni.ni_entries <> List.length names then [pre ^ "entry count differs from name count"] else []) in
-    header_msgs ++ cu_msgs ++ tu_msgs ++ hash_msgs ++ count_msgs ++ entry_msgs) d.d_names)
+    header_msgs ++ cu_msgs ++ tu_msgs ++ hash_msgs ++ count_msgs ++ entry_msgs) (dwarf_names d))
 
 
 (* a macro definition string is a name, then either a parameter list starting
@@ -7843,20 +7861,20 @@ let macro_undef_string_ok (s: string) : bool =
 let check_macro (d: dwarf) : list string =
   let c = p_context_of_d d in
   let str_len = sym_bs_length (section_or_empty d.d_sections.sec_str) in
-  let unit_offsets = List.map (fun mu -> mu.mu_offset) d.d_macro in
+  let unit_offsets = List.map (fun mu -> mu.mu_offset) (dwarf_macro d) in
   List.concat (List.map (fun mu ->
     let pre = ".debug_macro unit at " ^ pphex mu.mu_offset ^ ": " in
     let mcu = cu_of_macro_unit d mu in
     let mstr = match mcu with Just cu -> Just (unit_context_of_cu d cu) | Nothing -> Nothing end in
     let mlnp = match mcu with
       | Just cu -> (match line_number_offset_of_compilation_unit c cu with
-                    | Just off -> List.find (fun lnp -> sym_eq lnp.lnp_header.lnh_offset off) d.d_line_info
+                    | Just off -> List.find (fun lnp -> sym_eq lnp.lnp_header.lnh_offset off) (dwarf_line_programs d)
                     | Nothing -> Nothing end)
       | Nothing -> Nothing end in
     let header_msgs =
       (if mu.mu_version <> 5 && mu.mu_version <> 4 then [pre ^ "version " ^ show mu.mu_version ^ " (5 expected)"] else [])
       ++ (match mu.mu_debug_line_offset with
-          | Just lo -> if List.any (fun lnp -> sym_natural_offset_part lnp.lnp_header.lnh_offset = sym_natural_offset_part lo) d.d_line_info then [] else [pre ^ "debug_line_offset " ^ pphex_sym lo ^ " is not the offset of a line table"]
+          | Just lo -> if List.any (fun lnp -> sym_natural_offset_part lnp.lnp_header.lnh_offset = sym_natural_offset_part lo) (dwarf_line_programs d) then [] else [pre ^ "debug_line_offset " ^ pphex_sym lo ^ " is not the offset of a line table"]
           | Nothing -> []
           end) in
     let strp (off: sym_natural) = if sym_natural_offset_part off >= str_len then Nothing else Just (pp_debug_str_entry_bytes d.d_sections.sec_str off) in
@@ -7888,16 +7906,20 @@ let check_macro (d: dwarf) : list string =
         | ME_import_sup _ -> (depth, msgs)
         | ME_other _ _ -> (depth, msgs)
         end) (0, []) mu.mu_entries in
-    header_msgs ++ entry_msgs ++ (if depth <> 0 then [pre ^ show depth ^ " DW_MACRO_start_file without DW_MACRO_end_file"] else [])) d.d_macro)
+    header_msgs ++ entry_msgs ++ (if depth <> 0 then [pre ^ show depth ^ " DW_MACRO_start_file without DW_MACRO_end_file"] else [])) (dwarf_macro d))
 
 let check_accelerator_and_macro_sections (d: dwarf) : list string =
   check_aranges d ++ check_names d ++ check_macro d
 
+(* how many of a part there are, or "absent" *)
+val pp_part_count : forall 'a. string -> maybe (list 'a) -> string
+let pp_part_count what ml = match ml with Nothing -> "absent" | Just l -> show (List.length l) ^ " " ^ what end
+
 let pp_checks (d: dwarf) : string =
   let msgs = check_accelerator_and_macro_sections d in
   let counts =
-    ".debug_aranges: " ^ show (List.length d.d_aranges) ^ " set(s); .debug_names: " ^ show (List.length d.d_names) ^ " index(es); .debug_macro: "
-    ^ show (List.length d.d_macro) ^ " unit(s)\n" in
+    ".debug_aranges: " ^ pp_part_count "set(s)" d.d_aranges ^ "; .debug_names: " ^ pp_part_count "index(es)" d.d_names ^ "; .debug_macro: "
+    ^ pp_part_count "unit(s)" d.d_macro ^ "\n" in
   counts ^ (match msgs with [] -> "no problems found\n" | _ -> String.concat "" (List.map (fun m -> m ^ "\n") msgs) end)
 
 (* Claude: DW_AT_entry_pc, or failing that DW_AT_low_pc; in DWARF 5 either may be
@@ -8250,7 +8272,7 @@ let subprogram_line_extents_compilation_unit d cu : list (string * unpacked_file
   match line_number_offset_of_compilation_unit c cu with
   | Nothing -> []
   | Just offset ->
-    match List.find (fun lnp -> sym_eq lnp.lnp_header.lnh_offset offset) d.d_line_info with
+    match List.find (fun lnp -> sym_eq lnp.lnp_header.lnh_offset offset) (dwarf_line_programs d) with
     | Nothing -> []
     | Just lnp ->
       let lnh = lnp.lnp_header in
@@ -8626,7 +8648,7 @@ let extract_dwarf_static f1 ri =
       let efi : evaluated_frame_info =
         evaluate_frame_info dwarf in
       let eli : evaluated_line_info =
-        List.map (fun lnp -> (lnp.lnp_header, evaluate_line_number_program lnp)) dwarf.d_line_info in
+        List.map (fun lnp -> (lnp.lnp_header, evaluate_line_number_program lnp)) (dwarf_line_programs dwarf) in
       let sle = subprogram_line_extents dwarf in
       let ds =
         <|
@@ -9480,12 +9502,12 @@ let pp_attribute_value_resolved c d cu str regname (die:die) (at:sym_natural) (a
       | _ -> ""
       end
     else if is_loc && af = od_form_sec_offset then
-      match List.find (fun (off, _) -> sym_eq off (match av with AV_sec_offset n -> n | _ -> sym_natural_const 0 end)) d.d_loc with
+      match List.find (fun (off, _) -> sym_eq off (match av with AV_sec_offset n -> n | _ -> sym_natural_const 0 end)) (dwarf_loc_lists d) with
       | Just ll -> " (location list)\n" ^ pp_location_list_resolved c cuh regname ll
       | Nothing -> " (location list not found)"
       end
     else if at = od_code "DW_AT_ranges" && af = od_form_sec_offset then
-      match List.find (fun (off, _) -> sym_eq off (match av with AV_sec_offset n -> n | _ -> sym_natural_const 0 end)) d.d_ranges with
+      match List.find (fun (off, _) -> sym_eq off (match av with AV_sec_offset n -> n | _ -> sym_natural_const 0 end)) (dwarf_range_lists d) with
       | Just rl -> " (ranges)\n" ^ pp_range_list c cuh rl
       | Nothing -> " (range list not found)"
       end
