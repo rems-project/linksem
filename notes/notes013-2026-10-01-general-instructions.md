@@ -92,3 +92,16 @@ rules for the validation harnesses in particular are also in
   (ELF, DWARF dumps, DWARF expressions) to check that the whole is sensible,
   and re-run the dependent tools' tests (read-dwarf on the pKVM object and
   the smoke test).
+
+## Maintaining these notes
+
+- This note, `notes012-2026-10-01-instructions-given.md` and
+  `notes014-2026-10-01-summary-since-september.md` are living records: when
+  further work is done on linksem, append to them rather than starting new
+  ones.  Add each new prompt that leads to a linksem change to notes012,
+  verbatim, numbered and timestamped as the existing entries are (and in
+  `read-dwarf/notes/notes001-...` when it leads to a read-dwarf change); add
+  any new standing rule the owner states to this note under the heading it
+  belongs to; and add a paragraph on each new strand of work to notes014
+  with the dates and the commits.  The usual rule that committed notes are
+  not edited does not apply to these three.
