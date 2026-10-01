@@ -908,8 +908,7 @@ type macro_unit =
 type dwarf =
     <|
     d_endianness: Endianness.endianness; (* from the ELF *)
-    d_sections: dwarf_sections;          (** Claude: the raw sections; [d_str] is [d_sections.sec_str] *)
-    d_str: sym_byte_sequence;
+    d_sections: dwarf_sections;          (** Claude: the raw sections *)
     d_compilation_units: compilation_units;
     d_type_units: type_units;
     d_loc: location_list_list;
@@ -6155,7 +6154,6 @@ let parse_dwarf c (secs: dwarf_sections) : dwarf =
         <|
         d_endianness = c.endianness;
         d_sections = secs;
-        d_str = section_or_empty secs.sec_str;
         d_compilation_units = compilation_units;
         d_type_units = type_units;
         d_loc = loc;
@@ -6181,7 +6179,6 @@ let parse_dwarf c (secs: dwarf_sections) : dwarf =
    <|
    d_endianness = c.endianness;
    d_sections = secs;
-   d_str = section_or_empty secs.sec_str;
    d_compilation_units = compilation_units;
    d_type_units = type_units;
    d_loc = loc;
