@@ -801,24 +801,32 @@ type unpacked_decl = unpacked_file_entry * nat(*line*) * string(*subprogram name
 
 (* Claude: the raw debugging sections of a file, as read by [extract_dwarf]; a
    section that is absent is empty *)
+(* Claude: the DWARF sections of the file, each Nothing when the file has no
+   section of that name (the relocatable file's relocations are applied to the
+   bytes) *)
 type dwarf_sections =
     <|
-    sec_info: sym_byte_sequence;
-    sec_abbrev: sym_byte_sequence;
-    sec_str: sym_byte_sequence;
-    sec_str_offsets: sym_byte_sequence;  (* DWARF 5 *)
-    sec_addr: sym_byte_sequence;         (* DWARF 5 *)
-    sec_line_str: sym_byte_sequence;     (* DWARF 5 *)
-    sec_loc: sym_byte_sequence;
-    sec_ranges: sym_byte_sequence;
-    sec_loclists: sym_byte_sequence;     (* DWARF 5 *)
-    sec_rnglists: sym_byte_sequence;     (* DWARF 5 *)
-    sec_frame: sym_byte_sequence;
-    sec_line: sym_byte_sequence;
-    sec_aranges: sym_byte_sequence;      (* Claude: the accelerator and macro sections *)
-    sec_names: sym_byte_sequence;        (* DWARF 5 *)
-    sec_macro: sym_byte_sequence;        (* DWARF 5 *)
+    sec_info: maybe sym_byte_sequence;
+    sec_abbrev: maybe sym_byte_sequence;
+    sec_str: maybe sym_byte_sequence;
+    sec_str_offsets: maybe sym_byte_sequence;  (* DWARF 5 *)
+    sec_addr: maybe sym_byte_sequence;         (* DWARF 5 *)
+    sec_line_str: maybe sym_byte_sequence;     (* DWARF 5 *)
+    sec_loc: maybe sym_byte_sequence;
+    sec_ranges: maybe sym_byte_sequence;
+    sec_loclists: maybe sym_byte_sequence;     (* DWARF 5 *)
+    sec_rnglists: maybe sym_byte_sequence;     (* DWARF 5 *)
+    sec_frame: maybe sym_byte_sequence;
+    sec_line: maybe sym_byte_sequence;
+    sec_aranges: maybe sym_byte_sequence;      (* Claude: the accelerator and macro sections *)
+    sec_names: maybe sym_byte_sequence;        (* DWARF 5 *)
+    sec_macro: maybe sym_byte_sequence;        (* DWARF 5 *)
   |>
+
+(* Claude: the bytes of a section that may be absent, for the parsers and
+   lookups to which an absent section is the same as an empty one *)
+let section_or_empty (ms: maybe sym_byte_sequence) : sym_byte_sequence =
+  match ms with Just bs -> bs | Nothing -> sym_bs_empty end
 
 (** Claude: the accelerator and macro sections: .debug_aranges (DWARF 5 section
     6.1.2, version 2), .debug_names (6.1.1, version 5) and .debug_macro (6.3,
@@ -2751,14 +2759,17 @@ let rec null_terminated_bs (bs: sym_byte_sequence) : sym_byte_sequence =
   | Nothing -> bs
   end
 
-let pp_debug_str_entry_bytes (str: sym_byte_sequence) (n: sym_natural) : string =
+let pp_debug_str_entry_bytes (str: maybe sym_byte_sequence) (n: sym_natural) : string =
   (* Claude: in a relocatable file a DW_FORM_strp value may be a relocation
      against an undefined symbol (a string-table label defined elsewhere);
      readelf and objdump use the addend, as the offset part here *)
-  if sym_bs_length str = 0 then "<no .debug_str section>" else   (* Claude: readelf's text *)
-  match sym_dropbytes (sym_natural_offset_part n) str with
-  | Fail _ -> "<offset is too big>"   (* Claude: readelf's text *)
-  | Success bs -> string_of_sym_byte_sequence (null_terminated_bs bs)
+  match str with
+  | Nothing -> "<no .debug_str section>"   (* Claude: readelf's text *)
+  | Just str' ->
+      match sym_dropbytes (sym_natural_offset_part n) str' with
+      | Fail _ -> "<offset is too big>"   (* Claude: readelf's text *)
+      | Success bs -> string_of_sym_byte_sequence (null_terminated_bs bs)
+      end
   end
 
 let pp_debug_str_entry (str: unit_context) (n: sym_natural) : string =
@@ -2768,10 +2779,13 @@ let pp_debug_str_entry (str: unit_context) (n: sym_natural) : string =
 
 (* the .debug_line_str string at offset n *)
 let line_strp_string (str: unit_context) (n: sym_natural) : string =
-  if sym_bs_length str.uc_sections.sec_line_str = 0 then "<no .debug_line_str section>" else
-  match sym_dropbytes (sym_natural_offset_part n) str.uc_sections.sec_line_str with
-  | Fail _ -> "<offset is too big>"   (* Claude: readelf's text *)
-  | Success bs -> string_of_sym_byte_sequence (null_terminated_bs bs)
+  match str.uc_sections.sec_line_str with
+  | Nothing -> "<no .debug_line_str section>"
+  | Just sec ->
+      match sym_dropbytes (sym_natural_offset_part n) sec with
+      | Fail _ -> "<offset is too big>"   (* Claude: readelf's text *)
+      | Success bs -> string_of_sym_byte_sequence (null_terminated_bs bs)
+      end
   end
 
 (* the .debug_str offset of the unit's string index i: entry i of the string
@@ -2785,7 +2799,7 @@ let strx_string (str: unit_context) (i: sym_natural) : string =
      offsets table *)
   match strx_offset str i with
   | Just off ->
-      if sym_natural_offset_part off >= sym_bs_length str.uc_sections.sec_str then "<indirect index offset is too big>"
+      if sym_natural_offset_part off >= sym_bs_length (section_or_empty str.uc_sections.sec_str) then "<indirect index offset is too big>"
       else pp_debug_str_entry_bytes str.uc_sections.sec_str off
   | Nothing -> "<string index too big>"
   end
@@ -2812,10 +2826,10 @@ let listx_offset (str: unit_context) (base: maybe sym_natural) (sec: sym_byte_se
   end
 
 let loclistx_offset (str: unit_context) (i: sym_natural) : maybe sym_natural =
-  listx_offset str str.uc_loclists_base str.uc_sections.sec_loclists i
+  listx_offset str str.uc_loclists_base (section_or_empty str.uc_sections.sec_loclists) i
 
 let rnglistx_offset (str: unit_context) (i: sym_natural) : maybe sym_natural =
-  listx_offset str str.uc_rnglists_base str.uc_sections.sec_rnglists i
+  listx_offset str str.uc_rnglists_base (section_or_empty str.uc_sections.sec_rnglists) i
 
 (* an address-valued attribute: DW_FORM_addr, or DWARF 5's indexed forms *)
 let address_of_attribute_value (str: unit_context) (av: attribute_value) : maybe sym_natural =
@@ -3324,7 +3338,7 @@ let unit_tables_of_die (c: p_context) (secs: dwarf_sections) (cuh: compilation_u
     | Just base ->
         (* in a relocatable file each entry is a relocation against .debug_str,
            whose offset part is the string's offset *)
-        read_index_table c df (offset_size df) (pr_map2 (fun n -> sym_natural_const (sym_natural_offset_part n)) (parse_uintDwarfN c df)) secs.sec_str_offsets base
+        read_index_table c df (offset_size df) (pr_map2 (fun n -> sym_natural_const (sym_natural_offset_part n)) (parse_uintDwarfN c df)) (section_or_empty secs.sec_str_offsets) base
     | Nothing -> Map.empty
     end in
   (* the pre-standard DWARF 4 split-DWARF table (DW_AT_GNU_addr_base) has no
@@ -3334,8 +3348,8 @@ let unit_tables_of_die (c: p_context) (secs: dwarf_sections) (cuh: compilation_u
     match base_attr with
     | Just base ->
         if sym_natural_offset_part cuh.cuh_version < 5 then
-          read_index_table_headerless c (sym_natural_offset_part cuh.cuh_address_size) (parse_uint_address_size c cuh.cuh_address_size) secs.sec_addr base
-        else read_index_table c df (sym_natural_offset_part cuh.cuh_address_size) (parse_uint_address_size c cuh.cuh_address_size) secs.sec_addr base
+          read_index_table_headerless c (sym_natural_offset_part cuh.cuh_address_size) (parse_uint_address_size c cuh.cuh_address_size) (section_or_empty secs.sec_addr) base
+        else read_index_table c df (sym_natural_offset_part cuh.cuh_address_size) (parse_uint_address_size c cuh.cuh_address_size) (section_or_empty secs.sec_addr) base
     | Nothing -> Map.empty
     end in
   <| ut_str_offsets = str_offsets; ut_addrs = addrs |>
@@ -3830,7 +3844,7 @@ let pp_compilation_units_abbrev c (d: dwarf) (compilation_units: list compilatio
    and the offset of the type's DIE) *)
 let parse_unit c (secs: dwarf_sections) : parser (maybe dwarf_unit) =
     fun (pc:parse_context) ->
-      let debug_abbrev_section_body = secs.sec_abbrev in
+      let debug_abbrev_section_body = section_or_empty secs.sec_abbrev in
 
       if sym_bs_length pc.pc_bytes = 0 then PR_success Nothing pc else
 
@@ -3941,7 +3955,7 @@ let pp_type_units c (d: dwarf) (type_units: list type_unit) : string =
 (* the DWARF 4 .debug_types form; DWARF 5 type units are read by [parse_unit] *)
 let parse_type_unit c (secs: dwarf_sections) : parser (maybe type_unit) =
     fun (pc:parse_context) ->
-      let debug_abbrev_section_body = secs.sec_abbrev in
+      let debug_abbrev_section_body = section_or_empty secs.sec_abbrev in
 
       if sym_bs_length pc.pc_bytes = 0 then PR_success Nothing pc else
 
@@ -4238,7 +4252,7 @@ let parse_rnglist_entry c (cuh: compilation_unit_header) : parser (maybe rnglist
 
 (* the list starting at a section offset (the entries up to its end-of-list) *)
 let loclist_at (str: unit_context) (offset: sym_natural) : maybe (list loclist_entry) =
-  match sym_dropbytes (sym_natural_offset_part offset) str.uc_sections.sec_loclists with
+  match sym_dropbytes (sym_natural_offset_part offset) (section_or_empty str.uc_sections.sec_loclists) with
   | Fail _ -> Nothing
   | Success bs ->
       match parse_list (parse_loclist_entry str.uc_c str.uc_cuh) <| pc_bytes = bs; pc_offset = sym_natural_offset_part offset |> with
@@ -4248,7 +4262,7 @@ let loclist_at (str: unit_context) (offset: sym_natural) : maybe (list loclist_e
   end
 
 let rnglist_at (str: unit_context) (offset: sym_natural) : maybe (list rnglist_entry) =
-  match sym_dropbytes (sym_natural_offset_part offset) str.uc_sections.sec_rnglists with
+  match sym_dropbytes (sym_natural_offset_part offset) (section_or_empty str.uc_sections.sec_rnglists) with
   | Fail _ -> Nothing
   | Success bs ->
       match parse_list (parse_rnglist_entry str.uc_c str.uc_cuh) <| pc_bytes = bs; pc_offset = sym_natural_offset_part offset |> with
@@ -4815,9 +4829,9 @@ let section_string_bytes (sec: sym_byte_sequence) (n: sym_natural) : sym_byte_se
 let lnct_string_bytes (str: unit_context) (av: attribute_value) : sym_byte_sequence =
   match av with
   | AV_string bs -> bs
-  | AV_line_strp n -> section_string_bytes str.uc_sections.sec_line_str n
-  | AV_strp n -> section_string_bytes str.uc_sections.sec_str n
-  | AV_strx i -> (match strx_offset str i with Just off -> section_string_bytes str.uc_sections.sec_str off | Nothing -> sym_bs_empty end)
+  | AV_line_strp n -> section_string_bytes (section_or_empty str.uc_sections.sec_line_str) n
+  | AV_strp n -> section_string_bytes (section_or_empty str.uc_sections.sec_str) n
+  | AV_strx i -> (match strx_offset str i with Just off -> section_string_bytes (section_or_empty str.uc_sections.sec_str) off | Nothing -> sym_bs_empty end)
   | _ -> sym_bs_empty
   end
 
@@ -5101,7 +5115,10 @@ let parse_line_number_info c str (d_line: sym_byte_sequence) (cu: compilation_un
    may be an indexed string) *)
 let parse_line_number_infos c (d: dwarf) compilation_units
     =
-  List.mapMaybe (fun cu -> parse_line_number_info c (unit_context_of_cu d cu) d.d_sections.sec_line cu) compilation_units
+  match d.d_sections.sec_line with
+  | Nothing -> []   (* no line tables *)
+  | Just sec_line -> List.mapMaybe (fun cu -> parse_line_number_info c (unit_context_of_cu d cu) sec_line cu) compilation_units
+  end
 
 let pp_line_info li
     =
@@ -5672,7 +5689,7 @@ let od_hex_width (size: natural) (n: sym_natural) : string =
   (if l < w then String.concat "" (List.replicate (natFromNatural (w - l)) "0") else "") ^ s
 
 let od_debug_aranges_section (d: dwarf) : string =
-  if sym_bs_length d.d_sections.sec_aranges = 0 then "" else
+  if d.d_sections.sec_aranges = Nothing then "" else
   "Contents of the .debug_aranges section:\n\n"
   ^ String.concat "" (List.map (fun ar ->
       let as' = sym_natural_offset_part ar.ar_address_size in
@@ -5700,7 +5717,7 @@ let addr_base_of_cu (cu: compilation_unit) : maybe natural =
   end
 
 let od_debug_addr_section (d: dwarf) : string =
-  if sym_bs_length d.d_sections.sec_addr = 0 then "" else
+  match d.d_sections.sec_addr with Nothing -> "" | Just sec_addr ->
   let bases = List.mapMaybe addr_base_of_cu d.d_compilation_units in
   "Contents of the .debug_addr section:\n\n"
   ^ String.concat "" (List.mapMaybe (fun cu ->
@@ -5709,15 +5726,16 @@ let od_debug_addr_section (d: dwarf) : string =
       | Just base ->
           let as' = sym_natural_offset_part cu.cu_header.cuh_address_size in
           (* a headerless (DWARF 4) table runs to the next unit's base, as readelf shows it *)
-          let limit = List.foldl (fun acc b -> if b > base && b < acc then b else acc) (sym_bs_length d.d_sections.sec_addr) bases in
+          let limit = List.foldl (fun acc b -> if b > base && b < acc then b else acc) (sym_bs_length sec_addr) bases in
           let count = (limit - base) div as' in
           Just ("  For compilation unit at offset " ^ od_hx_sym cu.cu_header.cuh_offset ^ ":\n\tIndex\tAddress\n"
                 ^ String.concat "" (List.map (fun (i, a) -> "\t" ^ show i ^ ":\t" ^ od_hex_width as' a ^ "\n")
                      (List.filter (fun (i, _) -> sym_natural_offset_part cu.cu_header.cuh_version >= 5 || i < count) (index_table_entries cu.cu_tables.ut_addrs 0))))
       end) d.d_compilation_units)
+  end
 
 (* the string offsets contributions, one after another through the section *)
-let rec od_str_offsets_contributions c (sec: sym_byte_sequence) (str: sym_byte_sequence) (pos: natural) : string =
+let rec od_str_offsets_contributions c (sec: sym_byte_sequence) (str: maybe sym_byte_sequence) (pos: natural) : string =
   match sym_dropbytes pos sec with
   | Fail _ -> ""
   | Success bs ->
@@ -5747,9 +5765,10 @@ let rec od_str_offsets_contributions c (sec: sym_byte_sequence) (str: sym_byte_s
   end
 
 let od_debug_str_offsets_section (d: dwarf) : string =
-  if sym_bs_length d.d_sections.sec_str_offsets = 0 then "" else
+  match d.d_sections.sec_str_offsets with Nothing -> "" | Just sec ->
   chop_final_newline ("Contents of the .debug_str_offsets section:\n\n"
-  ^ od_str_offsets_contributions (p_context_of_d d) d.d_sections.sec_str_offsets d.d_sections.sec_str 0)
+  ^ od_str_offsets_contributions (p_context_of_d d) sec d.d_sections.sec_str 0)
+  end
 
 (* .debug_macro as readelf prints it: the unit header, then one line per entry;
    indexed strings are resolved through the unit that refers to the macro unit,
@@ -5801,7 +5820,7 @@ let od_macro_unit (d: dwarf) (mu: macro_unit) : string =
   ^ "\n"
 
 let od_debug_macro_section (d: dwarf) : string =
-  if sym_bs_length d.d_sections.sec_macro = 0 then "" else
+  if d.d_sections.sec_macro = Nothing then "" else
   chop_final_newline ("Contents of the .debug_macro section:\n\n"
   ^ String.concat "" (List.map (od_macro_unit d) d.d_macro))
 
@@ -5865,7 +5884,7 @@ let od_names_index (d: dwarf) (ni: names_index) : string =
          end)) (index_list 0 (List.zip ni.ni_string_offsets ni.ni_entries)))
 
 let od_debug_names_section (d: dwarf) : string =
-  if sym_bs_length d.d_sections.sec_names = 0 then "" else
+  if d.d_sections.sec_names = Nothing then "" else
   chop_final_newline ("Contents of the .debug_names section:\n\n"
   ^ String.concat "" (List.map (od_names_index d) d.d_names))
 
@@ -6095,10 +6114,10 @@ let parse_macro_unit c : parser (maybe macro_unit) =
 
 let parse_dwarf c (secs: dwarf_sections) : dwarf =
 
-  let debug_info_section_body = secs.sec_info in
-  let debug_loc_section_body = secs.sec_loc in
-  let debug_ranges_section_body = secs.sec_ranges in
-  let debug_frame_section_body = secs.sec_frame in
+  let debug_info_section_body = section_or_empty secs.sec_info in
+  let debug_loc_section_body = section_or_empty secs.sec_loc in
+  let debug_ranges_section_body = section_or_empty secs.sec_ranges in
+  let debug_frame_section_body = section_or_empty secs.sec_frame in
 
   let pc_info = <|pc_bytes = debug_info_section_body; pc_offset = 0  |> in
 
@@ -6136,7 +6155,7 @@ let parse_dwarf c (secs: dwarf_sections) : dwarf =
         <|
         d_endianness = c.endianness;
         d_sections = secs;
-        d_str = secs.sec_str;
+        d_str = section_or_empty secs.sec_str;
         d_compilation_units = compilation_units;
         d_type_units = type_units;
         d_loc = loc;
@@ -6155,14 +6174,14 @@ let parse_dwarf c (secs: dwarf_sections) : dwarf =
     end in
 
   (* Claude: the accelerator and macro sections, each parsed as far as it goes *)
-  let (aranges, aranges_diag) = parse_list_tolerant (parse_aranges_set c) <| pc_bytes = secs.sec_aranges; pc_offset = 0 |> in
-  let (names, names_diag) = parse_list_tolerant (parse_names_index c) <| pc_bytes = secs.sec_names; pc_offset = 0 |> in
-  let (macro, macro_diag) = parse_list_tolerant (parse_macro_unit c) <| pc_bytes = secs.sec_macro; pc_offset = 0 |> in
+  let (aranges, aranges_diag) = parse_list_tolerant (parse_aranges_set c) <| pc_bytes = section_or_empty secs.sec_aranges; pc_offset = 0 |> in
+  let (names, names_diag) = parse_list_tolerant (parse_names_index c) <| pc_bytes = section_or_empty secs.sec_names; pc_offset = 0 |> in
+  let (macro, macro_diag) = parse_list_tolerant (parse_macro_unit c) <| pc_bytes = section_or_empty secs.sec_macro; pc_offset = 0 |> in
 
    <|
    d_endianness = c.endianness;
    d_sections = secs;
-   d_str = secs.sec_str;
+   d_str = section_or_empty secs.sec_str;
    d_compilation_units = compilation_units;
    d_type_units = type_units;
    d_loc = loc;
@@ -6257,46 +6276,44 @@ let extract_section_body_without_relocations f section_name strict =
   (c, addr, sym_bs_expect_const body)
 
 val extract_dwarf : elf_file -> relocation_interpreter reloc_target_data -> maybe dwarf
+(* Claude: whether the file has a section of the name *)
+let has_section (f: elf_file) (section_name: string) : bool =
+  match f with
+  | ELF_File_32 f32 -> List.any (fun x -> x.Elf_interpreted_section.elf32_section_name_as_string = section_name) f32.elf32_file_interpreted_sections
+  | ELF_File_64 f64 -> List.any (fun x -> x.Elf_interpreted_section.elf64_section_name_as_string = section_name) f64.elf64_file_interpreted_sections
+  end
+
+(* Claude: the (relocated) bytes of a section the file may lack *)
+let extract_optional_section_body (f: elf_file) (ri: relocation_interpreter reloc_target_data) (section_name: string) : maybe sym_byte_sequence =
+  if has_section f section_name then
+    let (_, _, body) = extract_section_body f ri section_name false in Just body
+  else Nothing
+
+(* Claude: Nothing when the file has no .debug_info; the other sections may each be absent *)
 let extract_dwarf f ri =
   let _ = my_debug "extract dwarf" in
-
-  let (c, _, debug_info_section_body)   = extract_section_body f ri ".debug_info"   true  in
-  let (c, _, debug_abbrev_section_body) = extract_section_body f ri ".debug_abbrev" false in
-  let (c, _, debug_str_section_body)    = extract_section_body f ri ".debug_str"    false in
-  let (c, _, debug_loc_section_body)    = extract_section_body f ri ".debug_loc"    false in
-  let (c, _, debug_ranges_section_body) = extract_section_body f ri ".debug_ranges" false in
-  let (c, _, debug_frame_section_body)  = extract_section_body f ri ".debug_frame" false in
-  let (c, _, debug_line_section_body)   = extract_section_body f ri ".debug_line" false in
-  (* Claude: the DWARF 5 sections *)
-  let (c, _, debug_str_offsets_section_body) = extract_section_body f ri ".debug_str_offsets" false in
-  let (c, _, debug_addr_section_body)     = extract_section_body f ri ".debug_addr"     false in
-  let (c, _, debug_line_str_section_body) = extract_section_body f ri ".debug_line_str" false in
-  let (c, _, debug_loclists_section_body) = extract_section_body f ri ".debug_loclists" false in
-  let (c, _, debug_rnglists_section_body) = extract_section_body f ri ".debug_rnglists" false in
-  let (c, _, debug_aranges_section_body)  = extract_section_body f ri ".debug_aranges"  false in
-  let (c, _, debug_names_section_body)    = extract_section_body f ri ".debug_names"    false in
-  let (c, _, debug_macro_section_body)    = extract_section_body f ri ".debug_macro"    false in
-
+  if not (has_section f ".debug_info") then Nothing else
+  let (c, _, _) = extract_section_body f ri ".debug_info" true in
+  let sec = extract_optional_section_body f ri in
   let secs =
     <|
-    sec_info = debug_info_section_body;
-    sec_abbrev = debug_abbrev_section_body;
-    sec_str = debug_str_section_body;
-    sec_str_offsets = debug_str_offsets_section_body;
-    sec_addr = debug_addr_section_body;
-    sec_line_str = debug_line_str_section_body;
-    sec_loc = debug_loc_section_body;
-    sec_ranges = debug_ranges_section_body;
-    sec_loclists = debug_loclists_section_body;
-    sec_rnglists = debug_rnglists_section_body;
-    sec_aranges = debug_aranges_section_body;
-    sec_names = debug_names_section_body;
-    sec_macro = debug_macro_section_body;
-    sec_frame = debug_frame_section_body;
-    sec_line = debug_line_section_body;
+    sec_info = sec ".debug_info";
+    sec_abbrev = sec ".debug_abbrev";
+    sec_str = sec ".debug_str";
+    sec_str_offsets = sec ".debug_str_offsets";
+    sec_addr = sec ".debug_addr";
+    sec_line_str = sec ".debug_line_str";
+    sec_loc = sec ".debug_loc";
+    sec_ranges = sec ".debug_ranges";
+    sec_loclists = sec ".debug_loclists";
+    sec_rnglists = sec ".debug_rnglists";
+    sec_aranges = sec ".debug_aranges";
+    sec_names = sec ".debug_names";
+    sec_macro = sec ".debug_macro";
+    sec_frame = sec ".debug_frame";
+    sec_line = sec ".debug_line";
     |> in
   let d = parse_dwarf c secs in
-
   Just d
 
 val extract_text : elf_file -> relocation_interpreter reloc_target_data -> p_context * sym_natural * sym_byte_sequence  (* (p_context, elf32/64_section_addr, elf32/64_section_body) *)
@@ -7728,7 +7745,7 @@ let check_names (d: dwarf) : list string =
         else Just (pre ^ "local TU " ^ show i ^ " at " ^ pphex_sym off ^ " is not the offset of a type unit")) (index_list 0 ni.ni_local_type_units) in
     let bc = n ni.ni_bucket_count in
     let names = List.map (fun off -> pp_debug_str_entry_bytes d.d_sections.sec_str off) ni.ni_string_offsets in
-    let name_bytes = List.map (fun off -> section_string_bytes d.d_sections.sec_str off) ni.ni_string_offsets in
+    let name_bytes = List.map (fun off -> section_string_bytes (section_or_empty d.d_sections.sec_str) off) ni.ni_string_offsets in
     (* the hash table: the recorded hash of each name, and its bucket *)
     let hash_msgs =
       if bc = 0 then [] else
@@ -7828,7 +7845,7 @@ let macro_undef_string_ok (s: string) : bool =
 
 let check_macro (d: dwarf) : list string =
   let c = p_context_of_d d in
-  let str_len = sym_bs_length d.d_sections.sec_str in
+  let str_len = sym_bs_length (section_or_empty d.d_sections.sec_str) in
   let unit_offsets = List.map (fun mu -> mu.mu_offset) d.d_macro in
   List.concat (List.map (fun mu ->
     let pre = ".debug_macro unit at " ^ pphex mu.mu_offset ^ ": " in
